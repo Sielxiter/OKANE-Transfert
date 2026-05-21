@@ -2,6 +2,7 @@ package com.okane;
 
 import com.okane.config.AppPropertiesConfig;
 import com.okane.config.CorsConfig;
+import com.okane.config.JacksonConfig;
 import com.okane.config.JpaConfig;
 import com.okane.config.SecurityConfig;
 import com.okane.config.SwaggerConfig;
@@ -13,8 +14,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
+import jakarta.servlet.DispatcherType;
 import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.tomcat.util.descriptor.web.FilterDef;
+import org.apache.tomcat.util.descriptor.web.FilterMap;
+import org.springframework.web.filter.DelegatingFilterProxy;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
 
@@ -34,6 +39,7 @@ public class Main {
         AnnotationConfigWebApplicationContext applicationContext = new AnnotationConfigWebApplicationContext();
         applicationContext.register(
                 AppPropertiesConfig.class,
+                JacksonConfig.class,
                 JpaConfig.class,
                 SecurityConfig.class,
                 WebConfig.class,
@@ -46,6 +52,7 @@ public class Main {
         DispatcherServlet dispatcherServlet = new DispatcherServlet(applicationContext);
         Tomcat.addServlet(context, "dispatcherServlet", dispatcherServlet);
         context.addServletMappingDecoded("/", "dispatcherServlet");
+        registerSecurityFilter(context, applicationContext);
 
         tomcat.start();
         System.out.println("Okane Transfer backend started on http://localhost:" + port);
@@ -80,5 +87,21 @@ public class Main {
         }
 
         return directPath;
+    }
+
+    private static void registerSecurityFilter(Context context, AnnotationConfigWebApplicationContext applicationContext) {
+        DelegatingFilterProxy securityFilter = new DelegatingFilterProxy("springSecurityFilterChain", applicationContext);
+        FilterDef filterDef = new FilterDef();
+        filterDef.setFilterName("springSecurityFilterChain");
+        filterDef.setFilter(securityFilter);
+        context.addFilterDef(filterDef);
+
+        FilterMap filterMap = new FilterMap();
+        filterMap.setFilterName("springSecurityFilterChain");
+        filterMap.addURLPattern("/*");
+        filterMap.setDispatcher(DispatcherType.REQUEST.name());
+        filterMap.setDispatcher(DispatcherType.ERROR.name());
+        filterMap.setDispatcher(DispatcherType.ASYNC.name());
+        context.addFilterMapBefore(filterMap);
     }
 }

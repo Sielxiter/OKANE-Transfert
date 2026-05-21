@@ -6,5 +6,9 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', component: LoginPageComponent },
   { path: 'dashboard', component: DashboardPageComponent },
+  { path: 'admin/dashboard', component: DashboardPageComponent },
+  { path: 'manager/dashboard', component: DashboardPageComponent },
+  { path: 'agent/dashboard', component: DashboardPageComponent },
+  { path: 'client/dashboard', component: DashboardPageComponent },
   { path: '**', redirectTo: 'login' },
 ];

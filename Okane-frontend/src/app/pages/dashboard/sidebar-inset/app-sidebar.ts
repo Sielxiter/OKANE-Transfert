@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, PLATFORM_ID } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCommand } from '@ng-icons/lucide';
+import { Router } from '@angular/router';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
-import { data } from '../shared/sidebar/data';
+import { getSidebarData, resolveRoleFromPath, DashboardRole } from '../shared/sidebar/data';
 import { NavMain } from '../shared/sidebar/nav-main';
 import { NavProjects } from '../shared/sidebar/nav-projects';
 import { NavSecondary } from '../shared/sidebar/nav-secondary';
@@ -48,5 +50,51 @@ import { NavUser } from '../shared/sidebar/nav-user';
 	`,
 })
 export class AppSidebarInset {
-	public readonly data = data;
+	private readonly _router = inject(Router);
+	private readonly _platformId = inject(PLATFORM_ID);
+	public readonly data = this.buildSidebarData();
+
+	private buildSidebarData() {
+		const role = this.resolveRole();
+		const user = this.resolveUser();
+		return getSidebarData(role, user);
+	}
+
+	private resolveRole(): DashboardRole {
+		const pathRole = resolveRoleFromPath(this._router.url || '/client/dashboard');
+		if (pathRole) {
+			return pathRole;
+		}
+
+		return 'ROLE_CLIENT';
+	}
+
+	private resolveUser() {
+		if (!isPlatformBrowser(this._platformId)) {
+			return undefined;
+		}
+
+		try {
+			const raw = localStorage.getItem('okane_user');
+			if (!raw) {
+				return undefined;
+			}
+
+			const user = JSON.parse(raw) as {
+				firstName?: string;
+				lastName?: string;
+				email?: string;
+				role?: string;
+			};
+
+			return {
+				name: `${user.firstName ?? 'Okane'} ${user.lastName ?? 'Transfer'}`.trim(),
+				email: user.email ?? 'hello@okane.com',
+				avatar: '/assets/avatar.png',
+				roleLabel: user.role ? user.role.replace('ROLE_', '') : 'USER',
+			};
+		} catch {
+			return undefined;
+		}
+	}
 }

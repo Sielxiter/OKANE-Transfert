@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
+import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
 	lucideBadgeCheck,
@@ -69,7 +71,7 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 				<hlm-dropdown-menu-group>
 					<button hlmDropdownMenuItem>
 						<ng-icon name="lucideBadgeCheck" />
-						Account
+						Profile
 					</button>
 					<button hlmDropdownMenuItem>
 						<ng-icon name="lucideCreditCard" />
@@ -81,7 +83,7 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 					</button>
 				</hlm-dropdown-menu-group>
 				<hlm-dropdown-menu-separator />
-				<button hlmDropdownMenuItem>
+				<button hlmDropdownMenuItem type="button" (click)="signOut()">
 					<ng-icon name="lucideLogOut" />
 					Log out
 				</button>
@@ -90,6 +92,8 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 	`,
 })
 export class NavUser {
+	private readonly _router = inject(Router);
+	private readonly _platformId = inject(PLATFORM_ID);
 	private readonly _sidebarService = inject(HlmSidebarService);
 	protected readonly _menuSide = computed(() => (this._sidebarService.isMobile() ? 'top' : 'right'));
 
@@ -98,4 +102,15 @@ export class NavUser {
 		email: string;
 		avatar: string;
 	}>();
+
+	public signOut(): void {
+		if (isPlatformBrowser(this._platformId)) {
+			localStorage.removeItem('okane_access_token');
+			localStorage.removeItem('okane_refresh_token');
+			localStorage.removeItem('okane_token_type');
+			localStorage.removeItem('okane_user');
+		}
+
+		void this._router.navigateByUrl('/login');
+	}
 }

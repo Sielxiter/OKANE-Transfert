@@ -8,8 +8,10 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
     protected Class<?>[] getRootConfigClasses() {
         return new Class<?>[] {
                 AppPropertiesConfig.class,
+                JacksonConfig.class,
                 JpaConfig.class,
-                SecurityConfig.class
+                SecurityConfig.class,
+                CorsConfig.class
         };
     }
 
@@ -17,7 +19,6 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
     protected Class<?>[] getServletConfigClasses() {
         return new Class<?>[] {
                 WebConfig.class,
-                CorsConfig.class,
                 SwaggerConfig.class
         };
     }
