@@ -1,0 +1,197 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.login-shell {
+  --page-bg: #ffffff;
+  --page-fg: #111827;
+  --muted-fg: #6b7280;
+  --line: #e5e7eb;
+  --field-bg: #ffffff;
+  --field-border: #d1d5db;
+  --button-bg: #111827;
+  --button-fg: #ffffff;
+  --outline-bg: #ffffff;
+  --outline-fg: #111827;
+  --panel-bg: #f3f4f6;
+  --image-filter: brightness(0.6) grayscale(1);
+  display: block;
+  min-height: 100dvh;
+  background: var(--page-bg);
+  color: var(--page-fg);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.login-shell.dark {
+  --page-bg: #090d13;
+  --page-fg: #f9fafb;
+  --muted-fg: #9ca3af;
+  --line: #1f2937;
+  --field-bg: #0f1720;
+  --field-border: #273244;
+  --button-bg: #f9fafb;
+  --button-fg: #0f1720;
+  --outline-bg: #111827;
+  --outline-fg: #f9fafb;
+  --panel-bg: #111827;
+  --image-filter: brightness(0.45) grayscale(1) contrast(1.05);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  display: grid;
+  place-items: center;
+  background: var(--page-fg);
+  color: var(--page-bg);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.theme-toggle {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--page-fg);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.login-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-heading {
+  display: grid;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-fg);
+}
+
+.field {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.field label,
+.field-head a,
+.signup {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.field-head {
+  display: flex;
+  align-items: center;
+}
+
+.field-head a,
+.signup a {
+  margin-left: auto;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+  color: inherit;
+}
+
+input {
+  width: 100%;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
+  color: var(--page-fg);
+  padding: 0 0.75rem;
+  outline: none;
+}
+
+input::placeholder {
+  color: var(--muted-fg);
+}
+
+input:focus {
+  border-color: var(--page-fg);
+}
+
+.primary-btn,
+.outline-btn {
+  width: 100%;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.primary-btn {
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 1px solid var(--button-bg);
+}
+
+.outline-btn {
+  background: var(--outline-bg);
+  color: var(--outline-fg);
+  border: 1px solid var(--field-border);
+}
+
+.separator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted-fg);
+}
+
+.separator::before,
+.separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.signup {
+  text-align: center;
+  color: var(--muted-fg);
+}
+
+.image-panel {
+  position: relative;
+  background: var(--panel-bg);
+}
+
+.cover-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--image-filter);
+}

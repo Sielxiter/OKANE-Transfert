@@ -1,0 +1,64 @@
+<div class="login-shell" [class.dark]="darkMode">
+  <div class="grid min-h-svh lg:grid-cols-2">
+    <div class="flex flex-col gap-4 p-6 md:p-10">
+      <div class="flex items-center justify-between gap-2">
+        <a routerLink="/login" class="brand">
+          <div class="brand-mark">O</div>
+          <span>Okane Transfer</span>
+        </a>
+
+        <button type="button" class="theme-toggle" (click)="toggleTheme()">
+          {{ darkMode ? 'Light' : 'Dark' }} mode
+        </button>
+      </div>
+
+      <div class="flex flex-1 items-center justify-center">
+        <div class="w-full max-w-xs">
+          <form class="login-form">
+            <div class="form-heading">
+              <h1 class="title">Login to your account</h1>
+              <p class="subtitle">Enter your email below to login to your account</p>
+            </div>
+
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" type="email" placeholder="m@example.com" />
+            </div>
+
+            <div class="field">
+              <div class="field-head">
+                <label for="password">Password</label>
+                <a routerLink="/login">Forgot password?</a>
+              </div>
+              <input id="password" type="password" placeholder="••••••••" />
+            </div>
+
+            <div class="field">
+              <button type="button" class="primary-btn">Login</button>
+            </div>
+
+            <div class="separator">Or continue with</div>
+
+            <div class="field">
+              <button type="button" class="outline-btn">
+                Login with GitHub
+              </button>
+              <p class="signup">
+                Don't have an account?
+                <a routerLink="/login">Sign up</a>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="hidden lg:block image-panel">
+      <img
+        src="https://images.unsplash.com/photo-1604076850742-4c7221f3101b?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        alt="Image"
+        class="cover-image"
+      />
+    </div>
+  </div>
+</div>
