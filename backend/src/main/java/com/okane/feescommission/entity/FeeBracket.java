@@ -13,29 +13,29 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "fee_brackets")
+@Table(name = "tranches_tarifaires")
 public class FeeBracket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "fee_grid_id", nullable = false)
+    @JoinColumn(name = "grille_tarifaire_id", nullable = false)
     private FeeGrid feeGrid;
 
-    @Column(name = "min_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_min", nullable = false, precision = 15, scale = 2)
     private BigDecimal minAmount;
 
-    @Column(name = "max_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_max", nullable = false, precision = 15, scale = 2)
     private BigDecimal maxAmount;
 
-    @Column(name = "fee_type", nullable = false, length = 50)
+    @Column(name = "type_frais", nullable = false, length = 50)
     private String feeType;
 
-    @Column(name = "fee_value", nullable = false, precision = 15, scale = 2)
+    @Column(name = "valeur_frais", nullable = false, precision = 15, scale = 2)
     private BigDecimal feeValue;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public FeeBracket() {

@@ -14,31 +14,31 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "exchange_rates")
+@Table(name = "taux_change")
 public class ExchangeRate {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "from_currency_id", nullable = false)
+    @JoinColumn(name = "devise_source_id", nullable = false)
     private Currency fromCurrency;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "to_currency_id", nullable = false)
+    @JoinColumn(name = "devise_destination_id", nullable = false)
     private Currency toCurrency;
 
-    @Column(name = "rate", nullable = false, precision = 15, scale = 6)
+    @Column(name = "taux", nullable = false, precision = 15, scale = 6)
     private BigDecimal rate;
 
     @Column(name = "source", nullable = false, length = 50)
     private String source;
 
-    @Column(name = "effective_at")
+    @Column(name = "applique_le")
     private LocalDateTime effectiveAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "cree_par")
     private User createdBy;
 
     public ExchangeRate() {

@@ -40,29 +40,29 @@ type LoginResponse = {
     <form [formGroup]="form" (ngSubmit)="login()">
       <hlm-field-group>
         <div class="flex flex-col items-center gap-1 text-center">
-          <h1 class="text-2xl font-bold">Login to your account</h1>
+          <h1 class="text-2xl font-bold">Connexion à votre compte</h1>
           <p class="text-muted-foreground text-sm text-balance">
-            Enter your email below to login to your account
+            Entrez votre courriel pour accéder à Okane Transfer
           </p>
         </div>
 
         <hlm-field>
-          <label hlmFieldLabel for="email">Email</label>
+          <label hlmFieldLabel for="email">Courriel</label>
           <input hlmInput type="email" id="email" placeholder="m@example.com" formControlName="email" />
-          <hlm-field-error validator="required">Email is required.</hlm-field-error>
-          <hlm-field-error validator="email">Enter a valid email address.</hlm-field-error>
+          <hlm-field-error validator="required">Le courriel est obligatoire.</hlm-field-error>
+          <hlm-field-error validator="email">Entrez une adresse courriel valide.</hlm-field-error>
         </hlm-field>
 
         <hlm-field>
           <div class="flex items-center">
-            <label hlmFieldLabel for="password">Password</label>
+            <label hlmFieldLabel for="password">Mot de passe</label>
             <a hlmFieldDescription class="ml-auto text-sm underline-offset-4 hover:underline" routerLink=".">
-              Forgot password?
+              Mot de passe oublié ?
             </a>
           </div>
           <input hlmInput type="password" id="password" formControlName="password" />
-          <hlm-field-error validator="required">Password is required.</hlm-field-error>
-          <hlm-field-error validator="minlength">Password must be at least 8 characters long.</hlm-field-error>
+          <hlm-field-error validator="required">Le mot de passe est obligatoire.</hlm-field-error>
+          <hlm-field-error validator="minlength">Le mot de passe doit contenir au moins 8 caractères.</hlm-field-error>
         </hlm-field>
 
         <hlm-field>
@@ -70,23 +70,23 @@ type LoginResponse = {
             @if (isSubmitting) {
               <ng-icon name="remixLoader4Line" class="mr-2 text-xl animate-spin" />
             }
-            {{ isSubmitting ? 'Signing in...' : 'Login' }}
+            {{ isSubmitting ? 'Connexion...' : 'Se connecter' }}
           </button>
           @if (loginError) {
             <p class="text-destructive text-center text-sm">{{ loginError }}</p>
           }
         </hlm-field>
 
-        <hlm-field-separator>Or continue with</hlm-field-separator>
+        <hlm-field-separator>Ou continuer avec</hlm-field-separator>
 
         <hlm-field>
           <button hlmBtn variant="outline" type="button">
             <ng-icon name="remixGithubFill" class="text-xl" />
-            Login with GitHub
+            Connexion avec GitHub
           </button>
           <p hlmFieldDescription class="text-center">
-            Don't have an account?
-            <a routerLink=".">Sign up</a>
+            Pas encore de compte ?
+            <a routerLink=".">Créer un compte</a>
           </p>
         </hlm-field>
       </hlm-field-group>
@@ -140,7 +140,7 @@ export class LoginFormComponent {
           this._router.navigateByUrl(response.redirectTo || '/dashboard');
         },
         error: (error) => {
-          this.loginError = error?.error?.message ?? 'Login failed. Check your credentials and try again.';
+          this.loginError = error?.error?.message ?? 'Connexion échouée. Vérifiez vos identifiants puis réessayez.';
           this._cdr.markForCheck();
         },
       });

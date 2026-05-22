@@ -17,8 +17,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "agent_cash_sessions", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "agent_id", "session_date" })
+@Table(name = "sessions_caisse_agent", uniqueConstraints = {
+    @UniqueConstraint(columnNames = { "agent_id", "date_session" })
 })
 public class AgentCashSession {
     @Id
@@ -30,22 +30,22 @@ public class AgentCashSession {
     private User agent;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "agency_id", nullable = false)
+    @JoinColumn(name = "agence_id", nullable = false)
     private Agency agency;
 
-    @Column(name = "session_date", nullable = false)
+    @Column(name = "date_session", nullable = false)
     private LocalDate sessionDate;
 
-    @Column(name = "opening_balance", nullable = false, precision = 15, scale = 2)
+    @Column(name = "solde_ouverture", nullable = false, precision = 15, scale = 2)
     private BigDecimal openingBalance;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "opened_at")
+    @Column(name = "ouverte_le")
     private LocalDateTime openedAt;
 
-    @Column(name = "closed_at")
+    @Column(name = "cloturee_le")
     private LocalDateTime closedAt;
 
     public AgentCashSession() {

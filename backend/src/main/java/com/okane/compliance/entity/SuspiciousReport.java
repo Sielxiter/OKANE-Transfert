@@ -16,28 +16,28 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "suspicious_reports")
+@Table(name = "declarations_soupcon")
 public class SuspiciousReport {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "transfer_id", nullable = false)
+    @JoinColumn(name = "transfert_id", nullable = false)
     private Transfer transfer;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "aml_check_id", nullable = false)
+    @JoinColumn(name = "controle_aml_id", nullable = false)
     private AmlCheck amlCheck;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @JoinColumn(name = "client_id", nullable = false)
     private Customer customer;
 
-    @Column(name = "report_type", nullable = false, length = 50)
+    @Column(name = "type_declaration", nullable = false, length = 50)
     private String reportType;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
     @Lob
@@ -45,13 +45,13 @@ public class SuspiciousReport {
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by")
+    @JoinColumn(name = "examine_par")
     private User reviewedBy;
 
-    @Column(name = "reviewed_at")
+    @Column(name = "examine_le")
     private LocalDateTime reviewedAt;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public SuspiciousReport() {

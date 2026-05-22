@@ -64,18 +64,18 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 				<hlm-dropdown-menu-group>
 					<button hlmDropdownMenuItem>
 						<ng-icon name="lucideSparkles" />
-						Upgrade to Pro
+						Passer à Pro
 					</button>
 				</hlm-dropdown-menu-group>
 				<hlm-dropdown-menu-separator />
 				<hlm-dropdown-menu-group>
 					<button hlmDropdownMenuItem>
 						<ng-icon name="lucideBadgeCheck" />
-						Profile
+						Profil
 					</button>
 					<button hlmDropdownMenuItem>
 						<ng-icon name="lucideCreditCard" />
-						Billing
+						Facturation
 					</button>
 					<button hlmDropdownMenuItem>
 						<ng-icon name="lucideBell" />
@@ -85,7 +85,7 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 				<hlm-dropdown-menu-separator />
 				<button hlmDropdownMenuItem type="button" (click)="signOut()">
 					<ng-icon name="lucideLogOut" />
-					Log out
+						Déconnexion
 				</button>
 			</hlm-dropdown-menu>
 		</ng-template>

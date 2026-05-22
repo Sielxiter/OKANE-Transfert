@@ -13,26 +13,26 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "chatbot_sessions")
+@Table(name = "sessions_chatbot")
 public class ChatbotSession {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "utilisateur_id")
     private User user;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "language", nullable = false, length = 10)
+    @Column(name = "langue", nullable = false, length = 10)
     private String language;
 
-    @Column(name = "started_at")
+    @Column(name = "demarree_le")
     private LocalDateTime startedAt;
 
-    @Column(name = "ended_at")
+    @Column(name = "terminee_le")
     private LocalDateTime endedAt;
 
     public ChatbotSession() {

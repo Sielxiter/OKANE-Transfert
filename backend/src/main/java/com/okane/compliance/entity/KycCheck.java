@@ -14,30 +14,30 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "kyc_checks")
+@Table(name = "verifications_kyc")
 public class KycCheck {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @JoinColumn(name = "client_id", nullable = false)
     private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "checked_by")
+    @JoinColumn(name = "verifie_par")
     private User checkedBy;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "identity_pattern_valid", nullable = false)
+    @Column(name = "format_piece_valide", nullable = false)
     private Boolean identityPatternValid;
 
     @Column(name = "notes", length = 255)
     private String notes;
 
-    @Column(name = "checked_at")
+    @Column(name = "verifie_le")
     private LocalDateTime checkedAt;
 
     public KycCheck() {

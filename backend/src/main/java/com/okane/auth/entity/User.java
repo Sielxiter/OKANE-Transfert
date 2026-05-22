@@ -13,50 +13,50 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
-@Table(name = "users")
+@Table(name = "utilisateurs")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "first_name", nullable = false, length = 100)
+    @Column(name = "prenom", nullable = false, length = 100)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false, length = 100)
+    @Column(name = "nom", nullable = false, length = 100)
     private String lastName;
 
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "mot_de_passe_hash", nullable = false, length = 255)
     @JsonIgnore
     private String passwordHash;
 
-    @Column(name = "phone", length = 30)
+    @Column(name = "telephone", length = 30)
     private String phone;
 
-    @Column(name = "enabled", nullable = false)
+    @Column(name = "active", nullable = false)
     private Boolean enabled;
 
-    @Column(name = "account_locked", nullable = false)
+    @Column(name = "compte_verrouille", nullable = false)
     private Boolean accountLocked;
 
-    @Column(name = "account_suspended", nullable = false)
+    @Column(name = "compte_suspendu", nullable = false)
     private Boolean accountSuspended;
 
-    @Column(name = "failed_login_attempts", nullable = false)
+    @Column(name = "tentatives_echec_connexion", nullable = false)
     private Integer failedLoginAttempts;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
-    @Column(name = "last_login_at")
+    @Column(name = "dernier_login_le")
     private LocalDateTime lastLoginAt;
 
-    @Column(name = "password_changed_at")
+    @Column(name = "mot_de_passe_change_le")
     private LocalDateTime passwordChangedAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

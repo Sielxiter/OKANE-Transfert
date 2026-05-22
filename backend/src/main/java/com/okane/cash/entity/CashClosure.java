@@ -15,33 +15,33 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "cash_closures")
+@Table(name = "clotures_caisse")
 public class CashClosure {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cash_session_id", nullable = false, unique = true)
+    @JoinColumn(name = "session_caisse_id", nullable = false, unique = true)
     private AgentCashSession cashSession;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "closed_by", nullable = false)
+    @JoinColumn(name = "cloture_par", nullable = false)
     private User closedBy;
 
-    @Column(name = "expected_balance", nullable = false, precision = 15, scale = 2)
+    @Column(name = "solde_attendu", nullable = false, precision = 15, scale = 2)
     private BigDecimal expectedBalance;
 
-    @Column(name = "actual_balance", nullable = false, precision = 15, scale = 2)
+    @Column(name = "solde_reel", nullable = false, precision = 15, scale = 2)
     private BigDecimal actualBalance;
 
-    @Column(name = "difference_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_ecart", nullable = false, precision = 15, scale = 2)
     private BigDecimal differenceAmount;
 
-    @Column(name = "closed_at")
+    @Column(name = "cloturee_le")
     private LocalDateTime closedAt;
 
-    @Column(name = "note", length = 255)
+    @Column(name = "notes", length = 255)
     private String note;
 
     public CashClosure() {

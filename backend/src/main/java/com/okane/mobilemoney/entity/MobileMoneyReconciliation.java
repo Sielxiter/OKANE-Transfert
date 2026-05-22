@@ -15,36 +15,36 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "mobile_money_reconciliations")
+@Table(name = "reconciliations_mobile_money")
 public class MobileMoneyReconciliation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "mobile_money_transfer_id", nullable = false, unique = true)
+    @JoinColumn(name = "transfert_mobile_money_id", nullable = false, unique = true)
     private MobileMoneyTransfer mobileMoneyTransfer;
 
-    @Column(name = "operator_reference", nullable = false, length = 100)
+    @Column(name = "reference_operateur", nullable = false, length = 100)
     private String operatorReference;
 
-    @Column(name = "expected_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_attendu", nullable = false, precision = 15, scale = 2)
     private BigDecimal expectedAmount;
 
-    @Column(name = "operator_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_operateur", nullable = false, precision = 15, scale = 2)
     private BigDecimal operatorAmount;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reconciled_by")
+    @JoinColumn(name = "reconcilie_par")
     private User reconciledBy;
 
-    @Column(name = "reconciled_at")
+    @Column(name = "reconcilie_le")
     private LocalDateTime reconciledAt;
 
-    @Column(name = "note", length = 255)
+    @Column(name = "notes", length = 255)
     private String note;
 
     public MobileMoneyReconciliation() {

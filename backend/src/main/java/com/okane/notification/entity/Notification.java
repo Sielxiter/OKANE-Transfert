@@ -21,33 +21,33 @@ public class Notification {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
     private User user;
 
-    @Column(name = "channel", nullable = false, length = 50)
+    @Column(name = "canal", nullable = false, length = 50)
     private String channel;
 
     @Column(name = "type", nullable = false, length = 50)
     private String type;
 
-    @Column(name = "title", length = 150)
+    @Column(name = "titre", length = 150)
     private String title;
 
     @Lob
     @Column(name = "message", nullable = false)
     private String message;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
     @Lob
-    @Column(name = "provider_response")
+    @Column(name = "reponse_fournisseur")
     private String providerResponse;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "sent_at")
+    @Column(name = "envoye_le")
     private LocalDateTime sentAt;
 
     public Notification() {

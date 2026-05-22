@@ -12,26 +12,26 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "jetons_actualisation")
 public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "token", nullable = false, unique = true, length = 500)
+    @Column(name = "jeton", nullable = false, unique = true, length = 500)
     private String token;
 
-    @Column(name = "expiry_date", nullable = false)
+    @Column(name = "date_expiration", nullable = false)
     private LocalDateTime expiryDate;
 
-    @Column(name = "revoked", nullable = false)
+    @Column(name = "revoque", nullable = false)
     private Boolean revoked;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
     private User user;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public RefreshToken() {

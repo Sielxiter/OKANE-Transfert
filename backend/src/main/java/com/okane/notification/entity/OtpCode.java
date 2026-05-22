@@ -13,35 +13,35 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "otp_codes")
+@Table(name = "codes_otp")
 public class OtpCode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
     private User user;
 
     @Column(name = "code", nullable = false, length = 20)
     private String code;
 
-    @Column(name = "purpose", nullable = false, length = 50)
+    @Column(name = "objectif", nullable = false, length = 50)
     private String purpose;
 
-    @Column(name = "channel", nullable = false, length = 50)
+    @Column(name = "canal", nullable = false, length = 50)
     private String channel;
 
-    @Column(name = "expires_at", nullable = false)
+    @Column(name = "expire_le", nullable = false)
     private LocalDateTime expiresAt;
 
-    @Column(name = "used", nullable = false)
+    @Column(name = "utilise", nullable = false)
     private Boolean used;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "used_at")
+    @Column(name = "utilise_le")
     private LocalDateTime usedAt;
 
     public OtpCode() {

@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "countries")
+@Table(name = "pays")
 public class Country {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,20 +21,20 @@ public class Country {
     @Column(name = "code", nullable = false, unique = true, length = 10)
     private String code;
 
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "nom", nullable = false, length = 100)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "currency_id", nullable = false)
+    @JoinColumn(name = "devise_id", nullable = false)
     private Currency currency;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public Country() {

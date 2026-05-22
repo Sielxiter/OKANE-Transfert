@@ -18,36 +18,36 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payouts")
+@Table(name = "paiements_transfert")
 public class Payout {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "transfer_id", nullable = false, unique = true)
+    @JoinColumn(name = "transfert_id", nullable = false, unique = true)
     private Transfer transfer;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cash_session_id", nullable = false)
+    @JoinColumn(name = "session_caisse_id", nullable = false)
     private AgentCashSession cashSession;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "beneficiary_id", nullable = false)
+    @JoinColumn(name = "beneficiaire_id", nullable = false)
     private Customer beneficiary;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "payout_agency_id", nullable = false)
+    @JoinColumn(name = "agence_paiement_id", nullable = false)
     private Agency payoutAgency;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "paid_by", nullable = false)
+    @JoinColumn(name = "paye_par", nullable = false)
     private User paidBy;
 
-    @Column(name = "paid_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_paye", nullable = false, precision = 15, scale = 2)
     private BigDecimal paidAmount;
 
-    @Column(name = "paid_at")
+    @Column(name = "paye_le")
     private LocalDateTime paidAt;
 
     public Payout() {

@@ -21,7 +21,7 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Spring MVC — sans Spring Boot -->
+    <!-- Spring MVC - sans Spring Boot -->
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-webmvc</artifactId>

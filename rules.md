@@ -1,64 +1,64 @@
-# Okane Transfer — Project Rules
+# Règles du projet Okane Transfer
 
-## 1. Global Rule
+## 1. Règle globale
 
-This project is a **Spring MVC monolithic application**, not a Spring Boot project.
+Ce projet est une **application monolithique Spring MVC**, pas un projet Spring Boot.
 
-Always respect:
+Toujours respecter :
 
 ```text
-Spring = Spring MVC / Spring ecosystem
-Spring Boot = forbidden
-Microservices = forbidden
-Monolith = required
+Spring = Spring MVC / écosystème Spring
+Spring Boot = interdit
+microservices = interdits
+monolithe = obligatoire
 ```
 
 ---
 
-## 2. Architecture Rules
+## 2. Règles d'architecture
 
-### Required Architecture
+### Architecture obligatoire
 
-Use layered architecture:
+Utiliser une architecture en couches :
 
 ```text
-Controller → Service → Repository → Database
+Controller -> Service -> Repository -> base de données
 ```
 
-Allowed layers:
+Couches autorisées :
 
-1. Controller layer
-2. Service layer
-3. Repository layer
-4. Entity layer
-5. DTO layer
-6. Configuration layer
-7. Infrastructure layer
+1. couche Controller ;
+2. couche Service ;
+3. couche Repository ;
+4. couche entités ;
+5. couche DTO ;
+6. couche configuration ;
+7. couche infrastructure.
 
-### Forbidden
+### Interdictions
 
-- Do not put business logic in controllers.
-- Do not call repositories directly from controllers.
-- Do not expose JPA entities directly in API responses.
-- Do not mix frontend logic with backend logic.
-- Do not create microservices.
-- Do not use Spring Boot annotations.
+- Ne pas mettre la logique métier dans les Controller.
+- Ne pas appeler les Repository directement depuis les Controller.
+- Ne pas exposer les entités JPA directement dans les réponses API.
+- Ne pas mélanger la logique frontend avec la logique backend.
+- Ne pas créer de microservices.
+- Ne pas utiliser les annotations Spring Boot.
 
-Forbidden annotations/classes:
+Annotations et classes interdites :
 
 ```java
 @SpringBootApplication
 SpringApplication.run(...)
-application.yml Spring Boot auto-config style
+application.yml avec style auto-configuration Spring Boot
 ```
 
 ---
 
-## 3. Spring MVC Rules
+## 3. Règles Spring MVC
 
-Use manual configuration.
+Utiliser une configuration manuelle.
 
-Required configuration classes:
+Classes de configuration requises :
 
 - `WebConfig.java`
 - `SecurityConfig.java`
@@ -66,14 +66,14 @@ Required configuration classes:
 - `SwaggerConfig.java`
 - `CorsConfig.java`
 
-The application should use:
+L'application doit utiliser :
 
 - `DispatcherServlet`
 - `AbstractAnnotationConfigDispatcherServletInitializer`
-- Manual servlet configuration
-- Manual Spring Security filter chain
+- une configuration servlet manuelle
+- une chaîne de filtres Spring Security manuelle
 
-Example initializer idea:
+Exemple d'initialiseur :
 
 ```java
 public class AppInitializer extends AbstractAnnotationConfigDispatcherServletInitializer {
@@ -96,66 +96,66 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
 
 ---
 
-## 4. Package Rules
+## 4. Règles de packages
 
-Use business-module-based packages.
+Utiliser des packages organisés par module métier.
 
-Recommended structure:
+Structure recommandée :
 
 ```text
 com.okane.transfer
-│
-├── config
-├── common
-├── auth
-├── user
-├── agency
-├── transfer
-├── cash
-├── currency
-├── fee
-├── notification
-├── compliance
-├── reporting
-├── chatbot
-├── mobilemoney
-└── audit
+|
++-- config
++-- common
++-- auth
++-- user
++-- agency
++-- transfer
++-- cash
++-- currency
++-- fee
++-- notification
++-- compliance
++-- reporting
++-- chatbot
++-- mobilemoney
++-- audit
 ```
 
-Each module should follow this structure when needed:
+Chaque module suit cette structure si nécessaire :
 
 ```text
 module
-├── controller
-├── service
-├── repository
-├── entity
-├── dto
-├── mapper
-└── exception
++-- controller
++-- service
++-- repository
++-- entity
++-- dto
++-- mapper
++-- exception
 ```
 
 ---
 
-## 5. Controller Rules
+## 5. Règles Controller
 
-Controllers must only handle HTTP concerns.
+Les Controller doivent gérer uniquement les aspects HTTP.
 
-Controllers can:
+Ils peuvent :
 
-- Receive requests
-- Validate DTOs
-- Call services
-- Return responses
+- recevoir les requêtes ;
+- valider les DTO ;
+- appeler les Service ;
+- retourner les réponses.
 
-Controllers must not:
+Ils ne doivent pas :
 
-- Contain business logic
-- Use repositories directly
-- Build complex calculations
-- Manage transactions manually
+- contenir de logique métier ;
+- utiliser les Repository directement ;
+- construire des calculs complexes ;
+- gérer les transactions manuellement.
 
-Example:
+Exemple :
 
 ```java
 @RestController
@@ -179,21 +179,21 @@ public class TransferController {
 
 ---
 
-## 6. Service Rules
+## 6. Règles Service
 
-Services contain business logic.
+Les Service contiennent la logique métier.
 
-Services must:
+Ils doivent :
 
-- Validate business rules
-- Use repositories
-- Manage transactions
-- Call other services when needed
-- Return DTOs or business results
+- valider les règles métier ;
+- utiliser les Repository ;
+- gérer les transactions ;
+- appeler d'autres Service si nécessaire ;
+- retourner des DTO ou des résultats métier.
 
-Use `@Transactional` in service methods that modify data.
+Utiliser `@Transactional` sur les méthodes qui modifient les données.
 
-Example:
+Exemple :
 
 ```java
 @Service
@@ -201,24 +201,24 @@ public class TransferServiceImpl implements TransferService {
 
     @Transactional
     public TransferResponse createTransfer(CreateTransferRequest request) {
-        // business rules here
-        // create transfer
-        // create cash movement
-        // create audit log
-        // return response DTO
+        // règles métier ici
+        // création du transfert
+        // création du mouvement de caisse
+        // création du journal d'audit
+        // retour du DTO de réponse
     }
 }
 ```
 
 ---
 
-## 7. Repository Rules
+## 7. Règles Repository
 
-Repositories must only handle database access.
+Les Repository gèrent uniquement l'accès à la base de données.
 
-Use Spring Data JPA repositories.
+Utiliser les Repository Spring Data JPA.
 
-Example:
+Exemple :
 
 ```java
 public interface TransferRepository extends JpaRepository<Transfer, Long> {
@@ -226,28 +226,28 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
 }
 ```
 
-Repositories must not:
+Les Repository ne doivent pas :
 
-- Contain business workflow logic
-- Return API response DTOs directly unless using projections intentionally
-- Handle security logic
+- contenir de logique de flux métier ;
+- retourner directement des DTO de réponse API, sauf projection volontaire ;
+- gérer la sécurité.
 
 ---
 
-## 8. Entity Rules
+## 8. Règles entités
 
-Entities represent database tables.
+Les entités représentent les tables de base de données.
 
-Rules:
+Règles :
 
-- Use JPA annotations.
-- Keep entities clean.
-- Avoid putting heavy business logic inside entities.
-- Use enums for fixed statuses.
-- Use `BigDecimal` for money.
-- Never use `double` or `float` for money.
+- utiliser les annotations JPA ;
+- garder les entités propres ;
+- éviter la logique métier lourde dans les entités ;
+- utiliser des enums pour les statuts fixes ;
+- utiliser `BigDecimal` pour l'argent ;
+- ne jamais utiliser `double` ou `float` pour l'argent.
 
-Example:
+Exemple :
 
 ```java
 @Column(nullable = false, precision = 19, scale = 4)
@@ -256,11 +256,11 @@ private BigDecimal amount;
 
 ---
 
-## 9. DTO Rules
+## 9. Règles DTO
 
-Use DTOs for all API input and output.
+Utiliser des DTO pour toutes les entrées et sorties API.
 
-Required DTO types:
+Types DTO requis :
 
 ```text
 CreateXRequest
@@ -270,15 +270,15 @@ XSummaryResponse
 SearchXCriteria
 ```
 
-Rules:
+Règles :
 
-- Requests must use validation annotations.
-- Responses must not expose sensitive fields.
-- Never expose password hashes.
-- Never expose internal token secrets.
-- Never expose full identity document data unless required.
+- les requêtes doivent utiliser les annotations de validation ;
+- les réponses ne doivent pas exposer les champs sensibles ;
+- ne jamais exposer les hash de mot de passe ;
+- ne jamais exposer les secrets internes des jetons ;
+- ne jamais exposer les données complètes de pièce d'identité sauf nécessité.
 
-Example:
+Exemple :
 
 ```java
 public class CreateTransferRequest {
@@ -296,11 +296,11 @@ public class CreateTransferRequest {
 
 ---
 
-## 10. Mapper Rules
+## 10. Règles Mapper
 
-Use mapper classes to convert entities to DTOs.
+Utiliser des classes mapper pour convertir les entités en DTO.
 
-Example:
+Exemple :
 
 ```java
 @Component
@@ -315,34 +315,34 @@ public class TransferMapper {
 }
 ```
 
-Do not manually repeat mapping logic everywhere.
+Ne pas répéter manuellement la logique de mapping partout.
 
 ---
 
-## 11. Security Rules
+## 11. Règles de sécurité
 
-Security is mandatory.
+La sécurité est obligatoire.
 
-Use:
+Utiliser :
 
-- Spring Security 6
-- JWT access tokens
-- Refresh tokens
-- Stateless sessions
-- BCrypt password encoder with strength 12
-- Role-based authorization
-- Security filter chain before DispatcherServlet
+- Spring Security 6 ;
+- jetons d'accès JWT ;
+- jetons d'actualisation ;
+- sessions sans état ;
+- encodeur BCrypt avec force 12 ;
+- autorisation par rôles ;
+- chaîne de filtres sécurité avant DispatcherServlet.
 
-Rules:
+Règles :
 
-- Disable CSRF for REST API.
-- Configure CORS.
-- Protect all sensitive routes.
-- Public endpoints must be explicitly declared.
-- Never store passwords in plain text.
-- Never log passwords or tokens.
+- désactiver CSRF pour l'API REST ;
+- configurer CORS ;
+- protéger toutes les routes sensibles ;
+- déclarer explicitement les points d'entrée publics ;
+- ne jamais stocker les mots de passe en clair ;
+- ne jamais journaliser les mots de passe ou jetons.
 
-Example role mapping:
+Rôles :
 
 ```text
 ROLE_ADMIN
@@ -351,48 +351,48 @@ ROLE_AGENT
 ROLE_CLIENT
 ```
 
-Access example:
+Exemple d'accès :
 
 ```text
-/admin/**      → ADMIN only
-/manager/**    → MANAGER or ADMIN
-/agent/**      → AGENT or MANAGER or ADMIN
-/client/**     → CLIENT only
-/auth/**       → public
+/admin/**      -> ADMIN uniquement
+/manager/**    -> MANAGER ou ADMIN
+/agent/**      -> AGENT ou MANAGER ou ADMIN
+/client/**     -> CLIENT uniquement
+/auth/**       -> public
 ```
 
 ---
 
-## 12. JWT Rules
+## 12. Règles JWT
 
-Access token:
-
-```text
-Duration: 1 hour
-```
-
-Refresh token:
+Jeton d'accès :
 
 ```text
-Duration: 7 days
+durée : 1 heure
 ```
 
-Rules:
+Jeton d'actualisation :
 
-- Store refresh tokens in database.
-- Invalidate refresh token on logout.
-- Validate token signature.
-- Validate token expiration.
-- Include user ID and roles in claims.
-- Do not store sensitive data in JWT claims.
+```text
+durée : 7 jours
+```
+
+Règles :
+
+- stocker les jetons d'actualisation en base de données ;
+- invalider le jeton d'actualisation à la déconnexion ;
+- valider la signature du jeton ;
+- valider l'expiration du jeton ;
+- inclure l'identifiant utilisateur et les rôles dans les claims ;
+- ne pas stocker de données sensibles dans les claims JWT.
 
 ---
 
-## 13. Validation Rules
+## 13. Règles de validation
 
-Use Jakarta Validation.
+Utiliser Jakarta Validation.
 
-Common annotations:
+Annotations courantes :
 
 ```java
 @NotNull
@@ -405,25 +405,25 @@ Common annotations:
 @PositiveOrZero
 ```
 
-Business validation must be inside services.
+La validation métier doit être dans les Service.
 
-Example validations:
+Exemples de validations :
 
-- Amount must be positive.
-- Sender phone is required.
-- Beneficiary phone is required.
-- Currency must exist.
-- Corridor must be active.
-- Agent must have active cash session.
-- Transfer must not be already paid.
+- le montant doit être positif ;
+- le téléphone expéditeur est obligatoire ;
+- le téléphone bénéficiaire est obligatoire ;
+- la devise doit exister ;
+- le corridor doit être actif ;
+- l'agent doit avoir une session de caisse active ;
+- le transfert ne doit pas être déjà payé.
 
 ---
 
-## 14. Exception Handling Rules
+## 14. Règles de gestion des exceptions
 
-Use global exception handling.
+Utiliser une gestion globale des exceptions.
 
-Create:
+Créer :
 
 ```text
 GlobalExceptionHandler
@@ -434,14 +434,14 @@ ForbiddenException
 ValidationException
 ```
 
-API errors should be consistent.
+Les erreurs API doivent être cohérentes.
 
-Example response:
+Exemple de réponse :
 
 ```json
 {
   "success": false,
-  "message": "Transfer not found",
+  "message": "Transfert introuvable",
   "errors": [],
   "timestamp": "2026-05-20T12:00:00"
 }
@@ -449,11 +449,11 @@ Example response:
 
 ---
 
-## 15. API Response Rules
+## 15. Règles de réponse API
 
-Use a common response wrapper.
+Utiliser un wrapper de réponse commun.
 
-Example:
+Exemple :
 
 ```java
 public class ApiResponse<T> {
@@ -464,269 +464,268 @@ public class ApiResponse<T> {
 }
 ```
 
-Use clear HTTP status codes:
+Utiliser des statuts HTTP clairs :
 
 ```text
 200 OK
 201 Created
-400 Bad Request
-401 Unauthorized
-403 Forbidden
-404 Not Found
-409 Conflict
-500 Internal Server Error
+400 Requête invalide
+401 Non authentifié
+403 Accès interdit
+404 Ressource introuvable
+409 Conflit
+500 Erreur interne du serveur
 ```
 
 ---
 
-## 16. Money Rules
+## 16. Règles argent
 
-Always use `BigDecimal` for money.
+Toujours utiliser `BigDecimal` pour l'argent.
 
-Rules:
+Règles :
 
-- Never use `double` for amounts.
-- Never use `float` for amounts.
-- Always store currency with amount.
-- Always define precision and scale.
-- Keep exchange rate history.
+- ne jamais utiliser `double` pour les montants ;
+- ne jamais utiliser `float` pour les montants ;
+- toujours stocker la devise avec le montant ;
+- toujours définir précision et échelle ;
+- conserver l'historique des taux de change.
 
-Example:
+Exemple :
 
 ```java
-private BigDecimal sentAmount;
-private BigDecimal feeAmount;
+private BigDecimal montantEnvoye;
+private BigDecimal montantFrais;
 private BigDecimal exchangeRate;
-private BigDecimal receivedAmount;
+private BigDecimal montantRecu;
 ```
 
 ---
 
-## 17. Transfer Business Rules
+## 17. Règles métier des transferts
 
-Transfer creation must check:
+La création d'un transfert doit vérifier :
 
-- Sender exists or sender info is valid.
-- Beneficiary info is valid.
-- Amount is positive.
-- Source currency exists.
-- Destination currency exists.
-- Transfer corridor is active.
-- Fee grid exists.
-- Agent has active cash session.
-- Compliance rules pass.
+- l'expéditeur existe ou ses informations sont valides ;
+- les informations du bénéficiaire sont valides ;
+- le montant est positif ;
+- la devise source existe ;
+- la devise destination existe ;
+- le corridor de transfert est actif ;
+- la grille tarifaire existe ;
+- l'agent possède une session de caisse active ;
+- les règles de conformité sont validées.
 
-Payout must check:
+Le paiement doit vérifier :
 
-- Transfer exists.
-- Transfer status is PENDING.
-- Transfer is not expired.
-- Transfer is not cancelled.
-- Transfer is not blocked.
-- Beneficiary identity is verified.
-- Agent has active cash session.
-- Payout amount equals expected received amount.
+- le transfert existe ;
+- le statut du transfert est PENDING ;
+- le transfert n'est pas expiré ;
+- le transfert n'est pas annulé ;
+- le transfert n'est pas bloqué ;
+- l'identité du bénéficiaire est vérifiée ;
+- l'agent possède une session de caisse active ;
+- le montant payé est égal au montant attendu.
 
-Partial payout is not allowed by default.
+Le paiement partiel n'est pas autorisé par défaut.
 
 ---
 
-## 18. Cash Session Rules
+## 18. Règles de session de caisse
 
-Every agent must open a cash session before doing money operations.
+Chaque agent doit ouvrir une session de caisse avant les opérations d'argent.
 
-Rules:
+Règles :
 
-- One active cash session per agent per day.
-- Transfers must be linked to a cash session.
-- Payouts must be linked to a cash session.
-- Closing balance must be entered by agent.
-- Expected balance must be calculated by system.
-- Difference must be reported.
+- une seule session de caisse active par agent et par jour ;
+- les transferts doivent être liés à une session de caisse ;
+- les paiements doivent être liés à une session de caisse ;
+- le solde de clôture doit être saisi par l'agent ;
+- le solde attendu doit être calculé par le système ;
+- l'écart doit être déclaré.
 
-Expected balance:
+Solde attendu :
 
 ```text
-expected_balance = opening_balance + cash_in - cash_out + adjustment_in - adjustment_out
+solde_attendu = solde_ouverture + entree_caisse - sortie_caisse + ajustement_entree - ajustement_sortie
 ```
 
-If there is a difference:
+En cas d'écart :
 
 ```text
-cash_difference = real_closing_balance - expected_balance
+ecart_caisse = solde_reel_cloture - solde_attendu
 ```
 
-Create a `CashDifferenceReport` if difference is not zero.
+Créer un `CashDifferenceReport` si l'écart est différent de zéro.
 
 ---
 
-## 19. Currency & FX Rules
+## 19. Règles Devises & Change
 
-Rules:
+Règles :
 
-- Currency code must use ISO format like MAD, EUR, USD.
-- Exchange rates must have effective date.
-- Old exchange rates must not be deleted.
-- Use exchange rate history.
-- Transfers must store the exchange rate used at creation time.
-- Do not recalculate old transfers using new exchange rates.
-
----
-
-## 20. Fees & Commission Rules
-
-Rules:
-
-- Fees are calculated using fee grids and fee brackets.
-- Fee bracket is an amount interval.
-- Each transfer must store calculated fees.
-- Agency commission and central commission must be stored.
-- Do not recalculate old transfers if fee rules change.
+- le code devise doit utiliser un format ISO comme MAD, EUR, USD ;
+- les taux de change doivent avoir une date d'application ;
+- les anciens taux de change ne doivent pas être supprimés ;
+- utiliser l'historique des taux de change ;
+- les transferts doivent stocker le taux utilisé au moment de la création ;
+- ne pas recalculer les anciens transferts avec de nouveaux taux.
 
 ---
 
-## 21. Compliance Rules
+## 20. Règles Frais & Commissions
 
-Compliance checks must run before transfer validation.
+Règles :
 
-Check:
-
-- KYC document availability
-- Blacklist match
-- Suspicious amount
-- Repeated transactions
-- Threshold exceedance
-
-If suspicious:
-
-- Mark transfer as BLOCKED or UNDER_REVIEW.
-- Create compliance alert.
-- Notify manager/admin if needed.
-
-Use fictive data only.
+- les frais sont calculés avec des grilles tarifaires et des tranches tarifaires ;
+- une tranche tarifaire est un intervalle de montant ;
+- chaque transfert doit stocker les frais calculés ;
+- la commission agence et la commission centrale doivent être stockées ;
+- ne pas recalculer les anciens transferts si les règles de frais changent.
 
 ---
 
-## 22. Audit Rules
+## 21. Règles de conformité
 
-Every sensitive action must create an audit log.
+Les contrôles de conformité doivent s'exécuter avant la validation d'un transfert.
 
-Audit these actions:
+Contrôler :
 
-- Login success
-- Login failure
-- Transfer creation
-- Transfer payout
-- Transfer cancellation
-- Exchange rate update
-- Fee grid update
-- User creation
-- User suspension
-- Agency suspension
-- Compliance alert review
-- Cash session opening
-- Cash session closing
+- disponibilité du document KYC ;
+- correspondance avec la liste noire ;
+- montant suspect ;
+- transactions répétées ;
+- dépassement de seuil.
 
-Audit log should contain:
+Si l'opération est suspecte :
+
+- marquer le transfert comme BLOCKED ou UNDER_REVIEW ;
+- créer une alerte de conformité ;
+- notifier le manager ou l'administrateur si nécessaire.
+
+Utiliser uniquement des données fictives.
+
+---
+
+## 22. Règles d'audit
+
+Chaque action sensible doit créer une entrée dans le journal d'audit.
+
+Actions à auditer :
+
+- connexion réussie ;
+- échec de connexion ;
+- création de transfert ;
+- paiement de transfert ;
+- annulation de transfert ;
+- modification du taux de change ;
+- modification de la grille tarifaire ;
+- création d'utilisateur ;
+- suspension d'utilisateur ;
+- suspension d'agence ;
+- revue d'alerte de conformité ;
+- ouverture de session de caisse ;
+- clôture de session de caisse.
+
+Le journal d'audit doit contenir :
 
 ```text
-actor_id
-actor_role
+acteur_id
+acteur_role
 action
-entity_type
-entity_id
-timestamp
-ip_address if available
+type_entite
+entite_id
+horodatage
+adresse_ip si disponible
 details
 ```
 
 ---
 
-## 23. Database Rules
+## 23. Règles base de données
 
-Use clear table names.
+Utiliser des noms de tables clairs.
 
-Recommended naming:
+Nommage recommandé :
 
 ```text
-snake_case table names
-snake_case column names
+noms de tables en snake_case
+noms de colonnes en snake_case
 ```
 
-Examples:
+Exemples :
 
 ```text
-users
+utilisateurs
 roles
-user_roles
-agencies
-transfers
-agent_cash_sessions
-cash_movements
-exchange_rates
-fee_grids
-fee_brackets
-audit_logs
+agences
+transferts
+sessions_caisse_agent
+mouvements_caisse
+taux_change
+grilles_tarifaires
+tranches_tarifaires
+journal_audit
 ```
 
-Rules:
+Règles :
 
-- Use primary keys.
-- Use foreign keys.
-- Use indexes on search fields.
-- Use unique constraints where needed.
-- Avoid nullable fields unless justified.
-- Use enum columns carefully.
+- utiliser des clés primaires ;
+- utiliser des clés étrangères ;
+- utiliser des index sur les champs de recherche ;
+- utiliser des contraintes uniques si nécessaire ;
+- éviter les champs nullable sauf justification ;
+- utiliser les colonnes enum avec prudence.
 
-Important indexes:
+Index importants :
 
 ```text
-transfer.reference
-transfer.withdrawal_code
-user.email
-user.phone
-agency.code
-cash_session.agent_id + session_date
+transfert.reference
+transfert.code_retrait
+utilisateur.email
+utilisateur.telephone
+agence.code
+session_caisse.agent_id + date_session
 ```
 
 ---
 
-## 24. Swagger Rules
+## 24. Règles Swagger
 
-Swagger must document all REST APIs.
+Swagger doit documenter toutes les API REST.
 
-Because this is not Spring Boot:
+Comme ce n'est pas Spring Boot :
 
-- Configure SpringDoc manually.
-- Configure Swagger UI manually.
-- Group APIs by module when possible.
+- configurer SpringDoc manuellement ;
+- configurer Swagger UI manuellement ;
+- regrouper les API par module si possible.
 
-Each endpoint should have:
+Chaque point d'entrée API doit avoir :
 
-- Summary
-- Description
-- Request body
-- Response examples
-- Error responses
-- Security requirement if protected
+- résumé ;
+- description ;
+- corps de requête ;
+- exemples de réponse ;
+- réponses d'erreur ;
+- exigence de sécurité si protégé.
 
 ---
 
-## 25. Git Rules
+## 25. Règles Git
 
-Use Git properly.
+Utiliser Git correctement.
 
-Rules:
+Règles :
 
-- Use private GitHub repository.
-- Make at least 3 commits per week.
-- Never push secrets.
-- Never push real passwords.
-- Never push private keys.
-- Use `.gitignore`.
-- Use branches for features.
+- utiliser un dépôt GitHub privé ;
+- faire au moins 3 commits par semaine ;
+- ne jamais pousser de secrets ;
+- ne jamais pousser de vrais mots de passe ;
+- ne jamais pousser de clés privées ;
+- utiliser `.gitignore` ;
+- utiliser des branches par fonctionnalité.
 
-Branch examples:
+Exemples de branches :
 
 ```text
 main
@@ -737,34 +736,34 @@ feature/cash-session
 feature/frontend-auth
 ```
 
-Commit examples:
+Exemples de commits :
 
 ```text
-feat(auth): add JWT login endpoint
-feat(transfer): create transfer workflow
-fix(cash): correct expected balance calculation
-chore(config): add manual Spring MVC config
+feat(auth): ajouter le point d'entrée de connexion JWT
+feat(transfer): créer le flux de transfert
+fix(cash): corriger le calcul du solde attendu
+chore(config): ajouter la configuration Spring MVC manuelle
 ```
 
 ---
 
-## 26. Secret Management Rules
+## 26. Règles de gestion des secrets
 
-Never commit:
+Ne jamais committer :
 
 ```text
-Database password
-JWT secret
-SMTP password
-API keys
-Private keys
-.env files
-application.properties containing secrets
+mot de passe base de données
+secret JWT
+mot de passe SMTP
+clés API
+clés privées
+fichiers .env
+application.properties contenant des secrets
 ```
 
-Use environment variables.
+Utiliser les variables d'environnement.
 
-Example:
+Exemples :
 
 ```text
 DB_URL
@@ -777,34 +776,34 @@ JWT_REFRESH_EXPIRATION
 
 ---
 
-## 27. Frontend Rules
+## 27. Règles frontend
 
-Angular must use:
+Angular doit utiliser :
 
-- Components
-- Services
-- Guards
-- Interceptors
-- Routing
-- Reactive forms
-- Chart.js for dashboards
+- Component ;
+- Service ;
+- Guards ;
+- interceptors ;
+- routing ;
+- formulaires réactifs ;
+- Chart.js pour les tableaux de bord.
 
-Rules:
+Règles :
 
-- Store JWT carefully.
-- Attach token using HTTP interceptor.
-- Protect routes using guards.
-- Use DTO-compatible interfaces.
-- Keep API URLs in environment files.
-- Do not hardcode secrets in frontend.
+- stocker le JWT avec prudence ;
+- joindre le jeton avec un interceptor HTTP ;
+- protéger les routes avec des guards ;
+- utiliser des interfaces compatibles DTO ;
+- placer les URL API dans les fichiers d'environnement ;
+- ne pas coder de secrets en dur dans le frontend.
 
 ---
 
-## 28. Naming Rules
+## 28. Règles de nommage
 
-Use clear names.
+Utiliser des noms clairs.
 
-Java:
+Java :
 
 ```text
 ClassName
@@ -813,13 +812,13 @@ variableName
 CONSTANT_NAME
 ```
 
-Database:
+Base de données :
 
 ```text
 snake_case
 ```
 
-API routes:
+Routes API :
 
 ```text
 /api/auth/login
@@ -831,9 +830,9 @@ API routes:
 
 ---
 
-## 29. Time Rules
+## 29. Règles de temps
 
-Use:
+Utiliser :
 
 ```java
 LocalDate
@@ -841,66 +840,66 @@ LocalDateTime
 Instant
 ```
 
-Rules:
+Règles :
 
-- Use `LocalDate` for session date.
-- Use `LocalDateTime` for business timestamps.
-- Use `Instant` if UTC precision is needed.
-- Store createdAt and updatedAt where useful.
-
----
-
-## 30. Team Priority Rules
-
-Build in this order:
-
-1. Project structure
-2. Manual Spring MVC configuration
-3. Database configuration
-4. Auth and roles
-5. Agency module
-6. Agent cash session module
-7. Currency module
-8. Fee module
-9. Transfer creation
-10. Payout workflow
-11. Audit logs
-12. Basic reporting
-13. Compliance basic rules
-14. Notifications simulation
-15. Angular frontend integration
-16. Chatbot simulation
-17. Mobile money simulation
-18. Final demo polish
-
-Do not start advanced features before the core transfer workflow works.
+- utiliser `LocalDate` pour la date de session ;
+- utiliser `LocalDateTime` pour les horodatages métier ;
+- utiliser `Instant` si une précision UTC est nécessaire ;
+- stocker les horodatages de création et de modification si utile.
 
 ---
 
-## 31. Definition of Done
+## 30. Règles de priorité équipe
 
-A feature is done only if:
+Construire dans cet ordre :
 
-- Entity exists
-- Repository exists
-- Service exists
-- Controller exists
-- DTOs exist
-- Validation exists
-- Errors are handled
-- Security is respected
-- Swagger documentation exists
-- Basic manual test is successful
-- Audit log is added if action is sensitive
+1. structure du projet ;
+2. configuration manuelle Spring MVC ;
+3. configuration base de données ;
+4. authentification et rôles ;
+5. service agences ;
+6. service sessions de caisse agent ;
+7. service devises et change ;
+8. service frais ;
+9. création de transfert ;
+10. paiement d'un transfert ;
+11. journal d'audit ;
+12. rapports de base ;
+13. règles de conformité de base ;
+14. simulation notifications ;
+15. intégration frontend Angular ;
+16. simulation chatbot ;
+17. simulation Mobile Money ;
+18. finition de démonstration.
+
+Ne pas commencer les fonctionnalités avancées avant que le flux principal de transfert fonctionne.
 
 ---
 
-## 32. Final Rule
+## 31. Définition de terminé
 
-Always prefer a working, clean, secure core system over too many unfinished advanced features.
+Une fonctionnalité est terminée uniquement si :
 
-The most important demo flow is:
+- l'entité existe ;
+- le Repository existe ;
+- le Service existe ;
+- le Controller existe ;
+- les DTO existent ;
+- la validation existe ;
+- les erreurs sont gérées ;
+- la sécurité est respectée ;
+- la documentation Swagger existe ;
+- un test manuel de base réussit ;
+- une entrée d'audit est ajoutée si l'action est sensible.
+
+---
+
+## 32. Règle finale
+
+Toujours préférer un noyau fonctionnel, propre et sécurisé à trop de fonctionnalités avancées inachevées.
+
+Le flux de démonstration le plus important est :
 
 ```text
-Login → Open agent cash session → Create transfer → Search transfer → Pay transfer → Close cash session → View report
+Connexion -> ouvrir la session de caisse agent -> créer un transfert -> rechercher le transfert -> payer le transfert -> fermer la session de caisse -> consulter le rapport
 ```

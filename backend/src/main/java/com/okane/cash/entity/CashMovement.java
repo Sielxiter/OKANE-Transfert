@@ -16,39 +16,39 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "cash_movements")
+@Table(name = "mouvements_caisse")
 public class CashMovement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cash_session_id", nullable = false)
+    @JoinColumn(name = "session_caisse_id", nullable = false)
     private AgentCashSession cashSession;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "agency_id", nullable = false)
+    @JoinColumn(name = "agence_id", nullable = false)
     private Agency agency;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
     private User user;
 
-    @Column(name = "movement_type", nullable = false, length = 50)
+    @Column(name = "type_mouvement", nullable = false, length = 50)
     private String movementType;
 
-    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transfer_id")
+    @JoinColumn(name = "transfert_id")
     private Transfer transfer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payout_id")
+    @JoinColumn(name = "paiement_id")
     private Payout payout;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     @Column(name = "description", length = 255)

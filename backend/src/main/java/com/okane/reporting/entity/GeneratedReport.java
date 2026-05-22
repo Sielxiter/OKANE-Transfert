@@ -15,39 +15,39 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "generated_reports")
+@Table(name = "rapports_generes")
 public class GeneratedReport {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "generated_by", nullable = false)
+    @JoinColumn(name = "genere_par", nullable = false)
     private User generatedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "agency_id")
+    @JoinColumn(name = "agence_id")
     private Agency agency;
 
-    @Column(name = "report_type", nullable = false, length = 50)
+    @Column(name = "type_declaration", nullable = false, length = 50)
     private String reportType;
 
     @Column(name = "format", nullable = false, length = 20)
     private String format;
 
-    @Column(name = "period_start", nullable = false)
+    @Column(name = "date_debut_periode", nullable = false)
     private LocalDate periodStart;
 
-    @Column(name = "period_end", nullable = false)
+    @Column(name = "date_fin_periode", nullable = false)
     private LocalDate periodEnd;
 
-    @Column(name = "file_path", length = 255)
+    @Column(name = "chemin_fichier", length = 255)
     private String filePath;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "generated_at")
+    @Column(name = "genere_le")
     private LocalDateTime generatedAt;
 
     public GeneratedReport() {

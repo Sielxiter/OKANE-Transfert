@@ -9,28 +9,28 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "watchlist_entries")
+@Table(name = "liste_surveillance")
 public class WatchlistEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "full_name", nullable = false, length = 200)
+    @Column(name = "nom_complet", nullable = false, length = 200)
     private String fullName;
 
-    @Column(name = "identity_number", length = 100)
+    @Column(name = "numero_piece_identite", length = 100)
     private String identityNumber;
 
-    @Column(name = "country", length = 100)
+    @Column(name = "pays", length = 100)
     private String country;
 
-    @Column(name = "reason", length = 255)
+    @Column(name = "motif", length = 255)
     private String reason;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public WatchlistEntry() {

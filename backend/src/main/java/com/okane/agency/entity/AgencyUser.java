@@ -14,8 +14,8 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "agency_users", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "agency_id", "user_id" })
+@Table(name = "affectations_agence_utilisateurs", uniqueConstraints = {
+    @UniqueConstraint(columnNames = { "agence_id", "utilisateur_id" })
 })
 public class AgencyUser {
     @Id
@@ -23,17 +23,17 @@ public class AgencyUser {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "agency_id", nullable = false)
+    @JoinColumn(name = "agence_id", nullable = false)
     private Agency agency;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
     private User user;
 
-    @Column(name = "assigned_at")
+    @Column(name = "affecte_le")
     private LocalDateTime assignedAt;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
     public AgencyUser() {

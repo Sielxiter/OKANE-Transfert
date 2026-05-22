@@ -15,43 +15,43 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "fund_discrepancies")
+@Table(name = "ecarts_caisse")
 public class FundDiscrepancy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cash_closure_id", nullable = false, unique = true)
+    @JoinColumn(name = "cloture_caisse_id", nullable = false, unique = true)
     private CashClosure cashClosure;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cash_session_id", nullable = false)
+    @JoinColumn(name = "session_caisse_id", nullable = false)
     private AgentCashSession cashSession;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "reported_by", nullable = false)
+    @JoinColumn(name = "signale_par", nullable = false)
     private User reportedBy;
 
-    @Column(name = "expected_balance", nullable = false, precision = 15, scale = 2)
+    @Column(name = "solde_attendu", nullable = false, precision = 15, scale = 2)
     private BigDecimal expectedBalance;
 
-    @Column(name = "actual_balance", nullable = false, precision = 15, scale = 2)
+    @Column(name = "solde_reel", nullable = false, precision = 15, scale = 2)
     private BigDecimal actualBalance;
 
-    @Column(name = "difference_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_ecart", nullable = false, precision = 15, scale = 2)
     private BigDecimal differenceAmount;
 
-    @Column(name = "discrepancy_type", nullable = false, length = 50)
+    @Column(name = "type_ecart", nullable = false, length = 50)
     private String discrepancyType;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
     @Column(name = "description", length = 255)
     private String description;
 
-    @Column(name = "reported_at")
+    @Column(name = "signale_le")
     private LocalDateTime reportedAt;
 
     public FundDiscrepancy() {

@@ -14,8 +14,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transfer_corridors", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "source_country_id", "destination_country_id" })
+@Table(name = "corridors_transfert", uniqueConstraints = {
+    @UniqueConstraint(columnNames = { "pays_source_id", "pays_destination_id" })
 })
 public class TransferCorridor {
     @Id
@@ -23,23 +23,23 @@ public class TransferCorridor {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "source_country_id", nullable = false)
+    @JoinColumn(name = "pays_source_id", nullable = false)
     private Country sourceCountry;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "destination_country_id", nullable = false)
+    @JoinColumn(name = "pays_destination_id", nullable = false)
     private Country destinationCountry;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
-    @Column(name = "daily_limit", precision = 15, scale = 2)
+    @Column(name = "plafond_journalier", precision = 15, scale = 2)
     private BigDecimal dailyLimit;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public TransferCorridor() {

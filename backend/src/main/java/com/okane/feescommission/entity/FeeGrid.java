@@ -15,13 +15,13 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "fee_grids")
+@Table(name = "grilles_tarifaires")
 public class FeeGrid {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false, length = 150)
+    @Column(name = "nom", nullable = false, length = 150)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -29,26 +29,26 @@ public class FeeGrid {
     private TransferCorridor corridor;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "currency_id", nullable = false)
+    @JoinColumn(name = "devise_id", nullable = false)
     private Currency currency;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
-    @Column(name = "effective_from")
+    @Column(name = "date_debut")
     private LocalDateTime effectiveFrom;
 
-    @Column(name = "effective_to")
+    @Column(name = "date_fin")
     private LocalDateTime effectiveTo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "cree_par")
     private User createdBy;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public FeeGrid() {

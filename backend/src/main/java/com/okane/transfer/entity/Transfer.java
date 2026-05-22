@@ -18,67 +18,67 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transfers")
+@Table(name = "transferts")
 public class Transfer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "reference_code", nullable = false, unique = true, length = 50)
+    @Column(name = "code_reference", nullable = false, unique = true, length = 50)
     private String referenceCode;
 
-    @Column(name = "withdrawal_code", nullable = false, unique = true, length = 50)
+    @Column(name = "code_retrait", nullable = false, unique = true, length = 50)
     private String withdrawalCode;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @JoinColumn(name = "expediteur_id", nullable = false)
     private Customer sender;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "beneficiary_id", nullable = false)
+    @JoinColumn(name = "beneficiaire_id", nullable = false)
     private Customer beneficiary;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "source_agency_id", nullable = false)
+    @JoinColumn(name = "agence_source_id", nullable = false)
     private Agency sourceAgency;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "cree_par", nullable = false)
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cash_session_id", nullable = false)
+    @JoinColumn(name = "session_caisse_id", nullable = false)
     private AgentCashSession cashSession;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "currency_id", nullable = false)
+    @JoinColumn(name = "devise_id", nullable = false)
     private Currency currency;
 
-    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
-    @Column(name = "fee_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_frais", nullable = false, precision = 15, scale = 2)
     private BigDecimal feeAmount;
 
-    @Column(name = "exchange_rate", nullable = false, precision = 15, scale = 6)
+    @Column(name = "taux_change", nullable = false, precision = 15, scale = 6)
     private BigDecimal exchangeRate;
 
-    @Column(name = "net_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "montant_net_recu", nullable = false, precision = 15, scale = 2)
     private BigDecimal netAmount;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "sent_at")
+    @Column(name = "envoye_le")
     private LocalDateTime sentAt;
 
-    @Column(name = "expires_at")
+    @Column(name = "expire_le")
     private LocalDateTime expiresAt;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public Transfer() {

@@ -14,31 +14,31 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "chatbot_messages")
+@Table(name = "messages_chatbot")
 public class ChatbotMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "session_id", nullable = false)
+    @JoinColumn(name = "session_chatbot_id", nullable = false)
     private ChatbotSession session;
 
-    @Column(name = "sender_type", nullable = false, length = 50)
+    @Column(name = "type_expediteur", nullable = false, length = 50)
     private String senderType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_user_id")
+    @JoinColumn(name = "utilisateur_expediteur_id")
     private User senderUser;
 
     @Lob
     @Column(name = "message", nullable = false)
     private String message;
 
-    @Column(name = "detected_intent", length = 100)
+    @Column(name = "intention_detectee", length = 100)
     private String detectedIntent;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public ChatbotMessage() {

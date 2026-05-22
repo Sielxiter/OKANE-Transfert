@@ -22,7 +22,7 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<hlm-sidebar-group>
-			<div hlmSidebarGroupLabel>Projects</div>
+			<div hlmSidebarGroupLabel>Projets</div>
 			<ul hlmSidebarMenu>
 				@for (project of projects(); track $index) {
 					<li hlmSidebarMenuItem>
@@ -39,14 +39,14 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 							[align]="_menuAlign()"
 						>
 							<ng-icon name="lucideEllipsis" />
-							<span class="sr-only">More</span>
+							<span class="sr-only">Plus</span>
 						</button>
 					</li>
 				}
 				<li hlmSidebarMenuItem>
 					<button hlmSidebarMenuButton>
 						<ng-icon name="lucideEllipsis" />
-						More
+						Plus
 					</button>
 				</li>
 			</ul>
@@ -60,16 +60,16 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 				<hlm-dropdown-menu-separator />
 				<button hlmDropdownMenuItem>
 					<ng-icon name="lucideFolder" />
-					View Project
+					Voir le projet
 				</button>
 				<button hlmDropdownMenuItem>
 					<ng-icon name="lucideShare" />
-					Share Project
+					Partager le projet
 				</button>
 				<hlm-dropdown-menu-separator />
 				<button hlmDropdownMenuItem>
 					<ng-icon name="lucideTrash2" />
-					Delete Project
+					Supprimer le projet
 				</button>
 			</hlm-dropdown-menu>
 		</ng-template>

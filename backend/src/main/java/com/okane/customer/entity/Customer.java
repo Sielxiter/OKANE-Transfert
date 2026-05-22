@@ -14,9 +14,9 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "customers", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "identity_type", "identity_number" }),
-        @UniqueConstraint(columnNames = { "user_id" })
+@Table(name = "clients", uniqueConstraints = {
+    @UniqueConstraint(columnNames = { "type_piece_identite", "numero_piece_identite" }),
+    @UniqueConstraint(columnNames = { "utilisateur_id" })
 })
 public class Customer {
     @Id
@@ -24,28 +24,28 @@ public class Customer {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "utilisateur_id", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "identity_type", nullable = false, length = 50)
+    @Column(name = "type_piece_identite", nullable = false, length = 50)
     private String identityType;
 
-    @Column(name = "identity_number", nullable = false, length = 100)
+    @Column(name = "numero_piece_identite", nullable = false, length = 100)
     private String identityNumber;
 
-    @Column(name = "country", nullable = false, length = 100)
+    @Column(name = "pays", nullable = false, length = 100)
     private String country;
 
-    @Column(name = "city", length = 100)
+    @Column(name = "ville", length = 100)
     private String city;
 
-    @Column(name = "address", length = 255)
+    @Column(name = "adresse", length = 255)
     private String address;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public Customer() {

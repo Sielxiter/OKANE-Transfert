@@ -13,32 +13,32 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notification_preferences")
+@Table(name = "preferences_notification")
 public class NotificationPreference {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "utilisateur_id", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "email_enabled", nullable = false)
+    @Column(name = "email_active", nullable = false)
     private Boolean emailEnabled;
 
-    @Column(name = "sms_enabled", nullable = false)
+    @Column(name = "sms_active", nullable = false)
     private Boolean smsEnabled;
 
-    @Column(name = "push_enabled", nullable = false)
+    @Column(name = "push_active", nullable = false)
     private Boolean pushEnabled;
 
-    @Column(name = "preferred_language", nullable = false, length = 10)
+    @Column(name = "langue_preferee", nullable = false, length = 10)
     private String preferredLanguage;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public NotificationPreference() {

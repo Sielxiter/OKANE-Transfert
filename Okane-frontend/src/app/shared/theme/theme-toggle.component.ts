@@ -17,7 +17,7 @@ import { ThemeService } from './theme.service';
       size="icon"
       type="button"
       class="text-muted-foreground"
-      [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+      [attr.aria-label]="theme.isDark() ? 'Passer au mode clair' : 'Passer au mode sombre'"
       [attr.aria-pressed]="theme.isDark()"
       (click)="theme.toggle()"
     >

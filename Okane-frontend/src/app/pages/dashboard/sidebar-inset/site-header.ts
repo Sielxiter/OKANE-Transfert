@@ -16,11 +16,11 @@ import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 				<nav hlmBreadcrumb>
 					<ol hlmBreadcrumbList>
 						<li class="hidden sm:block" hlmBreadcrumbItem>
-							<a hlmBreadcrumbLink link="/">Building Your Application</a>
+							<a hlmBreadcrumbLink link="/">Okane Transfer</a>
 						</li>
 						<li class="hidden sm:block" hlmBreadcrumbSeparator></li>
 						<li hlmBreadcrumbItem>
-							<a hlmBreadcrumbPage>Data Fetching</a>
+							<a hlmBreadcrumbPage>Tableau de bord</a>
 						</li>
 					</ol>
 				</nav>

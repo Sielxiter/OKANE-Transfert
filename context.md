@@ -1,71 +1,71 @@
-# Okane Transfer — Project Context
+# Contexte du projet Okane Transfer
 
-## 1. Project Overview
+## 1. Vue d'ensemble
 
-**Project name:** Okane Transfer  
-**Type:** Web application for money transfer management  
-**Domain:** Financial transfer platform similar to Western Union / MoneyGram  
-**Architecture:** Monolithic layered architecture  
-**Important constraint:** Spring means Spring MVC / Spring ecosystem, **not Spring Boot**.
+**Nom du projet :** Okane Transfer  
+**Type :** application web de gestion de transferts d'argent  
+**Domaine :** plateforme financière proche de Western Union / MoneyGram  
+**Architecture :** architecture monolithique en couches  
+**Contrainte importante :** Spring signifie Spring MVC et l'écosystème Spring, pas Spring Boot.
 
-Okane Transfer is a complete money transfer management platform that allows users to send, receive, track, and manage money transfers through agencies and agents. The system must support national and international transfers, multi-currency exchange, fees and commissions, compliance checks, reports, notifications, and client self-service.
-
----
-
-## 2. Main Goals
-
-The system must allow:
-
-- Sending money nationally and internationally
-- Paying out money to beneficiaries
-- Managing agencies, agents, managers, clients, and admins
-- Generating unique transfer references / withdrawal codes
-- Tracking transfers in real time
-- Managing currencies and exchange rates
-- Calculating fees and commissions automatically
-- Managing agent cash sessions and daily reconciliation
-- Detecting suspicious operations and supporting KYC / AML logic
-- Sending notifications by SMS / email / push simulation
-- Providing reports and dashboards
-- Supporting a chatbot for FAQs and transfer tracking
-- Simulating mobile money providers such as Orange Money, Wave, and M-Pesa
+Okane Transfer est une plateforme complète permettant d'envoyer, recevoir, suivre et gérer des transferts d'argent via des agences et des agents. Le système doit gérer les transferts nationaux et internationaux, le change multi-devises, les frais et commissions, les contrôles de conformité, les rapports, les notifications et l'espace client.
 
 ---
 
-## 3. Global Architecture
+## 2. Objectifs principaux
 
-The project must be implemented as a **monolithic application** using layered architecture.
+Le système doit permettre :
 
-### Layers
-
-1. **Presentation Layer**
-   - Spring MVC REST controllers
-   - DTO input/output
-   - Request validation
-   - API response formatting
-
-2. **Service Layer**
-   - Business logic
-   - Transactions
-   - Validation rules
-   - Workflow orchestration
-
-3. **Persistence Layer**
-   - JPA entities
-   - Repositories
-   - Database queries
-
-4. **Infrastructure Layer**
-   - Security configuration
-   - JWT configuration
-   - Swagger configuration
-   - CORS configuration
-   - Exception handling
-   - Audit logging
+- l'envoi d'argent au niveau national et international ;
+- le paiement des bénéficiaires ;
+- la gestion des agences, agents, managers, clients et administrateurs ;
+- la génération de références de transfert et de codes de retrait uniques ;
+- le suivi des transferts en temps réel ;
+- la gestion des devises et des taux de change ;
+- le calcul automatique des frais et commissions ;
+- la gestion des sessions de caisse agent et de la réconciliation quotidienne ;
+- la détection des opérations suspectes avec logique KYC / AML ;
+- l'envoi de notifications simulées par SMS, courriel et push ;
+- la production de rapports et tableaux de bord ;
+- l'assistance via chatbot pour les questions fréquentes et le suivi des transferts ;
+- la simulation de fournisseurs Mobile Money comme Orange Money, Wave et M-Pesa.
 
 ---
 
-## 4. Technology Stack
+## 3. Architecture globale
+
+Le projet doit être une **application monolithique** organisée en couches.
+
+### Couches
+
+1. **Couche présentation**
+   - Controller REST Spring MVC
+   - DTO d'entrée et de sortie
+   - validation des requêtes
+   - formatage des réponses API
+
+2. **Couche Service**
+   - logique métier
+   - transactions
+   - règles de validation
+   - orchestration des flux
+
+3. **Couche persistance**
+   - entités JPA
+   - Repository
+   - requêtes base de données
+
+4. **Couche infrastructure**
+   - configuration sécurité
+   - configuration JWT
+   - configuration Swagger
+   - configuration CORS
+   - gestion des exceptions
+   - journal d'audit
+
+---
+
+## 4. Stack technique
 
 ### Backend
 
@@ -74,15 +74,15 @@ The project must be implemented as a **monolithic application** using layered ar
 - Spring Security 6
 - Spring Data JPA
 - Hibernate
-- JWT authentication
-- REST API
+- authentification JWT
+- API REST
 - Jakarta Servlet API
 - Jakarta Validation
 - Maven
 
-### Database
+### Base de données
 
-Use one of:
+Utiliser l'un des moteurs suivants :
 
 - PostgreSQL
 - MySQL
@@ -92,99 +92,99 @@ Use one of:
 - Angular 17+
 - Angular Router
 - Guards
-- HTTP interceptors
+- interceptors HTTP
 - Chart.js
-- i18n support
+- prise en charge i18n
 
-### API Documentation
+### Documentation API
 
 - SpringDoc OpenAPI 3
 - Swagger UI
-- Manual configuration without Spring Boot
+- configuration manuelle sans Spring Boot
 
-### Not Priority / Not Required Now
+### Non prioritaire maintenant
 
-The following items exist in the CDC but are not priority because they were considered non-required or crossed out:
+Ces éléments existent dans le cahier de charge mais ne sont pas prioritaires :
 
 - Docker
 - Docker Compose
 - CI/CD GitHub Actions
 - Spring Actuator
 - Micrometer
-- Advanced monitoring
-- Full technical report
+- monitoring avancé
+- rapport technique complet
 
 ---
 
-## 5. User Roles
+## 5. Rôles utilisateurs
 
-The system uses Spring Security role-based access control.
+Le système utilise Spring Security avec contrôle d'accès par rôles.
 
 ### ROLE_ADMIN
 
-Admin responsibilities:
+Responsabilités administrateur :
 
-- Manage users
-- Manage agencies
-- Manage currencies
-- Manage exchange rates
-- Manage fees and commissions
-- View global reports
-- View audit logs
-- Supervise compliance alerts
+- gérer les utilisateurs ;
+- gérer les agences ;
+- gérer les devises ;
+- gérer les taux de change ;
+- gérer les frais et commissions ;
+- consulter les rapports globaux ;
+- consulter le journal d'audit ;
+- superviser les alertes de conformité.
 
 ### ROLE_MANAGER
 
-Manager responsibilities:
+Responsabilités manager :
 
-- Manage agents of their agency
-- Validate sensitive operations
-- View agency reports
-- Monitor daily limits
-- Supervise cash sessions
+- gérer les agents de son agence ;
+- valider les opérations sensibles ;
+- consulter les rapports d'agence ;
+- surveiller les plafonds journaliers ;
+- superviser les sessions de caisse.
 
 ### ROLE_AGENT
 
-Agent responsibilities:
+Responsabilités agent :
 
-- Register money transfers
-- Verify sender identity
-- Verify beneficiary identity
-- Pay out transfers
-- Manage cash operations
-- Open and close daily cash sessions
-- Report cash differences
+- enregistrer les transferts d'argent ;
+- vérifier l'identité de l'expéditeur ;
+- vérifier l'identité du bénéficiaire ;
+- payer les transferts ;
+- gérer les opérations de caisse ;
+- ouvrir et fermer les sessions de caisse quotidiennes ;
+- déclarer les écarts de caisse.
 
 ### ROLE_CLIENT
 
-Client responsibilities:
+Responsabilités client :
 
-- Register and log in
-- View transfer history
-- Track transfers
-- Manage profile
-- Manage notification preferences
+- s'inscrire et se connecter ;
+- consulter l'historique des transferts ;
+- suivre les transferts ;
+- gérer son profil ;
+- gérer ses préférences de notification.
 
 ---
 
-## 6. Main Business Modules
+## 6. Modules métier principaux
 
-Even though the application is monolithic, the logic should be organized by business modules/packages.
+Même si l'application est monolithique, la logique doit être organisée par modules métier ou packages.
 
-### 6.1 Auth & Users Module
+### 6.1 Service Authentification & Utilisateurs
 
-Responsible for:
+Responsable de :
 
-- User registration
-- Login
-- JWT generation
-- Refresh token handling
-- Password hashing using BCrypt
-- Role management
-- User activation/suspension
-- 2FA SMS OTP simulation
+- l'inscription des utilisateurs ;
+- la connexion ;
+- la génération JWT ;
+- la gestion des jetons d'actualisation ;
+- le hachage des mots de passe avec BCrypt ;
+- la gestion des rôles ;
+- l'activation et la suspension des utilisateurs ;
+- la simulation OTP SMS pour la 2FA.
 
-Main entities:
+Entités principales :
 
 - User
 - Role
@@ -193,54 +193,46 @@ Main entities:
 - ClientProfile
 - EmployeeProfile
 
----
+### 6.2 Service Agences
 
-### 6.2 Agency Module
+Responsable de :
 
-Responsible for:
+- créer, modifier, suspendre et activer les agences ;
+- affecter des managers et des agents ;
+- définir les plafonds des agences ;
+- consulter la performance d'agence.
 
-- Creating agencies
-- Updating agencies
-- Suspending agencies
-- Activating agencies
-- Assigning managers
-- Assigning agents
-- Defining agency limits
-- Viewing agency performance
-
-Main entities:
+Entités principales :
 
 - Agency
 - AgencyLimit
 - AgencyAssignment
 
----
+### 6.3 Service Transferts
 
-### 6.3 Transfer Module
+Responsable de :
 
-Responsible for:
+- créer les transferts ;
+- générer la référence de transfert ;
+- générer le code de retrait ou OTP ;
+- gérer les informations expéditeur et bénéficiaire ;
+- calculer le montant reçu ;
+- gérer le statut du transfert ;
+- annuler ou expirer des transferts.
 
-- Creating transfers
-- Generating transfer reference
-- Generating withdrawal code / OTP
-- Managing sender and beneficiary information
-- Calculating received amount
-- Managing transfer status
-- Canceling or expiring transfers
+Règle métier importante :
 
-Important business rule:
+Si un expéditeur envoie 500 DH et que le bénéficiaire doit recevoir 500 DH, le bénéficiaire ne peut pas retirer seulement 300 DH et laisser 200 DH. Un paiement de transfert doit être complet, sauf si une fonctionnalité spécifique de paiement partiel est conçue explicitement, ce qui n'est pas requis maintenant.
 
-If a sender sends 500 DH and the beneficiary is supposed to receive 500 DH, the beneficiary cannot withdraw only 300 DH and leave 200 DH. A transfer payout must be complete unless a specific partial-payout feature is explicitly designed, which is not required now.
+Statuts principaux :
 
-Main statuses:
+- PENDING : EN_ATTENTE
+- PAID : PAYÉ
+- CANCELLED : ANNULÉ
+- EXPIRED : EXPIRÉ
+- BLOCKED : BLOQUÉ
 
-- PENDING
-- PAID
-- CANCELLED
-- EXPIRED
-- BLOCKED
-
-Main entities:
+Entités principales :
 
 - Transfer
 - TransferSender
@@ -248,34 +240,32 @@ Main entities:
 - TransferStatusHistory
 - WithdrawalCode
 
----
+### 6.4 Service Paiement & Caisse
 
-### 6.4 Payment & Cash Module
+Responsable de :
 
-Responsible for:
+- gérer les sessions de caisse agent ;
+- ouvrir la session de caisse en début de journée ;
+- fermer la session de caisse en fin de journée ;
+- enregistrer les entrées et sorties de caisse ;
+- lier les transferts et paiements aux sessions de caisse ;
+- calculer le solde attendu ;
+- calculer le solde réel de clôture ;
+- déclarer les fonds manquants ou excédentaires ;
+- réaliser la réconciliation.
 
-- Agent cash sessions
-- Opening cash session at beginning of day
-- Closing cash session at end of day
-- Recording cash in/out movements
-- Linking transfers and payouts to cash sessions
-- Calculating expected balance
-- Calculating real closing balance
-- Reporting missing or extra funds
-- Reconciliation
+Idée importante :
 
-Important idea:
+Chaque opération financière effectuée par un agent doit être liée à une session de caisse active.
 
-Every financial operation done by an agent should be linked to an active `agent_cash_session`.
-
-Main entities:
+Entités principales :
 
 - AgentCashSession
 - CashMovement
 - CashReconciliation
 - CashDifferenceReport
 
-Cash movement types:
+Types de mouvements de caisse :
 
 - TRANSFER_IN
 - PAYOUT_OUT
@@ -284,31 +274,29 @@ Cash movement types:
 - SESSION_OPENING
 - SESSION_CLOSING
 
-Meaning of adjustments:
+Signification des ajustements :
 
-- `ADJUSTMENT_IN`: manual correction that adds money to the expected cash balance
-- `ADJUSTMENT_OUT`: manual correction that removes money from the expected cash balance
+- `ADJUSTMENT_IN` : correction manuelle qui ajoute de l'argent au solde attendu ;
+- `ADJUSTMENT_OUT` : correction manuelle qui retire de l'argent du solde attendu.
 
-Expected balance formula example:
+Formule du solde attendu :
 
 ```text
-expected_balance = opening_balance + total_cash_in - total_cash_out + adjustment_in - adjustment_out
+solde_attendu = solde_ouverture + total_entrees - total_sorties + ajustement_entree - ajustement_sortie
 ```
 
----
+### 6.5 Service Devises & Change
 
-### 6.5 Currency & FX Module
+Responsable de :
 
-Responsible for:
+- gérer les devises ;
+- gérer les pays ;
+- gérer les corridors de transfert ;
+- mettre à jour les taux de change ;
+- stocker l'historique des taux de change ;
+- convertir les montants entre devises.
 
-- Managing currencies
-- Managing countries
-- Managing transfer corridors
-- Updating exchange rates
-- Storing exchange rate history
-- Converting amounts between currencies
-
-Main entities:
+Entités principales :
 
 - Currency
 - Country
@@ -316,78 +304,70 @@ Main entities:
 - ExchangeRate
 - ExchangeRateHistory
 
----
+### 6.6 Service Frais & Commissions
 
-### 6.6 Fees & Commission Module
+Responsable de :
 
-Responsible for:
+- définir les grilles tarifaires ;
+- définir les tranches de montant ;
+- calculer les frais client ;
+- calculer la commission agence ;
+- calculer la commission centrale ;
+- simuler les frais avant création du transfert ;
+- exporter les frais en PDF / CSV si nécessaire.
 
-- Defining fee grids
-- Defining amount brackets
-- Calculating customer fees
-- Calculating agency commission
-- Calculating central commission
-- Simulating fees before transfer creation
-- Exporting fees to PDF / CSV if required
-
-Main entities:
+Entités principales :
 
 - FeeGrid
 - FeeBracket
 - CommissionRule
 - FeeSimulation
 
-Fee bracket meaning:
+Une tranche tarifaire représente un intervalle de montant utilisé pour calculer les frais.
 
-A `fee_bracket` represents an amount interval used to calculate fees.
-
-Example:
+Exemple :
 
 ```text
-0 - 500 DH       => fee = 10 DH
-501 - 1000 DH    => fee = 20 DH
-1001 - 5000 DH   => fee = 50 DH
+0 - 500 DH       => frais = 10 DH
+501 - 1000 DH    => frais = 20 DH
+1001 - 5000 DH   => frais = 50 DH
 ```
 
----
+### 6.7 Service Notifications
 
-### 6.7 Notification Module
+Responsable de :
 
-Responsible for:
+- envoyer une notification de confirmation de transfert ;
+- envoyer une notification de paiement ;
+- simuler l'OTP ou le code de retrait ;
+- envoyer les mises à jour de statut ;
+- gérer les préférences de notification.
 
-- Sending transfer confirmation notification
-- Sending payout notification
-- Sending OTP / withdrawal code simulation
-- Sending status update notification
-- Managing notification preferences
+Canaux :
 
-Channels:
+- simulation SMS
+- simulation courriel
+- simulation push
 
-- SMS simulation
-- Email simulation
-- Push simulation
-
-Main entities:
+Entités principales :
 
 - Notification
 - NotificationTemplate
 - NotificationPreference
 
----
+### 6.8 Service Conformité
 
-### 6.8 Compliance Module
+Responsable de :
 
-Responsible for:
+- vérifier le KYC ;
+- suivre les pièces d'identité ;
+- contrôler une liste noire fictive de type OFAC ;
+- détecter les transactions suspectes ;
+- appliquer les règles de seuil ;
+- générer les alertes de conformité ;
+- gérer la revue manuelle.
 
-- KYC verification
-- Identity document tracking
-- Blacklist checking using fictive OFAC list
-- Suspicious transaction detection
-- Threshold rules
-- Compliance alerts
-- Manual review workflow
-
-Main entities:
+Entités principales :
 
 - KycDocument
 - ComplianceRule
@@ -395,331 +375,314 @@ Main entities:
 - ComplianceAlert
 - SuspiciousActivityReport
 
----
+### 6.9 Service Rapports
 
-### 6.9 Reporting Module
+Responsable de :
 
-Responsible for:
+- produire les rapports financiers globaux ;
+- produire les rapports d'agence ;
+- calculer le volume quotidien et mensuel des transferts ;
+- produire les rapports de revenus ;
+- produire les rapports de commissions ;
+- produire les rapports d'écarts de caisse ;
+- produire les rapports de conformité.
 
-- Global financial reports
-- Agency reports
-- Daily transfer volume
-- Monthly transfer volume
-- Revenue reports
-- Commission reports
-- Cash difference reports
-- Compliance reports
+Types principaux de rapports :
 
-Main report types:
+- rapport de volume quotidien ;
+- rapport de volume mensuel ;
+- rapport de performance d'agence ;
+- rapport de commission ;
+- rapport de réconciliation de caisse ;
+- rapport d'activité suspecte.
 
-- Daily volume report
-- Monthly volume report
-- Agency performance report
-- Commission report
-- Cash reconciliation report
-- Suspicious activity report
+### 6.10 Service Chatbot
 
----
+Responsable de :
 
-### 6.10 Chatbot Module
+- répondre aux questions fréquentes ;
+- expliquer les frais ;
+- expliquer les délais de transfert ;
+- suivre le statut du transfert ;
+- escalader vers un support humain ;
+- gérer plusieurs langues : français, anglais, arabe.
 
-Responsible for:
-
-- Answering FAQ questions
-- Explaining fees
-- Explaining transfer delays
-- Tracking transfer status
-- Escalating to human support
-- Supporting multiple languages: French, English, Arabic
-
-Main entities:
+Entités principales :
 
 - ChatSession
 - ChatMessage
 - ChatbotIntent
 - EscalationTicket
 
----
+### 6.11 Service Mobile Money
 
-### 6.11 Mobile Money Module
+Responsable de la simulation des fournisseurs Mobile Money.
 
-Responsible for simulating mobile money providers.
-
-Supported simulated providers:
+Fournisseurs simulés :
 
 - Orange Money
 - Wave
 - M-Pesa
 
-Functions:
+Fonctions :
 
-- Send to mobile wallet
-- Receive from mobile wallet
-- SMS confirmation simulation
-- Provider reconciliation
-- Dashboard tracking
+- envoyer vers un wallet mobile ;
+- recevoir depuis un wallet mobile ;
+- simuler la confirmation SMS ;
+- réconcilier les opérations fournisseur ;
+- suivre les données dans le tableau de bord.
 
-Main entities:
+Entités principales :
 
 - MobileMoneyProvider
 - MobileMoneyTransaction
 - MobileMoneyReconciliation
 
----
+### 6.12 Service Audit
 
-### 6.12 Audit Module
+Responsable de :
 
-Responsible for:
+- tracer qui a fait quoi ;
+- tracer quand l'action a eu lieu ;
+- tracer l'adresse IP si disponible ;
+- tracer les opérations sensibles ;
+- assurer la traçabilité sécurité et conformité.
 
-- Tracking who did what
-- Tracking when an action happened
-- Tracking IP address if available
-- Tracking sensitive operations
-- Supporting security and compliance traceability
-
-Main entities:
+Entités principales :
 
 - AuditLog
 - SecurityEvent
 
-Audit examples:
+Exemples d'audit :
 
-- User login
-- Failed login
-- Transfer created
-- Transfer paid
-- Transfer cancelled
-- Exchange rate updated
-- Fee grid updated
-- Agency suspended
-- Compliance alert reviewed
-
----
-
-## 7. Important Business Workflows
-
-### 7.1 Send Money Workflow
-
-1. Agent opens an active cash session.
-2. Agent enters sender information.
-3. Agent enters beneficiary information.
-4. Agent enters amount, source currency, destination country, and destination currency.
-5. System checks corridor availability.
-6. System calculates exchange rate if needed.
-7. System calculates fees.
-8. System calculates amount to be received.
-9. System runs compliance checks.
-10. If valid, system creates transfer.
-11. System generates transfer reference and withdrawal code.
-12. System records cash movement.
-13. System sends notification.
-14. System prints or generates receipt.
+- connexion utilisateur ;
+- échec de connexion ;
+- transfert créé ;
+- transfert payé ;
+- transfert annulé ;
+- taux de change modifié ;
+- grille tarifaire modifiée ;
+- agence suspendue ;
+- alerte de conformité examinée.
 
 ---
 
-### 7.2 Payout Workflow
+## 7. Flux métier importants
 
-1. Agent opens an active cash session.
-2. Agent searches transfer by reference, withdrawal code, or beneficiary phone.
-3. System verifies transfer status.
-4. System verifies transfer is not expired, cancelled, blocked, or already paid.
-5. Agent verifies beneficiary identity.
-6. Agent confirms payout.
-7. System updates transfer status to PAID.
-8. System records cash movement as payout out.
-9. System links payout to cash session.
-10. System sends notification.
-11. System generates payout receipt.
+### 7.1 Flux d'envoi d'argent
+
+1. L'agent ouvre une session de caisse active.
+2. L'agent saisit les informations de l'expéditeur.
+3. L'agent saisit les informations du bénéficiaire.
+4. L'agent saisit le montant, la devise source, le pays de destination et la devise destination.
+5. Le système vérifie la disponibilité du corridor.
+6. Le système calcule le taux de change si nécessaire.
+7. Le système calcule les frais.
+8. Le système calcule le montant à recevoir.
+9. Le système lance les contrôles de conformité.
+10. Si tout est valide, le système crée le transfert.
+11. Le système génère la référence de transfert et le code de retrait.
+12. Le système enregistre le mouvement de caisse.
+13. Le système envoie la notification.
+14. Le système imprime ou génère le reçu.
+
+### 7.2 Flux de paiement d'un transfert
+
+1. L'agent ouvre une session de caisse active.
+2. L'agent recherche le transfert par référence, code de retrait ou téléphone bénéficiaire.
+3. Le système vérifie le statut du transfert.
+4. Le système vérifie que le transfert n'est pas expiré, annulé, bloqué ou déjà payé.
+5. L'agent vérifie l'identité du bénéficiaire.
+6. L'agent confirme le paiement.
+7. Le système passe le transfert au statut PAID.
+8. Le système enregistre le mouvement de caisse en sortie.
+9. Le système lie le paiement à la session de caisse.
+10. Le système envoie une notification.
+11. Le système génère le reçu de paiement.
+
+### 7.3 Flux de session de caisse
+
+1. L'agent démarre la journée en ouvrant une session de caisse.
+2. Le solde d'ouverture est enregistré.
+3. Tous les transferts et paiements de la journée sont liés à cette session.
+4. Le système calcule continuellement le solde attendu.
+5. L'agent saisit le solde réel de clôture en fin de journée.
+6. Le système compare le solde réel au solde attendu.
+7. En cas d'écart, une déclaration d'écart de caisse est créée.
+8. Le manager peut examiner et valider la session.
 
 ---
 
-### 7.3 Cash Session Workflow
+## 8. Exigences de sécurité
 
-1. Agent starts day by opening a cash session.
-2. Opening balance is recorded.
-3. All transfers and payouts during the day are linked to this session.
-4. System continuously calculates expected balance.
-5. Agent enters real closing balance at end of day.
-6. System compares real balance with expected balance.
-7. If there is a difference, a cash difference report is created.
-8. Manager can review and validate the session.
+La sécurité est une partie majeure du projet.
 
----
+Fonctionnalités requises :
 
-## 8. Security Requirements
+- jeton d'accès JWT ;
+- jeton d'actualisation ;
+- authentification sans état ;
+- chaîne de filtres Spring Security avant DispatcherServlet ;
+- hachage BCrypt avec force 12 ;
+- autorisation par rôles ;
+- CSRF désactivé pour API REST sans état ;
+- CORS configuré ;
+- limitation des tentatives sur les points d'entrée sensibles ;
+- OTP pour simulation 2FA ;
+- journal d'audit ;
+- validation des entrées avec Jakarta Validation ;
+- aucun secret dans GitHub ;
+- variables d'environnement pour la configuration sensible.
 
-Security is a major part of the project.
-
-Required security features:
-
-- JWT access token
-- Refresh token
-- Stateless authentication
-- Spring Security filter chain before DispatcherServlet
-- BCrypt password hashing with strength 12
-- Role-based authorization
-- CSRF disabled for stateless REST API
-- CORS configured
-- Rate limiting for sensitive endpoints
-- OTP for 2FA simulation
-- Audit logging
-- Input validation using Jakarta Validation
-- No secrets in GitHub
-- Environment variables for sensitive config
-
-Token rules:
+Règles des jetons :
 
 ```text
-Access token duration: 1 hour
-Refresh token duration: 7 days
+durée du jeton d'accès : 1 heure
+durée du jeton d'actualisation : 7 jours
 ```
 
-Rate limit example:
+Exemple de limitation :
 
 ```text
-Maximum 5 login attempts per 10 minutes
+maximum 5 tentatives de connexion par 10 minutes
 ```
 
 ---
 
-## 9. Non-Functional Requirements
+## 9. Exigences non fonctionnelles
 
-The application should be:
+L'application doit être :
 
-- Robust
-- Maintainable
-- Secure
-- Testable
-- Scalable at architecture level through stateless sessions
-- Clear and well documented
+- robuste ;
+- maintenable ;
+- sécurisée ;
+- testable ;
+- évolutive au niveau architecture grâce aux sessions sans état ;
+- claire et bien documentée.
 
-Other requirements:
+Autres exigences :
 
-- API response time target: less than 500 ms for 95% of requests
-- RGPD-like privacy principles
-- Pseudonymization where relevant
-- Right to deletion if needed
-- Accessibility WCAG 2.1 level A
-- Angular internationalization support
-
----
-
-## 10. Deliverables
-
-Required deliverables:
-
-1. Private GitHub repository
-2. README file
-3. UML diagrams
-   - Use case diagram
-   - Class diagram
-   - Sequence diagrams
-4. Database schema
-5. Swagger UI documentation
-6. Angular frontend
-7. Spring MVC backend
-8. Live demo
-9. Presentation / soutenance
-
-Not required now:
-
-- Full technical report
-- Docker setup
-- CI/CD pipeline
-- Monitoring stack
+- objectif de temps de réponse API : moins de 500 ms pour 95 % des requêtes ;
+- principes de confidentialité proches du RGPD ;
+- pseudonymisation si pertinente ;
+- droit à la suppression si nécessaire ;
+- accessibilité WCAG 2.1 niveau A ;
+- prise en charge de l'internationalisation Angular.
 
 ---
 
-## 11. Development Constraints
+## 10. Livrables
 
-- Use monolithic architecture.
-- Do not create microservices.
-- Do not use Spring Boot.
-- Use manual Spring MVC configuration.
-- Use layered architecture.
-- Use DTOs, not entities, in API responses.
-- Use repositories only in service layer, not controllers.
-- Use transactions in service layer.
-- Use GitHub private repository.
-- Do at least 3 commits per week.
-- Never push passwords, tokens, or secrets.
-- Use fictive data only.
+Livrables requis :
+
+1. dépôt GitHub privé ;
+2. fichier README ;
+3. diagrammes UML ;
+4. schéma de base de données ;
+5. documentation Swagger UI ;
+6. frontend Angular ;
+7. backend Spring MVC ;
+8. démonstration fonctionnelle ;
+9. présentation / soutenance.
+
+Non requis maintenant :
+
+- rapport technique complet ;
+- configuration Docker ;
+- pipeline CI/CD ;
+- stack de monitoring.
 
 ---
 
-## 12. Recommended Package Structure
+## 11. Contraintes de développement
+
+- Utiliser une architecture monolithique.
+- Ne pas créer de microservices.
+- Ne pas utiliser Spring Boot.
+- Utiliser une configuration Spring MVC manuelle.
+- Utiliser une architecture en couches.
+- Utiliser des DTO dans les réponses API, pas les entités.
+- Utiliser les Repository uniquement dans la couche Service, pas dans les Controller.
+- Utiliser les transactions dans la couche Service.
+- Utiliser un dépôt GitHub privé.
+- Réaliser au moins 3 commits par semaine.
+- Ne jamais pousser de mots de passe, jetons ou secrets.
+- Utiliser uniquement des données fictives.
+
+---
+
+## 12. Structure de packages recommandée
 
 ```text
 com.okane.transfer
-│
-├── config
-│   ├── WebConfig.java
-│   ├── SecurityConfig.java
-│   ├── JpaConfig.java
-│   ├── SwaggerConfig.java
-│   └── CorsConfig.java
-│
-│
-├── auth
-│   ├── controller
-│   ├── service
-│   ├── repository
-│   ├── entity
-│   ├── dto
-│   └── security
-│
-├── user
-├── agency
-├── transfer
-├── cash
-├── currency
-├── fee
-├── notification
-├── compliance
-├── reporting
-├── chatbot
-├── mobilemoney
-└── audit
+|
++-- config
+|   +-- WebConfig.java
+|   +-- SecurityConfig.java
+|   +-- JpaConfig.java
+|   +-- SwaggerConfig.java
+|   +-- CorsConfig.java
+|
++-- auth
+|   +-- controller
+|   +-- service
+|   +-- repository
+|   +-- entity
+|   +-- dto
+|   +-- security
+|
++-- user
++-- agency
++-- transfer
++-- cash
++-- currency
++-- fee
++-- notification
++-- compliance
++-- reporting
++-- chatbot
++-- mobilemoney
++-- audit
 ```
 
 ---
 
-## 13. Priority Order
+## 13. Ordre de priorité
 
-Recommended development order:
+Ordre de développement recommandé :
 
-1. Auth & Users
-2. Agency management
-3. Agent cash sessions
-4. Currency & FX
-5. Fees & commissions
-6. Transfer creation
-7. Payout workflow
+1. Authentification & Utilisateurs
+2. Gestion des agences
+3. Sessions de caisse agent
+4. Devises & Change
+5. Frais & commissions
+6. Création de transfert
+7. Paiement d'un transfert
 8. Notifications
-9. Compliance checks
-10. Reporting
+9. Contrôles de conformité
+10. Rapports
 11. Chatbot
-12. Mobile money simulation
-13. Audit improvements
-14. Frontend polishing
-15. Swagger and demo preparation
+12. Simulation Mobile Money
+13. Améliorations audit
+14. Finition du frontend
+15. Préparation Swagger et démonstration
 
 ---
 
-## 14. Final Reminder
+## 14. Rappel final
 
-This project must look professional and complete, but the team has limited time. Focus first on a working core:
+Le projet doit paraître professionnel et complet, mais le temps est limité. Priorité au noyau fonctionnel :
 
-- Authentication
-- Roles
-- Agencies
-- Agents
-- Cash sessions
-- Send transfer
-- Payout transfer
-- Fees
-- Currency
-- Basic reports
-- Audit
+- authentification ;
+- rôles ;
+- agences ;
+- agents ;
+- sessions de caisse ;
+- envoi de transfert ;
+- paiement de transfert ;
+- frais ;
+- devises ;
+- rapports de base ;
+- audit.
 
-Then add advanced features progressively.
+Les fonctionnalités avancées doivent être ajoutées progressivement.

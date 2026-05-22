@@ -13,30 +13,30 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transfer_status_history")
+@Table(name = "historique_statuts_transfert")
 public class TransferStatusHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "transfer_id", nullable = false)
+    @JoinColumn(name = "transfert_id", nullable = false)
     private Transfer transfer;
 
-    @Column(name = "old_status", length = 50)
+    @Column(name = "ancien_statut", length = 50)
     private String oldStatus;
 
-    @Column(name = "new_status", nullable = false, length = 50)
+    @Column(name = "nouveau_statut", nullable = false, length = 50)
     private String newStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "changed_by")
+    @JoinColumn(name = "modifie_par")
     private User changedBy;
 
-    @Column(name = "changed_at")
+    @Column(name = "modifie_le")
     private LocalDateTime changedAt;
 
-    @Column(name = "reason", length = 255)
+    @Column(name = "motif", length = 255)
     private String reason;
 
     public TransferStatusHistory() {

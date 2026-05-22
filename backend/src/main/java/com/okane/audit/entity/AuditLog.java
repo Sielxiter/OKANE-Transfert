@@ -13,38 +13,38 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "audit_logs")
+@Table(name = "journal_audit")
 public class AuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "utilisateur_id")
     private User user;
 
-    @Column(name = "user_role", length = 50)
+    @Column(name = "role_utilisateur", length = 50)
     private String userRole;
 
     @Column(name = "action", nullable = false, length = 100)
     private String action;
 
-    @Column(name = "entity_name", length = 100)
+    @Column(name = "nom_entite", length = 100)
     private String entityName;
 
-    @Column(name = "entity_id")
+    @Column(name = "id_entite")
     private Long entityId;
 
     @Column(name = "description", length = 255)
     private String description;
 
-    @Column(name = "ip_address", length = 100)
+    @Column(name = "adresse_ip", length = 100)
     private String ipAddress;
 
-    @Column(name = "user_agent", length = 255)
+    @Column(name = "navigateur_utilisateur", length = 255)
     private String userAgent;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public AuditLog() {

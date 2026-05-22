@@ -13,19 +13,19 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 /**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
+ * Des points d'entrée Express pour API REST peuvent être définis ici.
+ * Décommenter et définir les points d'entrée si nécessaire.
  *
- * Example:
+ * Exemple :
  * ```ts
  * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
+ *   // Traiter la requête API
  * });
  * ```
  */
 
 /**
- * Serve static files from /browser
+ * Servir les fichiers statiques depuis /browser
  */
 app.use(
   express.static(browserDistFolder, {
@@ -36,7 +36,7 @@ app.use(
 );
 
 /**
- * Handle all other requests by rendering the Angular application.
+ * Traiter les autres requêtes en rendant l'application Angular.
  */
 app.use((req, res, next) => {
   angularApp
@@ -48,8 +48,8 @@ app.use((req, res, next) => {
 });
 
 /**
- * Start the server if this module is the main entry point, or it is ran via PM2.
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
+ * Démarrer le serveur si ce module est le point d'entrée principal ou s'il est lancé via PM2.
+ * Le serveur écoute sur le port défini par la variable d'environnement `PORT`, ou sur 4000 par défaut.
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
   const port = process.env['PORT'] || 4000;
@@ -58,11 +58,11 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
       throw error;
     }
 
-    console.log(`Node Express server listening on http://localhost:${port}`);
+    console.log(`Serveur Node Express en écoute sur http://localhost:${port}`);
   });
 }
 
 /**
- * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
+ * Gestionnaire de requêtes utilisé par Angular CLI ou Firebase Cloud Functions.
  */
 export const reqHandler = createNodeRequestHandler(app);

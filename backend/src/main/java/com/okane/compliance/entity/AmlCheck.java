@@ -14,43 +14,43 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "aml_checks")
+@Table(name = "controles_aml")
 public class AmlCheck {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "transfer_id", nullable = false)
+    @JoinColumn(name = "transfert_id", nullable = false)
     private Transfer transfer;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @JoinColumn(name = "expediteur_id", nullable = false)
     private Customer sender;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "beneficiary_id", nullable = false)
+    @JoinColumn(name = "beneficiaire_id", nullable = false)
     private Customer beneficiary;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "sender_watchlist_match", nullable = false)
+    @Column(name = "expediteur_liste_surveillance", nullable = false)
     private Boolean senderWatchlistMatch;
 
-    @Column(name = "beneficiary_watchlist_match", nullable = false)
+    @Column(name = "beneficiaire_liste_surveillance", nullable = false)
     private Boolean beneficiaryWatchlistMatch;
 
-    @Column(name = "amount_threshold_exceeded", nullable = false)
+    @Column(name = "seuil_montant_depasse", nullable = false)
     private Boolean amountThresholdExceeded;
 
-    @Column(name = "risk_score", nullable = false)
+    @Column(name = "score_risque", nullable = false)
     private Integer riskScore;
 
-    @Column(name = "result_notes", length = 255)
+    @Column(name = "notes_resultat", length = 255)
     private String resultNotes;
 
-    @Column(name = "checked_at")
+    @Column(name = "verifie_le")
     private LocalDateTime checkedAt;
 
     public AmlCheck() {

@@ -10,43 +10,43 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "agencies")
+@Table(name = "agences")
 public class Agency {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false, length = 150)
+    @Column(name = "nom", nullable = false, length = 150)
     private String name;
 
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;
 
-    @Column(name = "address", nullable = false, length = 255)
+    @Column(name = "adresse", nullable = false, length = 255)
     private String address;
 
-    @Column(name = "city", nullable = false, length = 100)
+    @Column(name = "ville", nullable = false, length = 100)
     private String city;
 
-    @Column(name = "country", nullable = false, length = 100)
+    @Column(name = "pays", nullable = false, length = 100)
     private String country;
 
-    @Column(name = "phone", length = 30)
+    @Column(name = "telephone", length = 30)
     private String phone;
 
     @Column(name = "email", length = 150)
     private String email;
 
-    @Column(name = "daily_limit", nullable = false, precision = 15, scale = 2)
+    @Column(name = "plafond_journalier", nullable = false, precision = 15, scale = 2)
     private BigDecimal dailyLimit;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "modifie_le")
     private LocalDateTime updatedAt;
 
     public Agency() {

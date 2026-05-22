@@ -13,26 +13,26 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "commission_rules")
+@Table(name = "regles_commission")
 public class CommissionRule {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "fee_grid_id", nullable = false)
+    @JoinColumn(name = "grille_tarifaire_id", nullable = false)
     private FeeGrid feeGrid;
 
-    @Column(name = "agency_percentage", nullable = false, precision = 5, scale = 2)
+    @Column(name = "pourcentage_agence", nullable = false, precision = 5, scale = 2)
     private BigDecimal agencyPercentage;
 
-    @Column(name = "central_percentage", nullable = false, precision = 5, scale = 2)
+    @Column(name = "pourcentage_centrale", nullable = false, precision = 5, scale = 2)
     private BigDecimal centralPercentage;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "actif", nullable = false)
     private Boolean active;
 
-    @Column(name = "created_at")
+    @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
     public CommissionRule() {
