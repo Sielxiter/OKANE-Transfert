@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
 	lucideBuilding2,
@@ -14,17 +14,27 @@ import { UserActionsDropdownComponent } from '../users/shared/user-actions-dropd
 import { UserStatusBadgeComponent } from '../users/shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
+import { UsersLoadingStateComponent } from '../users/shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
-import type { UserActionItem } from '../users/shared/user-status.types';
+import type { StatusVariant, UserActionItem } from '../users/shared/user-status.types';
 import {
-	AGENCIES_MOCK,
-	AGENCY_CITIES,
-	AGENCY_COUNTRIES,
-	AGENCY_STATUS_LABELS,
-	AGENCY_STATUS_VARIANTS,
-	type Agency,
-} from './agencies.mock';
+	AdminAgenciesApiService,
+	type ApiAgency,
+	type ApiAgencyStatus,
+} from './admin-agencies.api';
+
+const AGENCY_STATUS_LABELS: Record<ApiAgencyStatus, string> = {
+	ACTIVE: 'Active',
+	SUSPENDED: 'Suspendue',
+	PENDING: 'En attente',
+};
+
+const AGENCY_STATUS_VARIANTS: Record<ApiAgencyStatus, StatusVariant> = {
+	ACTIVE: 'success',
+	SUSPENDED: 'destructive',
+	PENDING: 'warning',
+};
 
 @Component({
 	selector: 'okane-admin-agencies-page',
@@ -36,6 +46,7 @@ import {
 		UserStatusBadgeComponent,
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
+		UsersLoadingStateComponent,
 		UsersPlaceholderDialogComponent,
 	],
 	providers: [
@@ -76,12 +87,14 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Agences</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} agence{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} agence{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
 
-				@if (filtered().length === 0) {
+				@if (loading() || error()) {
+					<okane-users-loading-state [error]="error()" />
+				} @else if (filtered().length === 0) {
 					<okane-users-empty-state
 						icon="lucideBuilding2"
 						title="Aucune agence ne correspond"
@@ -128,17 +141,21 @@ import {
 											</div>
 										</td>
 										<td class="px-5 py-3">
-											<div class="flex items-center gap-2">
-												<div
-													class="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground ring-1 ring-border"
-												>
-													{{ initials(agency.managerName) }}
+											@if (agency.managerName) {
+												<div class="flex items-center gap-2">
+													<div
+														class="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground ring-1 ring-border"
+													>
+														{{ initials(agency.managerName) }}
+													</div>
+													<div class="leading-tight">
+														<p class="font-medium text-foreground">{{ agency.managerName }}</p>
+														<p class="font-mono text-xs text-muted-foreground">MG-{{ agency.managerId }}</p>
+													</div>
 												</div>
-												<div class="leading-tight">
-													<p class="font-medium text-foreground">{{ agency.managerName }}</p>
-													<p class="font-mono text-xs text-muted-foreground">{{ agency.managerId }}</p>
-												</div>
-											</div>
+											} @else {
+												<span class="text-xs text-muted-foreground">Non assigné</span>
+											}
 										</td>
 										<td class="px-5 py-3 text-right">
 											<span
@@ -150,7 +167,7 @@ import {
 										</td>
 										<td class="px-5 py-3 text-right">
 											<span class="font-mono text-sm font-medium text-foreground">
-												{{ formatAmount(agency.dailyLimit) }} {{ agency.currency }}
+												{{ formatAmount(agency.dailyLimit) }} MAD
 											</span>
 										</td>
 										<td class="px-5 py-3">
@@ -159,7 +176,7 @@ import {
 												[variant]="statusVariant(agency.status)"
 											/>
 										</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ agency.createdAt }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ formatDate(agency.createdAt) }}</td>
 										<td class="px-5 py-3 text-right">
 											<okane-user-actions-dropdown [actions]="actionsFor(agency)" />
 										</td>
@@ -179,8 +196,12 @@ import {
 		/>
 	`,
 })
-export class AdminAgenciesPageComponent {
-	protected readonly total = AGENCIES_MOCK.length;
+export class AdminAgenciesPageComponent implements OnInit {
+	private readonly _api = inject(AdminAgenciesApiService);
+
+	protected readonly agencies = signal<ApiAgency[]>([]);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly status = signal<string>('all');
@@ -188,47 +209,54 @@ export class AdminAgenciesPageComponent {
 	protected readonly city = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
 
-	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
-		{
-			key: 'status',
-			label: 'Statut',
-			value: this.status(),
-			options: [
-				{ value: 'all', label: 'Tous les statuts' },
-				{ value: 'ACTIVE', label: 'Active' },
-				{ value: 'SUSPENDED', label: 'Suspendue' },
-				{ value: 'PENDING', label: 'En attente' },
-			],
-		},
-		{
-			key: 'country',
-			label: 'Pays',
-			value: this.country(),
-			options: [
-				{ value: 'all', label: 'Tous les pays' },
-				...AGENCY_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
-			],
-		},
-		{
-			key: 'city',
-			label: 'Ville',
-			value: this.city(),
-			options: [
-				{ value: 'all', label: 'Toutes les villes' },
-				...AGENCY_CITIES.map((c) => ({ value: c, label: c })),
-			],
-		},
-	]);
+	protected readonly total = computed(() => this.agencies().length);
 
-	protected readonly filtered = computed<Agency[]>(() => {
+	protected readonly filterDefs = computed<FilterDefinition[]>(() => {
+		const countries = Array.from(new Set(this.agencies().map((a) => a.country))).sort();
+		const cities = Array.from(new Set(this.agencies().map((a) => a.city))).sort();
+
+		return [
+			{
+				key: 'status',
+				label: 'Statut',
+				value: this.status(),
+				options: [
+					{ value: 'all', label: 'Tous les statuts' },
+					{ value: 'ACTIVE', label: 'Active' },
+					{ value: 'SUSPENDED', label: 'Suspendue' },
+					{ value: 'PENDING', label: 'En attente' },
+				],
+			},
+			{
+				key: 'country',
+				label: 'Pays',
+				value: this.country(),
+				options: [
+					{ value: 'all', label: 'Tous les pays' },
+					...countries.map((c) => ({ value: c, label: c })),
+				],
+			},
+			{
+				key: 'city',
+				label: 'Ville',
+				value: this.city(),
+				options: [
+					{ value: 'all', label: 'Toutes les villes' },
+					...cities.map((c) => ({ value: c, label: c })),
+				],
+			},
+		];
+	});
+
+	protected readonly filtered = computed<ApiAgency[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const status = this.status();
 		const country = this.country();
 		const city = this.city();
 
-		return AGENCIES_MOCK.filter((a) => {
+		return this.agencies().filter((a) => {
 			if (status !== 'all' && a.status !== status) return false;
-			if (country !== 'all' && a.countryCode !== country) return false;
+			if (country !== 'all' && a.country !== country) return false;
 			if (city !== 'all' && a.city !== city) return false;
 			if (!term) return true;
 			return (
@@ -236,10 +264,29 @@ export class AdminAgenciesPageComponent {
 				a.code.toLowerCase().includes(term) ||
 				a.city.toLowerCase().includes(term) ||
 				a.country.toLowerCase().includes(term) ||
-				a.managerName.toLowerCase().includes(term)
+				(a.managerName ?? '').toLowerCase().includes(term)
 			);
 		});
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.list().subscribe({
+			next: (data) => {
+				this.agencies.set(data);
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -269,39 +316,72 @@ export class AdminAgenciesPageComponent {
 			.toUpperCase();
 	}
 
-	protected statusLabel(status: Agency['status']): string {
+	protected statusLabel(status: ApiAgencyStatus): string {
 		return AGENCY_STATUS_LABELS[status];
 	}
 
-	protected statusVariant(status: Agency['status']) {
+	protected statusVariant(status: ApiAgencyStatus) {
 		return AGENCY_STATUS_VARIANTS[status];
 	}
 
-	protected formatAmount(value: number): string {
+	protected formatAmount(value: number | null | undefined): string {
+		if (value == null) return '—';
 		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
 	}
 
-	protected actionsFor(agency: Agency): UserActionItem[] {
+	protected formatDate(value: string | null): string {
+		if (!value) return '—';
+		return value.replace('T', ' ').slice(0, 10);
+	}
+
+	protected actionsFor(agency: ApiAgency): UserActionItem[] {
 		const isActive = agency.status === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', agency) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', agency) },
 			{ label: 'Voir agents', icon: 'lucideUsers', action: () => this.logAction('agents', agency) },
-			{ label: 'Voir performance', icon: 'lucideChartLine', action: () => this.logAction('performance', agency) },
+			{
+				label: 'Voir performance',
+				icon: 'lucideChartLine',
+				action: () => this.logAction('performance', agency),
+			},
 			isActive
 				? {
 						label: 'Suspendre',
 						icon: 'lucidePowerOff',
-						action: () => this.logAction('suspend', agency),
+						action: () => this.changeStatus(agency, 'SUSPENDED'),
 						variant: 'destructive' as const,
 					}
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate', agency) },
+				: {
+						label: 'Activer',
+						icon: 'lucidePower',
+						action: () => this.changeStatus(agency, 'ACTIVE'),
+					},
 		];
 	}
 
-	private logAction(action: string, agency: Agency): void {
+	private changeStatus(agency: ApiAgency, status: ApiAgencyStatus): void {
+		this._api.changeStatus(agency.id, status).subscribe({
+			next: (updated) => {
+				this.agencies.update((items) => items.map((a) => (a.id === updated.id ? updated : a)));
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+			},
+		});
+	}
+
+	private logAction(action: string, agency: ApiAgency): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Agencies] ${action}`, agency.code, agency.name);
 	}
-}
 
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
+	}
+}

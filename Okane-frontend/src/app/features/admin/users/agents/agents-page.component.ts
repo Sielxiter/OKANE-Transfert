@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
 	lucideBuilding2,
@@ -12,14 +12,16 @@ import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.co
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../shared/users-filters.component';
+import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../shared/users-placeholder-dialog.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
+	type AccountStatus,
 	type UserActionItem,
 } from '../shared/user-status.types';
-import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
+import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 
 @Component({
 	selector: 'okane-admin-users-agents-page',
@@ -31,6 +33,7 @@ import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
 		UserStatusBadgeComponent,
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
+		UsersLoadingStateComponent,
 		UsersPlaceholderDialogComponent,
 	],
 	providers: [
@@ -49,7 +52,7 @@ import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
 			<okane-users-page-header
 				eyebrow="Utilisateurs"
 				title="Gestion des agents"
-				description="Agents ROLE_AGENT en agence. Suivi des soldes de caisse mock et statut de compte."
+				description="Agents ROLE_AGENT en agence. Le solde de caisse sera affiché lorsque le module Caisse sera connecté."
 				addLabel="Ajouter un agent"
 				(addClicked)="openDialog()"
 			/>
@@ -69,12 +72,14 @@ import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Agents</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} agent{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} agent{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
 
-				@if (filtered().length === 0) {
+				@if (loading() || error()) {
+					<okane-users-loading-state [error]="error()" />
+				} @else if (filtered().length === 0) {
 					<okane-users-empty-state
 						title="Aucun agent ne correspond"
 						description="Modifiez les filtres pour voir d'autres agents."
@@ -88,7 +93,6 @@ import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
 									<th class="px-5 py-3 text-left font-medium">Email</th>
 									<th class="px-5 py-3 text-left font-medium">Téléphone</th>
 									<th class="px-5 py-3 text-left font-medium">Agence</th>
-									<th class="px-5 py-3 text-right font-medium">Solde caisse</th>
 									<th class="px-5 py-3 text-left font-medium">Statut compte</th>
 									<th class="px-5 py-3 text-left font-medium">Dernière connexion</th>
 									<th class="px-5 py-3 text-right font-medium">Actions</th>
@@ -106,37 +110,36 @@ import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
 												</div>
 												<div>
 													<p class="font-medium text-foreground">{{ agent.fullName }}</p>
-													<p class="text-xs text-muted-foreground">{{ agent.id }}</p>
+													<p class="text-xs text-muted-foreground">AG-{{ agent.id }}</p>
 												</div>
 											</div>
 										</td>
 										<td class="px-5 py-3 text-foreground">{{ agent.email }}</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ agent.phone }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ agent.phone || '—' }}</td>
 										<td class="px-5 py-3">
-											<div class="flex items-center gap-2 text-foreground">
-												<span
-													class="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-border"
-												>
-													<ng-icon name="lucideBuilding2" class="text-sm" />
-												</span>
-												<div class="leading-tight">
-													<p class="font-medium">{{ agent.agency.name }}</p>
-													<p class="font-mono text-xs text-muted-foreground">{{ agent.agency.code }}</p>
+											@if (agent.agencyName) {
+												<div class="flex items-center gap-2 text-foreground">
+													<span
+														class="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-border"
+													>
+														<ng-icon name="lucideBuilding2" class="text-sm" />
+													</span>
+													<div class="leading-tight">
+														<p class="font-medium">{{ agent.agencyName }}</p>
+														<p class="font-mono text-xs text-muted-foreground">{{ agent.agencyCode }}</p>
+													</div>
 												</div>
-											</div>
-										</td>
-										<td class="px-5 py-3 text-right">
-											<span class="font-mono text-sm font-medium text-foreground">
-												{{ formatBalance(agent.cashBalance) }} {{ agent.currency }}
-											</span>
+											} @else {
+												<span class="text-xs text-muted-foreground">Non assignée</span>
+											}
 										</td>
 										<td class="px-5 py-3">
 											<okane-user-status-badge
-												[label]="accountLabel(agent.account)"
-												[variant]="accountVariant(agent.account)"
+												[label]="accountLabel(agent.accountStatus)"
+												[variant]="accountVariant(agent.accountStatus)"
 											/>
 										</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ agent.lastLogin }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ formatDate(agent.lastLoginAt) }}</td>
 										<td class="px-5 py-3 text-right">
 											<okane-user-actions-dropdown [actions]="actionsFor(agent)" />
 										</td>
@@ -156,55 +159,89 @@ import { AGENT_AGENCIES, AGENTS_MOCK, type AgentUser } from './agents.mock';
 		/>
 	`,
 })
-export class AdminUsersAgentsPageComponent {
-	protected readonly total = AGENTS_MOCK.length;
+export class AdminUsersAgentsPageComponent implements OnInit {
+	private readonly _api = inject(AdminUsersApiService);
+
+	protected readonly agents = signal<ApiUser[]>([]);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly agency = signal<string>('all');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
 
-	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
-		{
-			key: 'agency',
-			label: 'Agence',
-			value: this.agency(),
-			options: [
-				{ value: 'all', label: 'Toutes les agences' },
-				...AGENT_AGENCIES.map((a) => ({ value: a.code, label: a.name })),
-			],
-		},
-		{
-			key: 'account',
-			label: 'Compte',
-			value: this.account(),
-			options: [
-				{ value: 'all', label: 'Tous les statuts' },
-				{ value: 'ACTIVE', label: 'Actif' },
-				{ value: 'SUSPENDED', label: 'Suspendu' },
-				{ value: 'LOCKED', label: 'Verrouillé' },
-			],
-		},
-	]);
+	protected readonly total = computed(() => this.agents().length);
 
-	protected readonly filtered = computed<AgentUser[]>(() => {
+	protected readonly filterDefs = computed<FilterDefinition[]>(() => {
+		const agencies = Array.from(
+			new Map(
+				this.agents()
+					.filter((a) => a.agencyCode && a.agencyName)
+					.map((a) => [a.agencyCode!, { code: a.agencyCode!, name: a.agencyName! }]),
+			).values(),
+		);
+
+		return [
+			{
+				key: 'agency',
+				label: 'Agence',
+				value: this.agency(),
+				options: [
+					{ value: 'all', label: 'Toutes les agences' },
+					...agencies.map((a) => ({ value: a.code, label: a.name })),
+				],
+			},
+			{
+				key: 'account',
+				label: 'Compte',
+				value: this.account(),
+				options: [
+					{ value: 'all', label: 'Tous les statuts' },
+					{ value: 'ACTIVE', label: 'Actif' },
+					{ value: 'SUSPENDED', label: 'Suspendu' },
+					{ value: 'LOCKED', label: 'Verrouillé' },
+				],
+			},
+		];
+	});
+
+	protected readonly filtered = computed<ApiUser[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const agency = this.agency();
 		const account = this.account();
 
-		return AGENTS_MOCK.filter((a) => {
-			if (agency !== 'all' && a.agency.code !== agency) return false;
-			if (account !== 'all' && a.account !== account) return false;
+		return this.agents().filter((a) => {
+			if (agency !== 'all' && a.agencyCode !== agency) return false;
+			if (account !== 'all' && a.accountStatus !== account) return false;
 			if (!term) return true;
 			return (
 				a.fullName.toLowerCase().includes(term) ||
 				a.email.toLowerCase().includes(term) ||
-				a.phone.toLowerCase().includes(term) ||
-				a.agency.name.toLowerCase().includes(term) ||
-				a.id.toLowerCase().includes(term)
+				(a.phone ?? '').toLowerCase().includes(term) ||
+				(a.agencyName ?? '').toLowerCase().includes(term)
 			);
 		});
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.getAgents().subscribe({
+			next: (data) => {
+				this.agents.set(data);
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -231,32 +268,62 @@ export class AdminUsersAgentsPageComponent {
 			.toUpperCase();
 	}
 
-	protected accountLabel(status: AgentUser['account']): string {
+	protected formatDate(value: string | null): string {
+		if (!value) return 'Jamais';
+		return value.replace('T', ' ').slice(0, 16);
+	}
+
+	protected accountLabel(status: AccountStatus): string {
 		return ACCOUNT_LABELS[status];
 	}
 
-	protected accountVariant(status: AgentUser['account']) {
+	protected accountVariant(status: AccountStatus) {
 		return ACCOUNT_VARIANTS[status];
 	}
 
-	protected formatBalance(value: number): string {
-		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
-	}
-
-	protected actionsFor(agent: AgentUser): UserActionItem[] {
-		const isActive = agent.account === 'ACTIVE';
+	protected actionsFor(agent: ApiUser): UserActionItem[] {
+		const isActive = agent.accountStatus === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', agent) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', agent) },
 			{ label: 'Voir caisse', icon: 'lucideWallet', action: () => this.logAction('cash', agent) },
 			isActive
-				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.logAction('suspend', agent), variant: 'destructive' as const }
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate', agent) },
+				? {
+						label: 'Suspendre',
+						icon: 'lucidePowerOff',
+						action: () => this.changeStatus(agent, 'SUSPENDED'),
+						variant: 'destructive' as const,
+					}
+				: {
+						label: 'Activer',
+						icon: 'lucidePower',
+						action: () => this.changeStatus(agent, 'ACTIVE'),
+					},
 		];
 	}
 
-	private logAction(action: string, agent: AgentUser): void {
+	private changeStatus(agent: ApiUser, status: AccountStatus): void {
+		this._api.changeStatus(agent.id, status).subscribe({
+			next: (updated) => {
+				this.agents.update((items) => items.map((a) => (a.id === updated.id ? updated : a)));
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+			},
+		});
+	}
+
+	private logAction(action: string, agent: ApiUser): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Agents] ${action}`, agent.id, agent.fullName);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }

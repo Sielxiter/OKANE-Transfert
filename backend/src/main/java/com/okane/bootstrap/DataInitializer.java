@@ -178,6 +178,7 @@ public class DataInitializer implements ApplicationListener<ContextRefreshedEven
             agency.setEmail("hq@okane.local");
             agency.setDailyLimit(new BigDecimal("50000.00"));
             agency.setActive(true);
+            agency.setStatus(com.okane.agencymanagement.domain.AgencyStatus.ACTIVE);
             agency.setCreatedAt(now);
             agency.setUpdatedAt(now);
             return agencyRepository.save(agency);

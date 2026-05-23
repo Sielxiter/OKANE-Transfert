@@ -1,18 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideShield } from '@ng-icons/lucide';
 import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.component';
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../shared/users-filters.component';
+import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../shared/users-placeholder-dialog.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
+	type AccountStatus,
 	type UserActionItem,
 } from '../shared/user-status.types';
-import { ADMINS_MOCK, type AdminUser } from './admins.mock';
+import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 
 @Component({
 	selector: 'okane-admin-users-admins-page',
@@ -24,6 +26,7 @@ import { ADMINS_MOCK, type AdminUser } from './admins.mock';
 		UserStatusBadgeComponent,
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
+		UsersLoadingStateComponent,
 		UsersPlaceholderDialogComponent,
 	],
 	providers: [provideIcons({ lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideShield })],
@@ -53,12 +56,14 @@ import { ADMINS_MOCK, type AdminUser } from './admins.mock';
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Administrateurs</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} administrateur{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} administrateur{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
 
-				@if (filtered().length === 0) {
+				@if (loading() || error()) {
+					<okane-users-loading-state [error]="error()" />
+				} @else if (filtered().length === 0) {
 					<okane-users-empty-state
 						title="Aucun administrateur ne correspond"
 						description="Réinitialisez vos filtres pour afficher les administrateurs."
@@ -88,7 +93,7 @@ import { ADMINS_MOCK, type AdminUser } from './admins.mock';
 												</div>
 												<div>
 													<p class="font-medium text-foreground">{{ admin.fullName }}</p>
-													<p class="text-xs text-muted-foreground">{{ admin.id }}</p>
+													<p class="text-xs text-muted-foreground">AD-{{ admin.id }}</p>
 												</div>
 											</div>
 										</td>
@@ -103,11 +108,11 @@ import { ADMINS_MOCK, type AdminUser } from './admins.mock';
 										</td>
 										<td class="px-5 py-3">
 											<okane-user-status-badge
-												[label]="accountLabel(admin.account)"
-												[variant]="accountVariant(admin.account)"
+												[label]="accountLabel(admin.accountStatus)"
+												[variant]="accountVariant(admin.accountStatus)"
 											/>
 										</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ admin.lastLogin }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ formatDate(admin.lastLoginAt) }}</td>
 										<td class="px-5 py-3 text-right">
 											<okane-user-actions-dropdown [actions]="actionsFor(admin)" />
 										</td>
@@ -127,12 +132,18 @@ import { ADMINS_MOCK, type AdminUser } from './admins.mock';
 		/>
 	`,
 })
-export class AdminUsersAdminsPageComponent {
-	protected readonly total = ADMINS_MOCK.length;
+export class AdminUsersAdminsPageComponent implements OnInit {
+	private readonly _api = inject(AdminUsersApiService);
+
+	protected readonly admins = signal<ApiUser[]>([]);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
+
+	protected readonly total = computed(() => this.admins().length);
 
 	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
 		{
@@ -148,20 +159,38 @@ export class AdminUsersAdminsPageComponent {
 		},
 	]);
 
-	protected readonly filtered = computed<AdminUser[]>(() => {
+	protected readonly filtered = computed<ApiUser[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const account = this.account();
 
-		return ADMINS_MOCK.filter((a) => {
-			if (account !== 'all' && a.account !== account) return false;
+		return this.admins().filter((a) => {
+			if (account !== 'all' && a.accountStatus !== account) return false;
 			if (!term) return true;
 			return (
 				a.fullName.toLowerCase().includes(term) ||
-				a.email.toLowerCase().includes(term) ||
-				a.id.toLowerCase().includes(term)
+				a.email.toLowerCase().includes(term)
 			);
 		});
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.getAdmins().subscribe({
+			next: (data) => {
+				this.admins.set(data);
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		if (change.key === 'account') {
@@ -183,27 +212,61 @@ export class AdminUsersAdminsPageComponent {
 			.toUpperCase();
 	}
 
-	protected accountLabel(status: AdminUser['account']): string {
+	protected formatDate(value: string | null): string {
+		if (!value) return 'Jamais';
+		return value.replace('T', ' ').slice(0, 16);
+	}
+
+	protected accountLabel(status: AccountStatus): string {
 		return ACCOUNT_LABELS[status];
 	}
 
-	protected accountVariant(status: AdminUser['account']) {
+	protected accountVariant(status: AccountStatus) {
 		return ACCOUNT_VARIANTS[status];
 	}
 
-	protected actionsFor(admin: AdminUser): UserActionItem[] {
-		const isActive = admin.account === 'ACTIVE';
+	protected actionsFor(admin: ApiUser): UserActionItem[] {
+		const isActive = admin.accountStatus === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', admin) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', admin) },
 			isActive
-				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.logAction('suspend', admin), variant: 'destructive' as const }
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate', admin) },
+				? {
+						label: 'Suspendre',
+						icon: 'lucidePowerOff',
+						action: () => this.changeStatus(admin, 'SUSPENDED'),
+						variant: 'destructive' as const,
+					}
+				: {
+						label: 'Activer',
+						icon: 'lucidePower',
+						action: () => this.changeStatus(admin, 'ACTIVE'),
+					},
 		];
 	}
 
-	private logAction(action: string, admin: AdminUser): void {
+	private changeStatus(admin: ApiUser, status: AccountStatus): void {
+		this._api.changeStatus(admin.id, status).subscribe({
+			next: (updated) => {
+				this.admins.update((items) => items.map((a) => (a.id === updated.id ? updated : a)));
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+			},
+		});
+	}
+
+	private logAction(action: string, admin: ApiUser): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Admins] ${action}`, admin.id, admin.fullName);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }

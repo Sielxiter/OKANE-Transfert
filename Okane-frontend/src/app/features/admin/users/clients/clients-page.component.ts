@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import {
 	lucideEye,
@@ -10,6 +10,7 @@ import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.co
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../shared/users-filters.component';
+import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../shared/users-placeholder-dialog.component';
 import {
@@ -17,9 +18,11 @@ import {
 	ACCOUNT_VARIANTS,
 	KYC_LABELS,
 	KYC_VARIANTS,
+	type AccountStatus,
+	type KycStatus,
 	type UserActionItem,
 } from '../shared/user-status.types';
-import { CLIENTS_MOCK, CLIENT_COUNTRIES, type ClientUser } from './clients.mock';
+import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 
 @Component({
 	selector: 'okane-admin-users-clients-page',
@@ -30,6 +33,7 @@ import { CLIENTS_MOCK, CLIENT_COUNTRIES, type ClientUser } from './clients.mock'
 		UserStatusBadgeComponent,
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
+		UsersLoadingStateComponent,
 		UsersPlaceholderDialogComponent,
 	],
 	providers: [provideIcons({ lucideEye, lucidePencil, lucidePower, lucidePowerOff })],
@@ -39,7 +43,7 @@ import { CLIENTS_MOCK, CLIENT_COUNTRIES, type ClientUser } from './clients.mock'
 			<okane-users-page-header
 				eyebrow="Utilisateurs"
 				title="Gestion des clients"
-				description="Suivi des clients particuliers, KYC et statut de compte. Données mock en attente d'intégration API."
+				description="Suivi des clients particuliers, KYC et statut de compte. Données live depuis le backend Okane."
 				addLabel="Ajouter un client"
 				(addClicked)="openDialog()"
 			/>
@@ -59,12 +63,14 @@ import { CLIENTS_MOCK, CLIENT_COUNTRIES, type ClientUser } from './clients.mock'
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Clients</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} client{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} client{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
 
-				@if (filtered().length === 0) {
+				@if (loading() || error()) {
+					<okane-users-loading-state [error]="error()" />
+				} @else if (filtered().length === 0) {
 					<okane-users-empty-state
 						title="Aucun client ne correspond"
 						description="Essayez d'élargir votre recherche ou de réinitialiser les filtres."
@@ -96,26 +102,26 @@ import { CLIENTS_MOCK, CLIENT_COUNTRIES, type ClientUser } from './clients.mock'
 												</div>
 												<div>
 													<p class="font-medium text-foreground">{{ client.fullName }}</p>
-													<p class="text-xs text-muted-foreground">{{ client.id }}</p>
+													<p class="text-xs text-muted-foreground">CL-{{ client.id }}</p>
 												</div>
 											</div>
 										</td>
 										<td class="px-5 py-3 text-foreground">{{ client.email }}</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ client.phone }}</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ client.country }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ client.phone || '—' }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ client.country || '—' }}</td>
 										<td class="px-5 py-3">
 											<okane-user-status-badge
-												[label]="kycLabel(client.kyc)"
-												[variant]="kycVariant(client.kyc)"
+												[label]="kycLabel(client.kycStatus)"
+												[variant]="kycVariant(client.kycStatus)"
 											/>
 										</td>
 										<td class="px-5 py-3">
 											<okane-user-status-badge
-												[label]="accountLabel(client.account)"
-												[variant]="accountVariant(client.account)"
+												[label]="accountLabel(client.accountStatus)"
+												[variant]="accountVariant(client.accountStatus)"
 											/>
 										</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ client.registeredAt }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ formatDate(client.createdAt) }}</td>
 										<td class="px-5 py-3 text-right">
 											<okane-user-actions-dropdown [actions]="actionsFor(client)" />
 										</td>
@@ -135,8 +141,12 @@ import { CLIENTS_MOCK, CLIENT_COUNTRIES, type ClientUser } from './clients.mock'
 		/>
 	`,
 })
-export class AdminUsersClientsPageComponent {
-	protected readonly total = CLIENTS_MOCK.length;
+export class AdminUsersClientsPageComponent implements OnInit {
+	private readonly _api = inject(AdminUsersApiService);
+
+	protected readonly clients = signal<ApiUser[]>([]);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly country = signal<string>('all');
@@ -144,59 +154,86 @@ export class AdminUsersClientsPageComponent {
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
 
-	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
-		{
-			key: 'country',
-			label: 'Pays',
-			value: this.country(),
-			options: [
-				{ value: 'all', label: 'Tous les pays' },
-				...CLIENT_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
-			],
-		},
-		{
-			key: 'kyc',
-			label: 'KYC',
-			value: this.kyc(),
-			options: [
-				{ value: 'all', label: 'Tous les KYC' },
-				{ value: 'VERIFIED', label: 'Vérifié' },
-				{ value: 'PENDING', label: 'En attente' },
-				{ value: 'REJECTED', label: 'Rejeté' },
-			],
-		},
-		{
-			key: 'account',
-			label: 'Compte',
-			value: this.account(),
-			options: [
-				{ value: 'all', label: 'Tous les statuts' },
-				{ value: 'ACTIVE', label: 'Actif' },
-				{ value: 'SUSPENDED', label: 'Suspendu' },
-				{ value: 'LOCKED', label: 'Verrouillé' },
-			],
-		},
-	]);
+	protected readonly total = computed(() => this.clients().length);
 
-	protected readonly filtered = computed<ClientUser[]>(() => {
+	protected readonly filterDefs = computed<FilterDefinition[]>(() => {
+		const countries = Array.from(
+			new Set(this.clients().map((c) => c.country).filter((c): c is string => !!c)),
+		).sort();
+
+		return [
+			{
+				key: 'country',
+				label: 'Pays',
+				value: this.country(),
+				options: [
+					{ value: 'all', label: 'Tous les pays' },
+					...countries.map((c) => ({ value: c, label: c })),
+				],
+			},
+			{
+				key: 'kyc',
+				label: 'KYC',
+				value: this.kyc(),
+				options: [
+					{ value: 'all', label: 'Tous les KYC' },
+					{ value: 'VERIFIED', label: 'Vérifié' },
+					{ value: 'PENDING', label: 'En attente' },
+					{ value: 'REJECTED', label: 'Rejeté' },
+					{ value: 'REVIEW_REQUIRED', label: 'À revoir' },
+				],
+			},
+			{
+				key: 'account',
+				label: 'Compte',
+				value: this.account(),
+				options: [
+					{ value: 'all', label: 'Tous les statuts' },
+					{ value: 'ACTIVE', label: 'Actif' },
+					{ value: 'SUSPENDED', label: 'Suspendu' },
+					{ value: 'LOCKED', label: 'Verrouillé' },
+				],
+			},
+		];
+	});
+
+	protected readonly filtered = computed<ApiUser[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const country = this.country();
 		const kyc = this.kyc();
 		const account = this.account();
 
-		return CLIENTS_MOCK.filter((c) => {
-			if (country !== 'all' && c.countryCode !== country) return false;
-			if (kyc !== 'all' && c.kyc !== kyc) return false;
-			if (account !== 'all' && c.account !== account) return false;
+		return this.clients().filter((c) => {
+			if (country !== 'all' && c.country !== country) return false;
+			if (kyc !== 'all' && c.kycStatus !== kyc) return false;
+			if (account !== 'all' && c.accountStatus !== account) return false;
 			if (!term) return true;
 			return (
 				c.fullName.toLowerCase().includes(term) ||
 				c.email.toLowerCase().includes(term) ||
-				c.phone.toLowerCase().includes(term) ||
-				c.id.toLowerCase().includes(term)
+				(c.phone ?? '').toLowerCase().includes(term)
 			);
 		});
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.getClients().subscribe({
+			next: (data) => {
+				this.clients.set(data);
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -226,35 +263,69 @@ export class AdminUsersClientsPageComponent {
 			.toUpperCase();
 	}
 
-	protected kycLabel(status: ClientUser['kyc']): string {
-		return KYC_LABELS[status];
+	protected formatDate(value: string | null): string {
+		if (!value) return '—';
+		return value.replace('T', ' ').slice(0, 16);
 	}
 
-	protected kycVariant(status: ClientUser['kyc']) {
-		return KYC_VARIANTS[status];
+	protected kycLabel(status: KycStatus | null): string {
+		return status ? KYC_LABELS[status] : 'En attente';
 	}
 
-	protected accountLabel(status: ClientUser['account']): string {
+	protected kycVariant(status: KycStatus | null) {
+		return status ? KYC_VARIANTS[status] : KYC_VARIANTS.PENDING;
+	}
+
+	protected accountLabel(status: AccountStatus): string {
 		return ACCOUNT_LABELS[status];
 	}
 
-	protected accountVariant(status: ClientUser['account']) {
+	protected accountVariant(status: AccountStatus) {
 		return ACCOUNT_VARIANTS[status];
 	}
 
-	protected actionsFor(client: ClientUser): UserActionItem[] {
-		const isActive = client.account === 'ACTIVE';
+	protected actionsFor(client: ApiUser): UserActionItem[] {
+		const isActive = client.accountStatus === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', client) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', client) },
 			isActive
-				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.logAction('suspend', client), variant: 'destructive' as const }
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate', client) },
+				? {
+						label: 'Suspendre',
+						icon: 'lucidePowerOff',
+						action: () => this.changeStatus(client, 'SUSPENDED'),
+						variant: 'destructive' as const,
+					}
+				: {
+						label: 'Activer',
+						icon: 'lucidePower',
+						action: () => this.changeStatus(client, 'ACTIVE'),
+					},
 		];
 	}
 
-	private logAction(action: string, client: ClientUser): void {
+	private changeStatus(client: ApiUser, status: AccountStatus): void {
+		this._api.changeStatus(client.id, status).subscribe({
+			next: (updated) => {
+				this.clients.update((items) => items.map((c) => (c.id === updated.id ? updated : c)));
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+			},
+		});
+	}
+
+	private logAction(action: string, client: ApiUser): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Clients] ${action}`, client.id, client.fullName);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }

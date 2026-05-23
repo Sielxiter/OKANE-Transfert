@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
 	lucideBuilding2,
@@ -11,14 +11,16 @@ import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.co
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../shared/users-filters.component';
+import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../shared/users-placeholder-dialog.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
+	type AccountStatus,
 	type UserActionItem,
 } from '../shared/user-status.types';
-import { MANAGER_AGENCIES, MANAGERS_MOCK, type ManagerUser } from './managers.mock';
+import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 
 @Component({
 	selector: 'okane-admin-users-managers-page',
@@ -30,6 +32,7 @@ import { MANAGER_AGENCIES, MANAGERS_MOCK, type ManagerUser } from './managers.mo
 		UserStatusBadgeComponent,
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
+		UsersLoadingStateComponent,
 		UsersPlaceholderDialogComponent,
 	],
 	providers: [
@@ -61,12 +64,14 @@ import { MANAGER_AGENCIES, MANAGERS_MOCK, type ManagerUser } from './managers.mo
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Managers</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} manager{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} manager{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
 
-				@if (filtered().length === 0) {
+				@if (loading() || error()) {
+					<okane-users-loading-state [error]="error()" />
+				} @else if (filtered().length === 0) {
 					<okane-users-empty-state
 						title="Aucun manager ne correspond"
 						description="Modifiez les filtres pour voir d'autres managers."
@@ -97,32 +102,36 @@ import { MANAGER_AGENCIES, MANAGERS_MOCK, type ManagerUser } from './managers.mo
 												</div>
 												<div>
 													<p class="font-medium text-foreground">{{ manager.fullName }}</p>
-													<p class="text-xs text-muted-foreground">{{ manager.id }}</p>
+													<p class="text-xs text-muted-foreground">MG-{{ manager.id }}</p>
 												</div>
 											</div>
 										</td>
 										<td class="px-5 py-3 text-foreground">{{ manager.email }}</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ manager.phone }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ manager.phone || '—' }}</td>
 										<td class="px-5 py-3">
-											<div class="flex items-center gap-2 text-foreground">
-												<span
-													class="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-border"
-												>
-													<ng-icon name="lucideBuilding2" class="text-sm" />
-												</span>
-												<div class="leading-tight">
-													<p class="font-medium">{{ manager.agency.name }}</p>
-													<p class="font-mono text-xs text-muted-foreground">{{ manager.agency.code }}</p>
+											@if (manager.agencyName) {
+												<div class="flex items-center gap-2 text-foreground">
+													<span
+														class="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-border"
+													>
+														<ng-icon name="lucideBuilding2" class="text-sm" />
+													</span>
+													<div class="leading-tight">
+														<p class="font-medium">{{ manager.agencyName }}</p>
+														<p class="font-mono text-xs text-muted-foreground">{{ manager.agencyCode }}</p>
+													</div>
 												</div>
-											</div>
+											} @else {
+												<span class="text-xs text-muted-foreground">Non assignée</span>
+											}
 										</td>
 										<td class="px-5 py-3">
 											<okane-user-status-badge
-												[label]="accountLabel(manager.account)"
-												[variant]="accountVariant(manager.account)"
+												[label]="accountLabel(manager.accountStatus)"
+												[variant]="accountVariant(manager.accountStatus)"
 											/>
 										</td>
-										<td class="px-5 py-3 text-muted-foreground">{{ manager.lastLogin }}</td>
+										<td class="px-5 py-3 text-muted-foreground">{{ formatDate(manager.lastLoginAt) }}</td>
 										<td class="px-5 py-3 text-right">
 											<okane-user-actions-dropdown [actions]="actionsFor(manager)" />
 										</td>
@@ -142,55 +151,89 @@ import { MANAGER_AGENCIES, MANAGERS_MOCK, type ManagerUser } from './managers.mo
 		/>
 	`,
 })
-export class AdminUsersManagersPageComponent {
-	protected readonly total = MANAGERS_MOCK.length;
+export class AdminUsersManagersPageComponent implements OnInit {
+	private readonly _api = inject(AdminUsersApiService);
+
+	protected readonly managers = signal<ApiUser[]>([]);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly agency = signal<string>('all');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
 
-	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
-		{
-			key: 'agency',
-			label: 'Agence',
-			value: this.agency(),
-			options: [
-				{ value: 'all', label: 'Toutes les agences' },
-				...MANAGER_AGENCIES.map((a) => ({ value: a.code, label: a.name })),
-			],
-		},
-		{
-			key: 'account',
-			label: 'Compte',
-			value: this.account(),
-			options: [
-				{ value: 'all', label: 'Tous les statuts' },
-				{ value: 'ACTIVE', label: 'Actif' },
-				{ value: 'SUSPENDED', label: 'Suspendu' },
-				{ value: 'LOCKED', label: 'Verrouillé' },
-			],
-		},
-	]);
+	protected readonly total = computed(() => this.managers().length);
 
-	protected readonly filtered = computed<ManagerUser[]>(() => {
+	protected readonly filterDefs = computed<FilterDefinition[]>(() => {
+		const agencies = Array.from(
+			new Map(
+				this.managers()
+					.filter((m) => m.agencyCode && m.agencyName)
+					.map((m) => [m.agencyCode!, { code: m.agencyCode!, name: m.agencyName! }]),
+			).values(),
+		);
+
+		return [
+			{
+				key: 'agency',
+				label: 'Agence',
+				value: this.agency(),
+				options: [
+					{ value: 'all', label: 'Toutes les agences' },
+					...agencies.map((a) => ({ value: a.code, label: a.name })),
+				],
+			},
+			{
+				key: 'account',
+				label: 'Compte',
+				value: this.account(),
+				options: [
+					{ value: 'all', label: 'Tous les statuts' },
+					{ value: 'ACTIVE', label: 'Actif' },
+					{ value: 'SUSPENDED', label: 'Suspendu' },
+					{ value: 'LOCKED', label: 'Verrouillé' },
+				],
+			},
+		];
+	});
+
+	protected readonly filtered = computed<ApiUser[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const agency = this.agency();
 		const account = this.account();
 
-		return MANAGERS_MOCK.filter((m) => {
-			if (agency !== 'all' && m.agency.code !== agency) return false;
-			if (account !== 'all' && m.account !== account) return false;
+		return this.managers().filter((m) => {
+			if (agency !== 'all' && m.agencyCode !== agency) return false;
+			if (account !== 'all' && m.accountStatus !== account) return false;
 			if (!term) return true;
 			return (
 				m.fullName.toLowerCase().includes(term) ||
 				m.email.toLowerCase().includes(term) ||
-				m.phone.toLowerCase().includes(term) ||
-				m.agency.name.toLowerCase().includes(term) ||
-				m.id.toLowerCase().includes(term)
+				(m.phone ?? '').toLowerCase().includes(term) ||
+				(m.agencyName ?? '').toLowerCase().includes(term)
 			);
 		});
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.getManagers().subscribe({
+			next: (data) => {
+				this.managers.set(data);
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -217,28 +260,62 @@ export class AdminUsersManagersPageComponent {
 			.toUpperCase();
 	}
 
-	protected accountLabel(status: ManagerUser['account']): string {
+	protected formatDate(value: string | null): string {
+		if (!value) return 'Jamais';
+		return value.replace('T', ' ').slice(0, 16);
+	}
+
+	protected accountLabel(status: AccountStatus): string {
 		return ACCOUNT_LABELS[status];
 	}
 
-	protected accountVariant(status: ManagerUser['account']) {
+	protected accountVariant(status: AccountStatus) {
 		return ACCOUNT_VARIANTS[status];
 	}
 
-	protected actionsFor(manager: ManagerUser): UserActionItem[] {
-		const isActive = manager.account === 'ACTIVE';
+	protected actionsFor(manager: ApiUser): UserActionItem[] {
+		const isActive = manager.accountStatus === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', manager) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', manager) },
 			{ label: 'Voir agence', icon: 'lucideBuilding2', action: () => this.logAction('agency', manager) },
 			isActive
-				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.logAction('suspend', manager), variant: 'destructive' as const }
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate', manager) },
+				? {
+						label: 'Suspendre',
+						icon: 'lucidePowerOff',
+						action: () => this.changeStatus(manager, 'SUSPENDED'),
+						variant: 'destructive' as const,
+					}
+				: {
+						label: 'Activer',
+						icon: 'lucidePower',
+						action: () => this.changeStatus(manager, 'ACTIVE'),
+					},
 		];
 	}
 
-	private logAction(action: string, manager: ManagerUser): void {
+	private changeStatus(manager: ApiUser, status: AccountStatus): void {
+		this._api.changeStatus(manager.id, status).subscribe({
+			next: (updated) => {
+				this.managers.update((items) => items.map((m) => (m.id === updated.id ? updated : m)));
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+			},
+		});
+	}
+
+	private logAction(action: string, manager: ApiUser): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Managers] ${action}`, manager.id, manager.fullName);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }
