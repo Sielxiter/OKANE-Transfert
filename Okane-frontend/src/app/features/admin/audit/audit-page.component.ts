@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -23,19 +23,43 @@ import { UsersPlaceholderDialogComponent } from '../users/shared/users-placehold
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
 	AUDIT_KPIS,
-	AUDIT_LOGS_MOCK,
 	AUDIT_MODULE_LABELS,
 	AUDIT_RISK_LABELS,
 	AUDIT_RISK_VARIANTS,
 	AUDIT_ROLE_LABELS,
 	AUDIT_STATUS_LABELS,
 	AUDIT_STATUS_VARIANTS,
-	type AuditLog,
 	type AuditModule,
 	type AuditRiskLevel,
 	type AuditStatus,
 	type AuditUserRole,
 } from './audit.mock';
+import {
+	AdminAuditApiService,
+	type ApiAuditLog,
+	type ApiAuditModule,
+	type ApiAuditRisk,
+	type ApiAuditStatus,
+	type ApiAuditSummary,
+} from './admin-audit.api';
+
+/** Internal row shape used by the template (maps from ApiAuditLog). */
+interface AuditRow {
+	id: string;
+	timestamp: string;
+	user: {
+		id: string;
+		name: string;
+		email: string;
+		role: AuditUserRole;
+	};
+	action: string;
+	module: AuditModule;
+	target: string;
+	ipAddress: string;
+	status: AuditStatus;
+	risk: AuditRiskLevel;
+}
 
 @Component({
 	selector: 'okane-admin-audit-page',
@@ -78,6 +102,18 @@ import {
 				(addClicked)="openExport()"
 			/>
 
+			@if (error()) {
+				<div
+					class="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-destructive transition-colors"
+				>
+					<ng-icon name="lucideTriangleAlert" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Données partielles</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ error() }} — affichage avec valeurs par défaut.</p>
+					</div>
+				</div>
+			}
+
 			<section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				@for (kpi of kpiCards(); track kpi.key) {
 					<article
@@ -113,7 +149,7 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Journal d'audit</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} entrée{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} entrée{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
@@ -214,9 +250,15 @@ import {
 		/>
 	`,
 })
-export class AdminAuditPageComponent {
-	protected readonly total = AUDIT_LOGS_MOCK.length;
+export class AdminAuditPageComponent implements OnInit {
+	private readonly _api = inject(AdminAuditApiService);
 
+	// ─── API state ──────────────────────────────────────────────────────────────
+	protected readonly logs = signal<AuditRow[]>([]);
+	protected readonly summary = signal<ApiAuditSummary | null>(null);
+	protected readonly error = signal<string | null>(null);
+
+	// ─── Filters ────────────────────────────────────────────────────────────────
 	protected readonly search = signal<string>('');
 	protected readonly role = signal<string>('all');
 	protected readonly module = signal<string>('all');
@@ -224,8 +266,12 @@ export class AdminAuditPageComponent {
 	protected readonly risk = signal<string>('all');
 	protected readonly date = signal<string>('all');
 
+	// ─── Dialogs ────────────────────────────────────────────────────────────────
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly copyDialog = signal<boolean>(false);
+
+	// ─── Computed ───────────────────────────────────────────────────────────────
+	protected readonly total = computed(() => this.logs().length);
 
 	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
 		{
@@ -295,16 +341,16 @@ export class AdminAuditPageComponent {
 		},
 	]);
 
-	protected readonly filtered = computed<AuditLog[]>(() => {
+	protected readonly filtered = computed<AuditRow[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const role = this.role();
 		const module = this.module();
 		const status = this.status();
 		const risk = this.risk();
 		const date = this.date();
-		const now = new Date('2026-05-23T23:59:59');
+		const now = new Date();
 
-		return AUDIT_LOGS_MOCK.filter((l) => {
+		return this.logs().filter((l) => {
 			if (role !== 'all' && l.user.role !== role) return false;
 			if (module !== 'all' && l.module !== module) return false;
 			if (status !== 'all' && l.status !== status) return false;
@@ -330,55 +376,118 @@ export class AdminAuditPageComponent {
 	});
 
 	protected readonly kpiCards = computed(() => {
-		const today = '2026-05-23';
-		const todayCount = AUDIT_LOGS_MOCK.filter((l) => l.timestamp.startsWith(today)).length;
-		const loginFailed = AUDIT_LOGS_MOCK.filter(
-			(l) => l.module === 'AUTH' && (l.action === 'LOGIN_FAILED' || l.status !== 'SUCCESS'),
-		).length;
-		const sensitive = AUDIT_LOGS_MOCK.filter((l) =>
-			['USERS', 'AGENCIES', 'CURRENCY', 'FEES', 'SETTINGS'].includes(l.module),
-		).length;
-		const securityAlerts = AUDIT_LOGS_MOCK.filter(
-			(l) => l.status === 'BLOCKED' || l.status === 'FAILURE' || l.risk === 'CRITICAL',
-		).length;
-		const adminActions = AUDIT_LOGS_MOCK.filter((l) => l.user.role === 'ROLE_ADMIN').length;
-		const critical = AUDIT_LOGS_MOCK.filter((l) => l.risk === 'CRITICAL').length;
-
+		const s = this.summary();
 		const valueByKey: Record<string, { value: string; suffix: string }> = {
-			TODAY: { value: String(todayCount), suffix: 'événements' },
-			LOGIN_FAILED: { value: String(loginFailed), suffix: 'tentatives' },
-			SENSITIVE: { value: String(sensitive), suffix: 'modules sensibles' },
-			SECURITY_ALERTS: { value: String(securityAlerts), suffix: 'à analyser' },
-			ADMIN_ACTIONS: { value: String(adminActions), suffix: 'par les admins' },
-			CRITICAL: { value: String(critical), suffix: 'risque critique' },
+			TODAY: {
+				value: s ? String(s.actionsToday) : '—',
+				suffix: 'événements',
+			},
+			LOGIN_FAILED: {
+				value: s ? String(s.failedLogins) : '—',
+				suffix: 'tentatives',
+			},
+			SENSITIVE: {
+				value: s ? String(s.sensitiveChanges) : '—',
+				suffix: 'modules sensibles',
+			},
+			SECURITY_ALERTS: {
+				value: s ? String(s.securityAlerts) : '—',
+				suffix: 'à analyser',
+			},
+			ADMIN_ACTIONS: {
+				value: s ? String(s.adminActions) : '—',
+				suffix: 'par les admins',
+			},
+			CRITICAL: {
+				value: s ? String(s.criticalLogs) : '—',
+				suffix: 'risque critique',
+			},
 		};
 		return AUDIT_KPIS.map((kpi) => ({ ...kpi, ...valueByKey[kpi.key] }));
 	});
 
+	// ─── Lifecycle ──────────────────────────────────────────────────────────────
+	public ngOnInit(): void {
+		this.loadAll();
+	}
+
+	private loadAll(): void {
+		this.error.set(null);
+
+		this._api.listLogs().subscribe({
+			next: (rows) => this.logs.set(rows.map((r) => this.toRow(r))),
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+
+		this._api.getSummary().subscribe({
+			next: (data) => this.summary.set(data),
+			error: () => this.summary.set(null),
+		});
+	}
+
+	// ─── Mapping ────────────────────────────────────────────────────────────────
+	private toRow(api: ApiAuditLog): AuditRow {
+		return {
+			id: 'LOG-' + api.id,
+			timestamp: api.createdAt ?? '—',
+			user: {
+				id: api.actorId ?? 'SYS',
+				name: api.actorName ?? 'Système',
+				email: api.actorEmail ?? 'system@okane.local',
+				role: this.mapRole(api.actorRole),
+			},
+			action: api.action ?? '—',
+			module: this.mapModule(api.module),
+			target: api.target ?? '—',
+			ipAddress: api.ipAddress ?? '—',
+			status: this.mapStatus(api.status),
+			risk: this.mapRisk(api.riskLevel),
+		};
+	}
+
+	private mapRole(role: string | null | undefined): AuditUserRole {
+		const valid: AuditUserRole[] = ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_AGENT', 'ROLE_CLIENT', 'SYSTEM'];
+		return valid.includes(role as AuditUserRole) ? (role as AuditUserRole) : 'SYSTEM';
+	}
+
+	private mapModule(module: ApiAuditModule | null | undefined): AuditModule {
+		const valid: AuditModule[] = [
+			'AUTH', 'USERS', 'AGENCIES', 'TRANSFERS', 'PAYMENTS',
+			'CURRENCY', 'FEES', 'COMPLIANCE', 'REPORTS', 'SETTINGS',
+		];
+		return valid.includes(module as AuditModule) ? (module as AuditModule) : 'AUTH';
+	}
+
+	private mapStatus(status: ApiAuditStatus | null | undefined): AuditStatus {
+		const valid: AuditStatus[] = ['SUCCESS', 'FAILURE', 'BLOCKED'];
+		return valid.includes(status as AuditStatus) ? (status as AuditStatus) : 'SUCCESS';
+	}
+
+	private mapRisk(risk: ApiAuditRisk | null | undefined): AuditRiskLevel {
+		const valid: AuditRiskLevel[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+		return valid.includes(risk as AuditRiskLevel) ? (risk as AuditRiskLevel) : 'LOW';
+	}
+
+	// ─── Filter handler ─────────────────────────────────────────────────────────
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
-			case 'role':
-				this.role.set(change.value);
-				break;
-			case 'module':
-				this.module.set(change.value);
-				break;
-			case 'status':
-				this.status.set(change.value);
-				break;
-			case 'risk':
-				this.risk.set(change.value);
-				break;
-			case 'date':
-				this.date.set(change.value);
-				break;
+			case 'role': this.role.set(change.value); break;
+			case 'module': this.module.set(change.value); break;
+			case 'status': this.status.set(change.value); break;
+			case 'risk': this.risk.set(change.value); break;
+			case 'date': this.date.set(change.value); break;
 		}
 	}
 
+	// ─── Export ─────────────────────────────────────────────────────────────────
 	protected openExport(): void {
-		this.exportDialog.set(true);
+		this._api.exportLogs().subscribe({
+			next: () => this.exportDialog.set(true),
+			error: () => this.exportDialog.set(true),
+		});
 	}
 
+	// ─── Label helpers ───────────────────────────────────────────────────────────
 	protected initials(name: string): string {
 		return name
 			.split(' ')
@@ -413,9 +522,18 @@ export class AdminAuditPageComponent {
 		return AUDIT_RISK_VARIANTS[risk];
 	}
 
-	protected logActions(log: AuditLog): UserActionItem[] {
+	// ─── Row actions ─────────────────────────────────────────────────────────────
+	protected logActions(log: AuditRow): UserActionItem[] {
+		const numId = Number(log.id.replace('LOG-', ''));
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', log.id) },
+			{
+				label: 'Voir détails',
+				icon: 'lucideEye',
+				action: () => this._api.getLog(numId).subscribe({
+					next: () => this.logAction('view', log.id),
+					error: () => this.logAction('view-error', log.id),
+				}),
+			},
 			{
 				label: 'Copier ID log',
 				icon: 'lucideClipboardCopy',
@@ -441,5 +559,14 @@ export class AdminAuditPageComponent {
 	private logAction(action: string, ref: string): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Audit] ${action}`, ref);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const e = err as { error?: { message?: string }; message?: string };
+			return e.error?.message ?? e.message ?? fallback;
+		}
+		return fallback;
 	}
 }

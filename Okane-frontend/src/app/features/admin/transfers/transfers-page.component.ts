@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -11,6 +11,7 @@ import {
 	lucideHourglass,
 	lucideReceipt,
 	lucideShieldAlert,
+	lucideTriangleAlert,
 	lucideXCircle,
 } from '@ng-icons/lucide';
 import { UserActionsDropdownComponent } from '../users/shared/user-actions-dropdown.component';
@@ -21,15 +22,37 @@ import { UsersPageHeaderComponent } from '../users/shared/users-page-header.comp
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
-	TRANSFER_AGENTS,
+	resolveCountry,
 	TRANSFER_COUNTRIES,
 	TRANSFER_KPIS,
-	TRANSFERS_MOCK,
 	TRANSFER_STATUS_LABELS,
 	TRANSFER_STATUS_VARIANTS,
-	type Transfer,
+	type CountryRef,
 	type TransferStatus,
 } from './transfers.mock';
+import {
+	AdminTransfersApiService,
+	type ApiTransfer,
+} from './admin-transfers.api';
+
+interface TransferRow {
+	id: number;
+	reference: string;
+	withdrawalCode: string;
+	senderName: string;
+	beneficiaryName: string;
+	amount: number;
+	currency: string;
+	sourceCountry: CountryRef;
+	destinationCountry: CountryRef;
+	fees: number;
+	status: TransferStatus;
+	createdAt: string;
+	createdAtRaw: string | null;
+	agentName: string;
+	agentId: string;
+	agentNumericId: number | null;
+}
 
 @Component({
 	selector: 'okane-admin-transfers-page',
@@ -55,6 +78,7 @@ import {
 			lucideHourglass,
 			lucideReceipt,
 			lucideShieldAlert,
+			lucideTriangleAlert,
 			lucideXCircle,
 		}),
 	],
@@ -70,6 +94,18 @@ import {
 				actionVariant="outline"
 				(addClicked)="openExportDialog()"
 			/>
+
+			@if (error()) {
+				<div
+					class="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-destructive transition-colors"
+				>
+					<ng-icon name="lucideTriangleAlert" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Données partielles</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ error() }} — affichage avec valeurs par défaut.</p>
+					</div>
+				</div>
+			}
 
 			<section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				@for (kpi of kpiCards(); track kpi.key) {
@@ -108,7 +144,7 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Transferts</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} transfert{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} transfert{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
@@ -204,8 +240,12 @@ import {
 		/>
 	`,
 })
-export class AdminTransfersPageComponent {
-	protected readonly total = TRANSFERS_MOCK.length;
+export class AdminTransfersPageComponent implements OnInit {
+	private readonly _api = inject(AdminTransfersApiService);
+
+	protected readonly transfers = signal<TransferRow[]>([]);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly status = signal<string>('all');
@@ -218,73 +258,85 @@ export class AdminTransfersPageComponent {
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly cancelDialog = signal<boolean>(false);
 
-	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
-		{
-			key: 'status',
-			label: 'Statut',
-			value: this.status(),
-			options: [
-				{ value: 'all', label: 'Tous statuts' },
-				{ value: 'EN_ATTENTE', label: 'En attente' },
-				{ value: 'PAYE', label: 'Payé' },
-				{ value: 'ANNULE', label: 'Annulé' },
-				{ value: 'EXPIRE', label: 'Expiré' },
-				{ value: 'SUSPECT', label: 'Suspect' },
-			],
-		},
-		{
-			key: 'source',
-			label: 'Source',
-			value: this.source(),
-			options: [
-				{ value: 'all', label: 'Tous pays source' },
-				...TRANSFER_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
-			],
-		},
-		{
-			key: 'destination',
-			label: 'Destination',
-			value: this.destination(),
-			options: [
-				{ value: 'all', label: 'Tous pays dest.' },
-				...TRANSFER_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
-			],
-		},
-		{
-			key: 'currency',
-			label: 'Devise',
-			value: this.currency(),
-			options: [
-				{ value: 'all', label: 'Toutes devises' },
-				{ value: 'MAD', label: 'MAD' },
-				{ value: 'EUR', label: 'EUR' },
-				{ value: 'USD', label: 'USD' },
-				{ value: 'XOF', label: 'XOF' },
-			],
-		},
-		{
-			key: 'date',
-			label: 'Date',
-			value: this.date(),
-			options: [
-				{ value: 'all', label: 'Toutes dates' },
-				{ value: 'today', label: "Aujourd'hui" },
-				{ value: 'week', label: '7 derniers jours' },
-				{ value: 'month', label: '30 derniers jours' },
-			],
-		},
-		{
-			key: 'agent',
-			label: 'Agent',
-			value: this.agent(),
-			options: [
-				{ value: 'all', label: 'Tous agents' },
-				...TRANSFER_AGENTS.map((a) => ({ value: a.id, label: a.name })),
-			],
-		},
-	]);
+	protected readonly total = computed(() => this.transfers().length);
 
-	protected readonly filtered = computed<Transfer[]>(() => {
+	protected readonly filterDefs = computed<FilterDefinition[]>(() => {
+		const agents = Array.from(
+			new Map(
+				this.transfers()
+					.filter((t) => t.agentNumericId != null)
+					.map((t) => [t.agentNumericId!, { id: t.agentNumericId!, name: t.agentName }]),
+			).values(),
+		);
+
+		return [
+			{
+				key: 'status',
+				label: 'Statut',
+				value: this.status(),
+				options: [
+					{ value: 'all', label: 'Tous statuts' },
+					{ value: 'EN_ATTENTE', label: 'En attente' },
+					{ value: 'PAYE', label: 'Payé' },
+					{ value: 'ANNULE', label: 'Annulé' },
+					{ value: 'EXPIRE', label: 'Expiré' },
+					{ value: 'SUSPECT', label: 'Suspect' },
+				],
+			},
+			{
+				key: 'source',
+				label: 'Source',
+				value: this.source(),
+				options: [
+					{ value: 'all', label: 'Tous pays source' },
+					...TRANSFER_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
+				],
+			},
+			{
+				key: 'destination',
+				label: 'Destination',
+				value: this.destination(),
+				options: [
+					{ value: 'all', label: 'Tous pays dest.' },
+					...TRANSFER_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
+				],
+			},
+			{
+				key: 'currency',
+				label: 'Devise',
+				value: this.currency(),
+				options: [
+					{ value: 'all', label: 'Toutes devises' },
+					{ value: 'MAD', label: 'MAD' },
+					{ value: 'EUR', label: 'EUR' },
+					{ value: 'USD', label: 'USD' },
+					{ value: 'XOF', label: 'XOF' },
+				],
+			},
+			{
+				key: 'date',
+				label: 'Date',
+				value: this.date(),
+				options: [
+					{ value: 'all', label: 'Toutes dates' },
+					{ value: 'today', label: "Aujourd'hui" },
+					{ value: 'week', label: '7 derniers jours' },
+					{ value: 'month', label: '30 derniers jours' },
+				],
+			},
+			{
+				key: 'agent',
+				label: 'Agent',
+				value: this.agent(),
+				options: [
+					{ value: 'all', label: 'Tous agents' },
+					...agents.map((a) => ({ value: String(a.id), label: a.name })),
+				],
+			},
+		];
+	});
+
+	protected readonly filtered = computed<TransferRow[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const status = this.status();
 		const source = this.source();
@@ -292,17 +344,18 @@ export class AdminTransfersPageComponent {
 		const currency = this.currency();
 		const date = this.date();
 		const agent = this.agent();
-		const now = new Date('2026-05-22T23:59:59');
+		const now = Date.now();
 
-		return TRANSFERS_MOCK.filter((t) => {
+		return this.transfers().filter((t) => {
 			if (status !== 'all' && t.status !== status) return false;
 			if (source !== 'all' && t.sourceCountry.code !== source) return false;
 			if (dest !== 'all' && t.destinationCountry.code !== dest) return false;
 			if (currency !== 'all' && t.currency !== currency) return false;
-			if (agent !== 'all' && t.agentId !== agent) return false;
-			if (date !== 'all') {
-				const created = new Date(t.createdAt.replace(' ', 'T'));
-				const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+			if (agent !== 'all' && t.agentNumericId !== Number(agent)) return false;
+			if (date !== 'all' && t.createdAtRaw) {
+				const created = new Date(t.createdAtRaw).getTime();
+				if (!Number.isFinite(created)) return true;
+				const diffDays = (now - created) / (1000 * 60 * 60 * 24);
 				if (date === 'today' && diffDays > 1) return false;
 				if (date === 'week' && diffDays > 7) return false;
 				if (date === 'month' && diffDays > 30) return false;
@@ -326,8 +379,8 @@ export class AdminTransfersPageComponent {
 			EXPIRE: 0,
 			SUSPECT: 0,
 		};
-		for (const t of TRANSFERS_MOCK) counts[t.status]++;
-		const total = TRANSFERS_MOCK.length;
+		for (const t of this.transfers()) counts[t.status]++;
+		const total = this.transfers().length;
 		const pct = (n: number) => (total === 0 ? '0%' : `${Math.round((n / total) * 100)}%`);
 
 		return TRANSFER_KPIS.map((kpi) => ({
@@ -336,6 +389,47 @@ export class AdminTransfersPageComponent {
 			share: kpi.key === 'TOTAL' ? '100%' : pct(counts[kpi.key]),
 		}));
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.list().subscribe({
+			next: (rows) => {
+				this.transfers.set(rows.map((row) => this.toRow(row)));
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+	}
+
+	private toRow(api: ApiTransfer): TransferRow {
+		const agentName = api.agentName ?? 'Système';
+		return {
+			id: api.id,
+			reference: api.reference ?? '—',
+			withdrawalCode: api.withdrawalCode ?? '—',
+			senderName: api.senderFullName ?? '—',
+			beneficiaryName: api.beneficiaryFullName ?? '—',
+			amount: Number(api.amount ?? 0),
+			currency: api.currency ?? '—',
+			sourceCountry: resolveCountry(api.sourceCountry),
+			destinationCountry: resolveCountry(api.destinationCountry),
+			fees: Number(api.fees ?? 0),
+			status: api.status,
+			createdAt: this.formatTimestamp(api.createdAt),
+			createdAtRaw: api.createdAt,
+			agentName,
+			agentId: api.agentId != null ? `AG-${api.agentId}` : '—',
+			agentNumericId: api.agentId,
+		};
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -376,7 +470,7 @@ export class AdminTransfersPageComponent {
 		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
 	}
 
-	protected actionsFor(transfer: Transfer): UserActionItem[] {
+	protected actionsFor(transfer: TransferRow): UserActionItem[] {
 		const canCancel = transfer.status === 'EN_ATTENTE' || transfer.status === 'SUSPECT';
 		const isSuspect = transfer.status === 'SUSPECT';
 		return [
@@ -388,7 +482,7 @@ export class AdminTransfersPageComponent {
 						{
 							label: 'Marquer suspect',
 							icon: 'lucideShieldAlert',
-							action: () => this.logAction('flag', transfer),
+							action: () => this.markSuspect(transfer),
 						},
 					]),
 			{ label: 'Voir audit', icon: 'lucideClipboardList', action: () => this.logAction('audit', transfer) },
@@ -405,8 +499,34 @@ export class AdminTransfersPageComponent {
 		];
 	}
 
-	private logAction(action: string, transfer: Transfer): void {
+	private markSuspect(transfer: TransferRow): void {
+		this._api.markSuspect(transfer.id).subscribe({
+			next: (updated) => {
+				const row = this.toRow(updated);
+				this.transfers.update((items) => items.map((t) => (t.id === row.id ? row : t)));
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+			},
+		});
+	}
+
+	private logAction(action: string, transfer: TransferRow): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Transfers] ${action}`, transfer.reference);
+	}
+
+	private formatTimestamp(value: string | null): string {
+		if (!value) return '—';
+		return value.replace('T', ' ').slice(0, 16);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }

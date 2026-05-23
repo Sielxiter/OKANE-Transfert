@@ -11,9 +11,10 @@ import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.co
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../shared/users-filters.component';
+import { UsersFormDialogComponent } from '../shared/users-form-dialog.component';
 import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
-import { UsersPlaceholderDialogComponent } from '../shared/users-placeholder-dialog.component';
+import { UserCreateFormComponent } from '../shared/user-create-form.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
@@ -33,7 +34,8 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
 		UsersLoadingStateComponent,
-		UsersPlaceholderDialogComponent,
+		UsersFormDialogComponent,
+		UserCreateFormComponent,
 	],
 	providers: [
 		provideIcons({ lucideBuilding2, lucideEye, lucidePencil, lucidePower, lucidePowerOff }),
@@ -144,11 +146,19 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 			</section>
 		</div>
 
-		<okane-users-placeholder-dialog
+		<okane-users-form-dialog
 			[open]="dialogOpen()"
 			title="Ajouter un manager"
+			subtitle="Créer un nouveau compte ROLE_MANAGER. L'agence peut être assignée plus tard."
+			icon="lucideBuilding2"
 			(close)="dialogOpen.set(false)"
-		/>
+		>
+			<okane-user-create-form
+				variant="MANAGER"
+				(created)="onUserCreated($event)"
+				(cancelled)="dialogOpen.set(false)"
+			/>
+		</okane-users-form-dialog>
 	`,
 })
 export class AdminUsersManagersPageComponent implements OnInit {
@@ -248,6 +258,11 @@ export class AdminUsersManagersPageComponent implements OnInit {
 
 	protected openDialog(): void {
 		this.dialogOpen.set(true);
+	}
+
+	protected onUserCreated(user: ApiUser): void {
+		this.managers.update((items) => [user, ...items]);
+		this.dialogOpen.set(false);
 	}
 
 	protected initials(name: string): string {

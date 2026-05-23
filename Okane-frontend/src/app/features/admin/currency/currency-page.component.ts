@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -14,32 +14,69 @@ import {
 	lucidePowerOff,
 	lucideTrendingDown,
 	lucideTrendingUp,
+	lucideTriangleAlert,
 } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { UserActionsDropdownComponent } from '../users/shared/user-actions-dropdown.component';
 import { UserStatusBadgeComponent } from '../users/shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
+import { UsersFormDialogComponent } from '../users/shared/users-form-dialog.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { CurrencyCreateFormComponent } from './currency-create-form.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
-	CORRIDOR_DEST_COUNTRIES,
-	CORRIDOR_SOURCE_COUNTRIES,
 	CORRIDOR_STATUS_LABELS,
 	CORRIDOR_STATUS_VARIANTS,
-	CORRIDORS_MOCK,
-	CURRENCIES_MOCK,
-	CURRENCY_COUNTRIES,
 	CURRENCY_KPIS,
 	CURRENCY_STATUS_LABELS,
 	CURRENCY_STATUS_VARIANTS,
-	FX_HISTORY_MOCK,
-	type Corridor,
 	type CorridorStatus,
-	type Currency,
 	type CurrencyStatus,
 } from './currency.mock';
+import {
+	AdminCurrencyApiService,
+	type ApiCorridor,
+	type ApiCurrency,
+	type ApiCurrencyStatus,
+	type ApiCurrencySummary,
+	type ApiExchangeRateHistory,
+} from './admin-currency.api';
+
+interface CurrencyRow {
+	id: number;
+	code: string;
+	name: string;
+	symbol: string;
+	mainCountry: string;
+	mainCountryCode: string;
+	rateToMad: number;
+	status: CurrencyStatus;
+	updatedAt: string;
+}
+
+interface CorridorRow {
+	id: string;
+	rawId: number;
+	sourceCountry: string;
+	sourceCountryCode: string;
+	destCountry: string;
+	destCountryCode: string;
+	sourceCurrency: string;
+	destCurrency: string;
+	estimatedFee: string;
+	status: CorridorStatus;
+}
+
+interface FxHistoryRow {
+	id: string;
+	currency: string;
+	previousRate: number;
+	newRate: number;
+	changedAt: string;
+	changedBy: string;
+}
 
 @Component({
 	selector: 'okane-admin-currency-page',
@@ -53,7 +90,9 @@ import {
 		UserStatusBadgeComponent,
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
+		UsersFormDialogComponent,
 		UsersPlaceholderDialogComponent,
+		CurrencyCreateFormComponent,
 	],
 	providers: [
 		provideIcons({
@@ -69,6 +108,7 @@ import {
 			lucidePowerOff,
 			lucideTrendingDown,
 			lucideTrendingUp,
+			lucideTriangleAlert,
 		}),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
@@ -93,6 +133,18 @@ import {
 					Exporter
 				</button>
 			</okane-users-page-header>
+
+			@if (error()) {
+				<div
+					class="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-destructive transition-colors"
+				>
+					<ng-icon name="lucideTriangleAlert" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Données partielles</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ error() }} — affichage avec valeurs par défaut.</p>
+					</div>
+				</div>
+			}
 
 			<section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 				@for (kpi of kpiCards(); track kpi.key) {
@@ -131,7 +183,7 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Devises</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filteredCurrencies().length }} sur {{ totalCurrencies }} devise{{ totalCurrencies > 1 ? 's' : '' }}
+							{{ filteredCurrencies().length }} sur {{ totalCurrencies() }} devise{{ totalCurrencies() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
@@ -204,7 +256,7 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Corridors de transfert</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filteredCorridors().length }} sur {{ totalCorridors }} corridor{{ totalCorridors > 1 ? 's' : '' }}
+							{{ filteredCorridors().length }} sur {{ totalCorridors() }} corridor{{ totalCorridors() > 1 ? 's' : '' }}
 						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -224,7 +276,7 @@ import {
 							(change)="corSource.set(asValue($event))"
 						>
 							<option value="all">Tous pays source</option>
-							@for (c of corridorSourceOptions; track c.code) {
+							@for (c of corridorSourceOptions(); track c.code) {
 								<option [value]="c.code">{{ c.label }}</option>
 							}
 						</select>
@@ -234,7 +286,7 @@ import {
 							(change)="corDest.set(asValue($event))"
 						>
 							<option value="all">Tous pays dest.</option>
-							@for (c of corridorDestOptions; track c.code) {
+							@for (c of corridorDestOptions(); track c.code) {
 								<option [value]="c.code">{{ c.label }}</option>
 							}
 						</select>
@@ -294,13 +346,13 @@ import {
 				<div class="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Historique des taux</h2>
-						<p class="text-xs text-muted-foreground">Dernières mises à jour FX (mock).</p>
+						<p class="text-xs text-muted-foreground">Dernières mises à jour FX.</p>
 					</div>
 					<span
 						class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
 					>
 						<ng-icon name="lucideHistory" class="text-xs" />
-						{{ fxHistory.length }} entrée{{ fxHistory.length > 1 ? 's' : '' }}
+						{{ fxHistory().length }} entrée{{ fxHistory().length > 1 ? 's' : '' }}
 					</span>
 				</div>
 
@@ -317,7 +369,7 @@ import {
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border">
-							@for (entry of fxHistory; track entry.id) {
+							@for (entry of fxHistory(); track entry.id) {
 								<tr class="transition-colors hover:bg-accent/40">
 									<td class="px-5 py-3">
 										<span
@@ -353,11 +405,18 @@ import {
 			</section>
 		</div>
 
-		<okane-users-placeholder-dialog
+		<okane-users-form-dialog
 			[open]="addCurrencyDialog()"
 			title="Ajouter une devise"
+			subtitle="Définir une nouvelle devise et son taux de change initial vers le MAD."
+			icon="lucideCoins"
 			(close)="addCurrencyDialog.set(false)"
-		/>
+		>
+			<okane-currency-create-form
+				(created)="onCurrencyCreated($event)"
+				(cancelled)="addCurrencyDialog.set(false)"
+			/>
+		</okane-users-form-dialog>
 		<okane-users-placeholder-dialog
 			[open]="exportDialog()"
 			title="Exporter les devises et taux"
@@ -370,12 +429,14 @@ import {
 		/>
 	`,
 })
-export class AdminCurrencyPageComponent {
-	protected readonly totalCurrencies = CURRENCIES_MOCK.length;
-	protected readonly totalCorridors = CORRIDORS_MOCK.length;
-	protected readonly fxHistory = FX_HISTORY_MOCK;
-	protected readonly corridorSourceOptions = CORRIDOR_SOURCE_COUNTRIES;
-	protected readonly corridorDestOptions = CORRIDOR_DEST_COUNTRIES;
+export class AdminCurrencyPageComponent implements OnInit {
+	private readonly _api = inject(AdminCurrencyApiService);
+
+	protected readonly currencies = signal<CurrencyRow[]>([]);
+	protected readonly corridors = signal<CorridorRow[]>([]);
+	protected readonly fxHistory = signal<FxHistoryRow[]>([]);
+	protected readonly summary = signal<ApiCurrencySummary | null>(null);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly ccySearch = signal<string>('');
 	protected readonly ccyStatus = signal<string>('all');
@@ -388,6 +449,39 @@ export class AdminCurrencyPageComponent {
 	protected readonly addCurrencyDialog = signal<boolean>(false);
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly corridorDialog = signal<boolean>(false);
+
+	protected readonly totalCurrencies = computed(() => this.currencies().length);
+	protected readonly totalCorridors = computed(() => this.corridors().length);
+
+	protected readonly currencyCountryOptions = computed(() =>
+		Array.from(
+			new Map(
+				this.currencies()
+					.filter((c) => c.mainCountryCode && c.mainCountry)
+					.map((c) => [c.mainCountryCode, { code: c.mainCountryCode, label: c.mainCountry }]),
+			).values(),
+		),
+	);
+
+	protected readonly corridorSourceOptions = computed(() =>
+		Array.from(
+			new Map(
+				this.corridors()
+					.filter((c) => c.sourceCountryCode && c.sourceCountry)
+					.map((c) => [c.sourceCountryCode, { code: c.sourceCountryCode, label: c.sourceCountry }]),
+			).values(),
+		),
+	);
+
+	protected readonly corridorDestOptions = computed(() =>
+		Array.from(
+			new Map(
+				this.corridors()
+					.filter((c) => c.destCountryCode && c.destCountry)
+					.map((c) => [c.destCountryCode, { code: c.destCountryCode, label: c.destCountry }]),
+			).values(),
+		),
+	);
 
 	protected readonly ccyFilterDefs = computed<FilterDefinition[]>(() => [
 		{
@@ -406,17 +500,17 @@ export class AdminCurrencyPageComponent {
 			value: this.ccyCountry(),
 			options: [
 				{ value: 'all', label: 'Tous pays' },
-				...CURRENCY_COUNTRIES.map((c) => ({ value: c.code, label: c.label })),
+				...this.currencyCountryOptions().map((c) => ({ value: c.code, label: c.label })),
 			],
 		},
 	]);
 
-	protected readonly filteredCurrencies = computed<Currency[]>(() => {
+	protected readonly filteredCurrencies = computed<CurrencyRow[]>(() => {
 		const term = this.ccySearch().trim().toLowerCase();
 		const status = this.ccyStatus();
 		const country = this.ccyCountry();
 
-		return CURRENCIES_MOCK.filter((c) => {
+		return this.currencies().filter((c) => {
 			if (status !== 'all' && c.status !== status) return false;
 			if (country !== 'all' && c.mainCountryCode !== country) return false;
 			if (!term) return true;
@@ -428,11 +522,11 @@ export class AdminCurrencyPageComponent {
 		});
 	});
 
-	protected readonly filteredCorridors = computed<Corridor[]>(() => {
+	protected readonly filteredCorridors = computed<CorridorRow[]>(() => {
 		const status = this.corStatus();
 		const source = this.corSource();
 		const dest = this.corDest();
-		return CORRIDORS_MOCK.filter((c) => {
+		return this.corridors().filter((c) => {
 			if (status !== 'all' && c.status !== status) return false;
 			if (source !== 'all' && c.sourceCountryCode !== source) return false;
 			if (dest !== 'all' && c.destCountryCode !== dest) return false;
@@ -441,21 +535,119 @@ export class AdminCurrencyPageComponent {
 	});
 
 	protected readonly kpiCards = computed(() => {
-		const today = '2026-05-23';
-		const activeCcy = CURRENCIES_MOCK.filter((c) => c.status === 'ACTIVE').length;
-		const suspendedCcy = CURRENCIES_MOCK.filter((c) => c.status === 'SUSPENDED').length;
-		const activeCor = CORRIDORS_MOCK.filter((c) => c.status === 'ACTIVE').length;
-		const todayRates = CURRENCIES_MOCK.filter((c) => c.updatedAt.startsWith(today)).length;
-		const lastSync = CURRENCIES_MOCK.map((c) => c.updatedAt).sort().reverse()[0] ?? '—';
+		const summary = this.summary();
+		const fallbackActive = this.currencies().filter((c) => c.status === 'ACTIVE').length;
+		const fallbackSuspended = this.currencies().filter((c) => c.status === 'SUSPENDED').length;
+		const fallbackActiveCorridors = this.corridors().filter((c) => c.status === 'ACTIVE').length;
+		const lastSyncRaw = summary?.lastSyncAt ?? null;
+		const lastSyncDisplay = lastSyncRaw
+			? lastSyncRaw.replace('T', ' ').slice(0, 16)
+			: this.fxHistory()[0]?.changedAt ?? '—';
+
 		const valueByKey: Record<string, { value: string; suffix: string }> = {
-			ACTIVE_CCY: { value: String(activeCcy), suffix: `sur ${CURRENCIES_MOCK.length}` },
-			ACTIVE_COR: { value: String(activeCor), suffix: `sur ${CORRIDORS_MOCK.length}` },
-			TODAY_RATES: { value: String(todayRates), suffix: 'aujourd\u2019hui' },
-			SUSPENDED_CCY: { value: String(suspendedCcy), suffix: 'devise(s)' },
-			LAST_SYNC: { value: lastSync, suffix: 'mock' },
+			ACTIVE_CCY: {
+				value: String(summary?.activeCurrencies ?? fallbackActive),
+				suffix: `sur ${this.currencies().length}`,
+			},
+			ACTIVE_COR: {
+				value: String(summary?.activeCorridors ?? fallbackActiveCorridors),
+				suffix: `sur ${this.corridors().length}`,
+			},
+			TODAY_RATES: {
+				value: String(summary?.ratesUpdatedToday ?? 0),
+				suffix: 'aujourd\u2019hui',
+			},
+			SUSPENDED_CCY: {
+				value: String(summary?.suspendedCurrencies ?? fallbackSuspended),
+				suffix: 'devise(s)',
+			},
+			LAST_SYNC: {
+				value: lastSyncDisplay,
+				suffix: 'dernière MAJ',
+			},
 		};
 		return CURRENCY_KPIS.map((kpi) => ({ ...kpi, ...valueByKey[kpi.key] }));
 	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.error.set(null);
+		this._api.listCurrencies().subscribe({
+			next: (rows) => this.currencies.set(rows.map((row) => this.toCurrencyRow(row))),
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+		this._api.listCorridors().subscribe({
+			next: (rows) => this.corridors.set(rows.map((row) => this.toCorridorRow(row))),
+			error: () => {
+				// non-fatal: corridors block falls back to empty list + empty state
+			},
+		});
+		this._api.getRateHistory().subscribe({
+			next: (rows) => this.fxHistory.set(rows.map((row) => this.toHistoryRow(row))),
+			error: () => {
+				// non-fatal: history block falls back to empty list
+			},
+		});
+		this._api.getSummary().subscribe({
+			next: (data) => this.summary.set(data),
+			error: () => this.summary.set(null),
+		});
+	}
+
+	private toCurrencyRow(api: ApiCurrency): CurrencyRow {
+		return {
+			id: api.id,
+			code: api.code,
+			name: api.name,
+			symbol: api.symbol ?? '—',
+			mainCountry: api.mainCountry ?? '—',
+			mainCountryCode: api.mainCountryCode ?? '',
+			rateToMad: Number(api.rateToMad ?? 0),
+			status: api.status,
+			updatedAt: this.formatTimestamp(api.lastUpdatedAt),
+		};
+	}
+
+	private toCorridorRow(api: ApiCorridor): CorridorRow {
+		return {
+			id: `COR-${api.id}`,
+			rawId: api.id,
+			sourceCountry: api.sourceCountry ?? '—',
+			sourceCountryCode: api.sourceCountryCode ?? '',
+			destCountry: api.destinationCountry ?? '—',
+			destCountryCode: api.destinationCountryCode ?? '',
+			sourceCurrency: api.sourceCurrency ?? '—',
+			destCurrency: api.destinationCurrency ?? '—',
+			estimatedFee: this.formatPercent(api.estimatedFees),
+			status: this.toCorridorStatus(api.status),
+		};
+	}
+
+	private toHistoryRow(api: ApiExchangeRateHistory): FxHistoryRow {
+		return {
+			id: `FX-${api.id}`,
+			currency: api.currencyCode ?? '—',
+			previousRate: Number(api.oldRate ?? 0),
+			newRate: Number(api.newRate ?? 0),
+			changedAt: this.formatTimestamp(api.changedAt),
+			changedBy: api.changedByName ?? 'Système',
+		};
+	}
+
+	private toCorridorStatus(api: ApiCorridor['status']): CorridorStatus {
+		switch (api) {
+			case 'ACTIVE':
+				return 'ACTIVE';
+			case 'UNDER_REVIEW':
+				return 'IN_REVIEW';
+			case 'DISABLED':
+			default:
+				return 'DISABLED';
+		}
+	}
 
 	protected onCcyFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -474,6 +666,17 @@ export class AdminCurrencyPageComponent {
 
 	protected openAddCurrency(): void {
 		this.addCurrencyDialog.set(true);
+	}
+
+	protected onCurrencyCreated(currency: ApiCurrency): void {
+		const row = this.toCurrencyRow(currency);
+		this.currencies.update((items) => [row, ...items.filter((c) => c.id !== row.id)]);
+		this.addCurrencyDialog.set(false);
+		// Refresh summary so the KPI card "Devises actives / suspendues" reflects the new entry.
+		this._api.getSummary().subscribe({
+			next: (data) => this.summary.set(data),
+			error: () => {},
+		});
 	}
 
 	protected openExport(): void {
@@ -512,24 +715,32 @@ export class AdminCurrencyPageComponent {
 		}).format(delta);
 	}
 
-	protected currencyActions(currency: Currency): UserActionItem[] {
+	protected currencyActions(currency: CurrencyRow): UserActionItem[] {
 		const isActive = currency.status === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view-ccy', currency.code) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.viewDetails(currency) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit-ccy', currency.code) },
-			{ label: 'Voir historique', icon: 'lucideHistory', action: () => this.logAction('history-ccy', currency.code) },
+			{
+				label: 'Voir historique',
+				icon: 'lucideHistory',
+				action: () => this.viewHistory(currency),
+			},
 			isActive
 				? {
 						label: 'Suspendre',
 						icon: 'lucidePowerOff',
-						action: () => this.logAction('suspend-ccy', currency.code),
+						action: () => this.changeStatus(currency, 'SUSPENDED'),
 						variant: 'destructive' as const,
 					}
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate-ccy', currency.code) },
+				: {
+						label: 'Activer',
+						icon: 'lucidePower',
+						action: () => this.changeStatus(currency, 'ACTIVE'),
+					},
 		];
 	}
 
-	protected corridorActions(corridor: Corridor): UserActionItem[] {
+	protected corridorActions(corridor: CorridorRow): UserActionItem[] {
 		const isActive = corridor.status === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view-cor', corridor.id) },
@@ -545,8 +756,61 @@ export class AdminCurrencyPageComponent {
 		];
 	}
 
+	private changeStatus(currency: CurrencyRow, status: ApiCurrencyStatus): void {
+		this._api.changeCurrencyStatus(currency.id, status).subscribe({
+			next: (updated) => {
+				const row = this.toCurrencyRow(updated);
+				this.currencies.update((items) => items.map((c) => (c.id === row.id ? row : c)));
+				this._api.getSummary().subscribe({
+					next: (data) => this.summary.set(data),
+					error: () => {},
+				});
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
+	private viewDetails(currency: CurrencyRow): void {
+		this._api.getCurrency(currency.id).subscribe({
+			next: (detail) => this.logAction('view-ccy', detail.code),
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
+	private viewHistory(currency: CurrencyRow): void {
+		this._api.getCurrencyHistory(currency.id).subscribe({
+			next: (entries) => {
+				// eslint-disable-next-line no-console
+				console.info('[Currency] history', currency.code, entries);
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
 	private logAction(action: string, ref: string): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Currency] ${action}`, ref);
+	}
+
+	private formatTimestamp(value: string | null): string {
+		if (!value) return '—';
+		return value.replace('T', ' ').slice(0, 16);
+	}
+
+	private formatPercent(value: number | null | undefined): string {
+		if (value == null || Number.isNaN(value)) return '—';
+		return new Intl.NumberFormat('fr-FR', {
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 2,
+		}).format(value) + '%';
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }

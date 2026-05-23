@@ -12,15 +12,23 @@ import com.okane.dashboard.dto.DashboardKpiDTO;
 import com.okane.dashboard.dto.RecentActivityDTO;
 import com.okane.dashboard.dto.SystemAlertDTO;
 import com.okane.dashboard.dto.TrendPointDTO;
+import com.okane.transfer.entity.Transfer;
+import com.okane.transfer.repository.TransferRepository;
+import com.okane.cash.repository.PayoutRepository;
+import com.okane.paymentmanagement.domain.PaymentStatus;
+import com.okane.transfermanagement.domain.TransferStatus;
+import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,30 +36,37 @@ import org.springframework.transaction.annotation.Transactional;
  * Aggregates dashboard data for the admin home screen.
  *
  * <p>This service is deliberately resilient: when downstream modules
- * (Transfers, Payments, Compliance, Reporting) are not implemented yet, the
- * corresponding KPIs and analytics fall back to {@code 0} or empty lists. Real
- * values will be wired in as the matching modules are built, without breaking
- * the JSON contract consumed by the frontend.
+ * (Payments, Compliance, Reporting) are not implemented yet, the corresponding
+ * KPIs and analytics fall back to {@code 0} or empty lists. Real values are
+ * wired in as the matching modules are built, without breaking the JSON
+ * contract consumed by the frontend.
  */
 @Service
 public class AdminDashboardService {
 
     private static final int RECENT_ACTIVITIES_LIMIT = 8;
     private static final int USER_GROWTH_DAYS = 7;
+    private static final int TRANSFER_TREND_DAYS = 7;
     private static final Locale FRENCH = Locale.FRENCH;
 
     private final UserRepository userRepository;
     private final AgencyRepository agencyRepository;
     private final AuditLogRepository auditLogRepository;
+    private final TransferRepository transferRepository;
+    private final PayoutRepository payoutRepository;
 
     public AdminDashboardService(
             UserRepository userRepository,
             AgencyRepository agencyRepository,
-            AuditLogRepository auditLogRepository
+            AuditLogRepository auditLogRepository,
+            TransferRepository transferRepository,
+            PayoutRepository payoutRepository
     ) {
         this.userRepository = userRepository;
         this.agencyRepository = agencyRepository;
         this.auditLogRepository = auditLogRepository;
+        this.transferRepository = transferRepository;
+        this.payoutRepository = payoutRepository;
     }
 
     @Transactional(readOnly = true)
@@ -76,16 +91,14 @@ public class AdminDashboardService {
 
         long activeAgents = countActiveAccountsSafely();
 
-        // TODO: wire to TransferRepository when the Transfers module ships.
-        long transfersToday = 0L;
+        long transfersToday = countTransfersToday();
+        long suspiciousTransactions = countTransfersByStatus(TransferStatus.SUSPECT.name());
+        BigDecimal monthlyVolume = sumTransfersForCurrentMonth();
+
         // TODO: wire to PaymentRepository when the Payments module ships.
-        long pendingPayments = 0L;
+        long pendingPayments = countPendingPaymentsSafely();
         // TODO: wire to PaymentRepository / ReportingRepository when available.
         BigDecimal totalRevenue = BigDecimal.ZERO;
-        // TODO: wire to TransferRepository / ComplianceRepository when ready.
-        long suspiciousTransactions = 0L;
-        // TODO: sum transfers between startOfMonth and now once Transfers ships.
-        BigDecimal monthlyVolume = BigDecimal.ZERO;
 
         return new DashboardKpiDTO(
                 totalUsers,
@@ -113,22 +126,68 @@ public class AdminDashboardService {
         }
     }
 
+    private long countPendingPaymentsSafely() {
+        try {
+            return payoutRepository.countByStatus(PaymentStatus.EN_ATTENTE.name());
+        } catch (RuntimeException ex) {
+            return 0L;
+        }
+    }
+
+    private long countTransfersToday() {
+        try {
+            LocalDate today = LocalDate.now();
+            return transferRepository.countByCreatedAtBetween(
+                    today.atStartOfDay(),
+                    today.atTime(LocalTime.MAX)
+            );
+        } catch (RuntimeException ex) {
+            return 0L;
+        }
+    }
+
+    private long countTransfersByStatus(String status) {
+        try {
+            return transferRepository.countByStatus(status);
+        } catch (RuntimeException ex) {
+            return 0L;
+        }
+    }
+
+    private BigDecimal sumTransfersForCurrentMonth() {
+        try {
+            LocalDateTime start = YearMonth.now().atDay(1).atStartOfDay();
+            LocalDateTime end = LocalDateTime.now();
+            Specification<Transfer> withinMonth = (root, query, cb) -> {
+                Predicate fromDate = cb.greaterThanOrEqualTo(root.get("createdAt"), start);
+                Predicate toDate = cb.lessThanOrEqualTo(root.get("createdAt"), end);
+                return cb.and(fromDate, toDate);
+            };
+            BigDecimal total = BigDecimal.ZERO;
+            for (Transfer transfer : transferRepository.findAll(withinMonth)) {
+                if (transfer.getAmount() != null) {
+                    total = total.add(transfer.getAmount());
+                }
+            }
+            return total;
+        } catch (RuntimeException ex) {
+            return BigDecimal.ZERO;
+        }
+    }
+
     private List<RecentActivityDTO> loadRecentActivities() {
         List<AuditLog> logs = auditLogRepository.findAllByOrderByCreatedAtDesc(
                 PageRequest.of(0, RECENT_ACTIVITIES_LIMIT)
         );
         List<RecentActivityDTO> activities = new ArrayList<>(logs.size());
         for (AuditLog log : logs) {
-            String type = log.getAction() == null ? "ACTIVITY" : log.getAction();
-            String title = humaniseTitle(type, log.getEntityName());
-            String description = safeDescription(log);
-            String module = inferModule(type, log.getEntityName());
+            String type = safeAction(log.getAction());
             activities.add(new RecentActivityDTO(
                     log.getId(),
                     type,
-                    title,
-                    description,
-                    module,
+                    titleFor(log),
+                    descriptionFor(log),
+                    inferModule(type, log.getEntityName()),
                     actorLabel(log.getUser()),
                     log.getCreatedAt()
             ));
@@ -151,7 +210,6 @@ public class AdminDashboardService {
                     "NEW"
             ));
         }
-
         if (kpis.pendingAgencies() > 0) {
             alerts.add(new SystemAlertDTO(
                     "agencies-pending",
@@ -163,56 +221,114 @@ public class AdminDashboardService {
                     "NEW"
             ));
         }
+        if (kpis.suspiciousTransactions() > 0) {
+            alerts.add(new SystemAlertDTO(
+                    "transfers-suspect",
+                    kpis.suspiciousTransactions() + " transfert(s) suspect(s)",
+                    "Des transferts sont marqués comme suspects et nécessitent une revue conformité.",
+                    kpis.suspiciousTransactions() >= 5 ? "CRITICAL" : "HIGH",
+                    "TRANSFERS",
+                    now,
+                    "NEW"
+            ));
+        }
 
-        // TODO: append compliance / KYC / payment / transfer alerts once those
-        // modules expose dedicated repositories. Today the list is purely
-        // derived from agency state to avoid fabricating data.
+        long failedLogins24h = countLogins24h("AUTH_LOGIN_FAILURE");
+        if (failedLogins24h >= 5) {
+            alerts.add(new SystemAlertDTO(
+                    "auth-failed-logins",
+                    failedLogins24h + " échecs de connexion sur 24h",
+                    "Pic de tentatives échouées détecté. Vérifier les comptes ciblés et le rate-limit.",
+                    failedLogins24h >= 20 ? "CRITICAL" : "HIGH",
+                    "AUTH",
+                    now,
+                    "NEW"
+            ));
+        }
+
         return alerts;
     }
 
     private DashboardAnalyticsDTO buildAnalytics() {
         return new DashboardAnalyticsDTO(
-                // TODO: TransferRepository.countByCreatedAtBetween() per day.
-                List.of(),
-                // TODO: PaymentRepository.sumValidatedPayments() per period.
-                List.of(),
-                buildUserGrowth()
+                buildTransferTrend(),
+                buildRevenueTrend(),
+                buildUserGrowthTrend()
         );
     }
 
-    /**
-     * Returns one bucket per day for the last {@value #USER_GROWTH_DAYS} days
-     * with the count of users created that day. The label is the localised
-     * three-letter weekday (e.g. "lun.").
-     */
-    private List<TrendPointDTO> buildUserGrowth() {
-        List<TrendPointDTO> series = new ArrayList<>(USER_GROWTH_DAYS);
+    private List<TrendPointDTO> buildTransferTrend() {
+        List<TrendPointDTO> trend = new ArrayList<>(TRANSFER_TREND_DAYS);
         LocalDate today = LocalDate.now();
-        for (int offset = USER_GROWTH_DAYS - 1; offset >= 0; offset--) {
-            LocalDate day = today.minusDays(offset);
-            LocalDateTime start = day.atStartOfDay();
-            LocalDateTime end = day.atTime(LocalTime.MAX);
+        for (int i = TRANSFER_TREND_DAYS - 1; i >= 0; i--) {
+            LocalDate day = today.minusDays(i);
+            long count = 0L;
+            try {
+                count = transferRepository.countByCreatedAtBetween(
+                        day.atStartOfDay(),
+                        day.atTime(LocalTime.MAX)
+                );
+            } catch (RuntimeException ignored) {
+                // fall back to 0 on transient errors
+            }
+            String label = capitalize(day.getDayOfWeek().getDisplayName(TextStyle.SHORT, FRENCH));
+            trend.add(new TrendPointDTO(label, count));
+        }
+        return trend;
+    }
+
+    /** Revenue trend placeholder: empty until {@code PaymentRepository} ships. */
+    private List<TrendPointDTO> buildRevenueTrend() {
+        // TODO: replace with PaymentRepository.sumValidatedAmountByPeriod once
+        // the Payments / Reporting module exposes its repository.
+        return List.of();
+    }
+
+    private List<TrendPointDTO> buildUserGrowthTrend() {
+        List<TrendPointDTO> trend = new ArrayList<>(USER_GROWTH_DAYS);
+        LocalDate today = LocalDate.now();
+        for (int i = USER_GROWTH_DAYS - 1; i >= 0; i--) {
+            LocalDate day = today.minusDays(i);
             long count;
             try {
-                count = userRepository.countByCreatedAtBetween(start, end);
+                count = userRepository.countByCreatedAtBetween(
+                        day.atStartOfDay(),
+                        day.atTime(LocalTime.MAX)
+                );
             } catch (RuntimeException ex) {
                 count = 0L;
             }
-            String label = day.getDayOfWeek().getDisplayName(TextStyle.SHORT, FRENCH);
-            series.add(new TrendPointDTO(label, count));
+            String label = capitalize(day.getDayOfWeek().getDisplayName(TextStyle.SHORT, FRENCH));
+            trend.add(new TrendPointDTO(label, count));
         }
-        return series;
+        return trend;
     }
 
-    private String humaniseTitle(String action, String entityName) {
-        String upper = action == null ? "" : action.toUpperCase(Locale.ROOT);
-        return switch (upper) {
+    private long countLogins24h(String action) {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            return auditLogRepository.countByActionAndCreatedAtBetween(
+                    action,
+                    now.minusHours(24),
+                    now
+            );
+        } catch (RuntimeException ex) {
+            return 0L;
+        }
+    }
+
+    private String safeAction(String action) {
+        return action == null ? "ACTIVITY" : action;
+    }
+
+    private String titleFor(AuditLog log) {
+        if (log == null || log.getAction() == null) return "Activité";
+        return switch (log.getAction()) {
             case "AUTH_LOGIN_SUCCESS" -> "Connexion réussie";
             case "AUTH_LOGIN_FAILURE" -> "Échec de connexion";
             case "AUTH_LOGOUT" -> "Déconnexion";
-            case "AUTH_TOKEN_REFRESH" -> "Jeton rafraîchi";
-            case "AUTH_PASSWORD_CHANGE" -> "Mot de passe modifié";
-            case "AUTH_ACCOUNT_LOCKED_OR_SUSPENDED" -> "Compte verrouillé ou suspendu";
+            case "AUTH_TOKEN_REFRESH" -> "Renouvellement de session";
+            case "AUTH_PASSWORD_CHANGE" -> "Changement de mot de passe";
             case "USER_CREATED" -> "Utilisateur créé";
             case "USER_UPDATED" -> "Utilisateur mis à jour";
             case "USER_STATUS_CHANGED" -> "Statut utilisateur modifié";
@@ -220,50 +336,35 @@ public class AdminDashboardService {
             case "AGENCY_CREATED" -> "Agence créée";
             case "AGENCY_UPDATED" -> "Agence mise à jour";
             case "AGENCY_STATUS_CHANGED" -> "Statut agence modifié";
-            case "AGENCY_MANAGER_ASSIGNED" -> "Manager affecté";
-            case "AGENCY_AGENT_ASSIGNED" -> "Agent affecté";
+            case "AGENCY_MANAGER_ASSIGNED" -> "Manager assigné";
+            case "AGENCY_AGENT_ASSIGNED" -> "Agent assigné";
             case "AGENCY_AGENT_REMOVED" -> "Agent retiré";
             case "AGENCY_DISABLED" -> "Agence désactivée";
-            default -> entityName != null && !entityName.isBlank()
-                    ? entityName + " : " + upper.replace('_', ' ').toLowerCase(Locale.ROOT)
-                    : upper.replace('_', ' ');
+            case "TRANSFER_VIEWED" -> "Transfert consulté";
+            case "TRANSFER_MARKED_SUSPECT" -> "Transfert marqué suspect";
+            case "TRANSFER_CANCELLED" -> "Transfert annulé";
+            default -> humanize(log.getAction());
         };
     }
 
-    private String safeDescription(AuditLog log) {
+    private String descriptionFor(AuditLog log) {
         if (log.getDescription() != null && !log.getDescription().isBlank()) {
             return log.getDescription();
         }
         StringBuilder builder = new StringBuilder();
-        if (log.getEntityName() != null) {
-            builder.append(log.getEntityName());
-        }
+        if (log.getEntityName() != null) builder.append(log.getEntityName());
         if (log.getEntityId() != null) {
-            if (builder.length() > 0) {
-                builder.append(" #");
-            }
-            builder.append(log.getEntityId());
+            if (!builder.isEmpty()) builder.append(' ');
+            builder.append('#').append(log.getEntityId());
         }
-        return builder.length() == 0 ? "Événement enregistré" : builder.toString();
-    }
-
-    private String actorLabel(User user) {
-        if (user == null) {
-            return "Système";
-        }
-        String first = user.getFirstName() == null ? "" : user.getFirstName();
-        String last = user.getLastName() == null ? "" : user.getLastName();
-        String fullName = (first + " " + last).trim();
-        return fullName.isEmpty() ? user.getEmail() : fullName;
+        return builder.isEmpty() ? "Action enregistrée dans le journal d'audit." : builder.toString();
     }
 
     private String inferModule(String action, String entityName) {
         if (entityName != null && !entityName.isBlank()) {
             return entityName.toUpperCase(Locale.ROOT);
         }
-        if (action == null) {
-            return "GENERAL";
-        }
+        if (action == null) return "GENERAL";
         if (action.startsWith("AUTH_")) return "AUTH";
         if (action.startsWith("USER_")) return "USERS";
         if (action.startsWith("AGENCY_")) return "AGENCIES";
@@ -274,5 +375,32 @@ public class AdminDashboardService {
         if (action.startsWith("FEE_")) return "FEES";
         if (action.startsWith("REPORT_")) return "REPORTS";
         return "GENERAL";
+    }
+
+    private String actorLabel(User user) {
+        if (user == null) return "Système";
+        String first = user.getFirstName() == null ? "" : user.getFirstName();
+        String last = user.getLastName() == null ? "" : user.getLastName();
+        String fullName = (first + " " + last).trim();
+        return fullName.isEmpty() ? user.getEmail() : fullName;
+    }
+
+    private String humanize(String snakeCase) {
+        if (snakeCase == null || snakeCase.isBlank()) return "Action";
+        String[] parts = snakeCase.toLowerCase(Locale.ROOT).split("_");
+        StringBuilder builder = new StringBuilder();
+        for (String part : parts) {
+            if (part.isEmpty()) continue;
+            if (!builder.isEmpty()) builder.append(' ');
+            builder.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return builder.toString();
+    }
+
+    private String capitalize(String value) {
+        if (value == null || value.isEmpty()) return value;
+        String trimmed = value.replace(".", "");
+        return Character.toUpperCase(trimmed.charAt(0))
+                + (trimmed.length() > 1 ? trimmed.substring(1).toLowerCase(Locale.ROOT) : "");
     }
 }

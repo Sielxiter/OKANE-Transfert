@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -28,24 +28,43 @@ import { UsersPageHeaderComponent } from '../users/shared/users-page-header.comp
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
-	AGENCY_PERFORMANCE_MOCK,
 	REPORT_AGENCIES,
 	REPORT_COUNTRIES,
 	REPORT_KPIS,
-	REPORT_KPI_VALUES,
 	REPORT_PERIOD_LABELS,
 	REPORT_STATUS_LABELS,
 	REPORT_STATUS_VARIANTS,
 	REPORT_TYPE_LABELS,
-	REPORTS_MOCK,
-	REVENUE_TREND_MOCK,
-	STATUS_DISTRIBUTION_MOCK,
-	VOLUME_TREND_MOCK,
 	type ReportPeriod,
-	type ReportRow,
 	type ReportStatus,
 	type ReportType,
 } from './reports.mock';
+import {
+	AdminReportsApiService,
+	type ApiAgencyPerformance,
+	type ApiReportAnalytics,
+	type ApiReportRow,
+	type ApiReportSummary,
+	type ApiRevenueTrendPoint,
+	type ApiStatusDistribution,
+	type ApiTrendPoint,
+} from './admin-reports.api';
+
+/** Internal row shape used by the template (maps from ApiReportRow). */
+interface ReportRow {
+	id: string;
+	name: string;
+	type: ReportType;
+	period: ReportPeriod;
+	periodRange: string;
+	agency: { code: string; name: string } | null;
+	countryCode: string;
+	country: string;
+	currency: string;
+	status: ReportStatus;
+	generatedAt: string;
+	owner: string;
+}
 
 @Component({
 	selector: 'okane-admin-reports-page',
@@ -106,6 +125,18 @@ import {
 				</button>
 			</okane-users-page-header>
 
+			@if (error()) {
+				<div
+					class="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-destructive transition-colors"
+				>
+					<ng-icon name="lucideTriangleAlert" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Données partielles</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ error() }} — affichage avec valeurs par défaut.</p>
+					</div>
+				</div>
+			}
+
 			<section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				@for (kpi of kpiCards(); track kpi.key) {
 					<article
@@ -151,12 +182,12 @@ import {
 							class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
 						>
 							<ng-icon name="lucideBarChart3" class="text-xs" />
-							Mock
+							API
 						</span>
 					</div>
 
 					<div class="mt-5 flex h-44 items-end gap-3">
-						@for (b of volumeTrend; track b.label) {
+						@for (b of volumeTrend(); track b.label) {
 							<div class="flex flex-1 flex-col items-center gap-2">
 								<div class="flex h-full w-full items-end">
 									<div
@@ -165,6 +196,11 @@ import {
 									></div>
 								</div>
 								<span class="text-xs text-muted-foreground">{{ b.label }}</span>
+							</div>
+						}
+						@if (volumeTrend().length === 0) {
+							<div class="flex flex-1 items-center justify-center text-xs text-muted-foreground">
+								Aucune donnée disponible.
 							</div>
 						}
 					</div>
@@ -182,21 +218,24 @@ import {
 							class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
 						>
 							<ng-icon name="lucidePieChart" class="text-xs" />
-							Mock
+							API
 						</span>
 					</div>
 
 					<div class="mt-5 space-y-3">
-						@for (item of statusDistribution; track item.label) {
+						@for (item of statusDistribution(); track item.status) {
 							<div>
 								<div class="flex items-center justify-between text-xs">
-									<span class="font-medium text-foreground">{{ item.label }}</span>
+									<span class="font-medium text-foreground">{{ item.status }}</span>
 									<span class="text-muted-foreground">{{ item.count }} • {{ item.share }}%</span>
 								</div>
 								<div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
-									<div class="h-full rounded-full transition-all duration-300" [ngClass]="item.accent" [style.width.%]="item.share"></div>
+									<div class="h-full rounded-full bg-primary/70 transition-all duration-300 dark:bg-primary" [style.width.%]="item.share"></div>
 								</div>
 							</div>
+						}
+						@if (statusDistribution().length === 0) {
+							<p class="text-xs text-muted-foreground">Aucune donnée disponible.</p>
 						}
 					</div>
 				</article>
@@ -209,7 +248,7 @@ import {
 					<div class="flex items-start justify-between gap-3">
 						<div>
 							<h2 class="text-base font-semibold text-foreground">Revenus & commissions</h2>
-							<p class="text-xs text-muted-foreground">Tendance sur 5 mois (mock).</p>
+							<p class="text-xs text-muted-foreground">Tendance sur 5 mois.</p>
 						</div>
 						<div class="flex items-center gap-3 text-xs">
 							<span class="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -224,13 +263,18 @@ import {
 					</div>
 
 					<div class="mt-5 flex h-44 items-end gap-4">
-						@for (b of revenueTrend; track b.label) {
+						@for (b of revenueTrend(); track b.label) {
 							<div class="flex flex-1 flex-col items-center gap-2">
 								<div class="flex h-full w-full items-end justify-center gap-1">
 									<div class="w-3 rounded-t-md bg-primary/70 transition-all duration-300 dark:bg-primary" [style.height.%]="b.revenue"></div>
 									<div class="w-3 rounded-t-md bg-emerald-500/70 transition-all duration-300 dark:bg-emerald-400/80" [style.height.%]="b.commission"></div>
 								</div>
 								<span class="text-xs text-muted-foreground">{{ b.label }}</span>
+							</div>
+						}
+						@if (revenueTrend().length === 0) {
+							<div class="flex flex-1 items-center justify-center text-xs text-muted-foreground">
+								Aucune donnée disponible.
 							</div>
 						}
 					</div>
@@ -242,27 +286,27 @@ import {
 					<div class="flex items-start justify-between gap-3">
 						<div>
 							<h2 class="text-base font-semibold text-foreground">Performance agences</h2>
-							<p class="text-xs text-muted-foreground">Top 5 agences par volume (mock).</p>
+							<p class="text-xs text-muted-foreground">Top agences par volume.</p>
 						</div>
 						<span
 							class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
 						>
 							<ng-icon name="lucideBuilding2" class="text-xs" />
-							{{ agencyPerformance.length }}
+							{{ agencyPerformance().length }}
 						</span>
 					</div>
 
 					<div class="mt-5 space-y-3">
-						@for (row of agencyPerformance; track row.agency.code) {
+						@for (row of agencyPerformance(); track row.agencyCode) {
 							<div>
 								<div class="flex items-center justify-between text-xs">
 									<div class="leading-tight">
-										<p class="font-medium text-foreground">{{ row.agency.name }}</p>
-										<p class="font-mono text-muted-foreground">{{ row.agency.code }}</p>
+										<p class="font-medium text-foreground">{{ row.agencyName ?? '—' }}</p>
+										<p class="font-mono text-muted-foreground">{{ row.agencyCode ?? '—' }}</p>
 									</div>
 									<div class="text-right leading-tight">
-										<p class="font-mono text-foreground">{{ formatAmount(row.volume) }} {{ row.currency }}</p>
-										<p class="text-muted-foreground">{{ row.transfers }} transferts</p>
+										<p class="font-mono text-foreground">{{ formatAmount(row.volume) }} {{ row.currency ?? '' }}</p>
+										<p class="text-muted-foreground">{{ row.transferCount }} transferts</p>
 									</div>
 								</div>
 								<div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -272,6 +316,9 @@ import {
 									></div>
 								</div>
 							</div>
+						}
+						@if (agencyPerformance().length === 0) {
+							<p class="text-xs text-muted-foreground">Aucune donnée disponible.</p>
 						}
 					</div>
 				</article>
@@ -292,7 +339,7 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Catalogue des rapports</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} rapport{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} rapport{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
@@ -384,13 +431,30 @@ import {
 		/>
 	`,
 })
-export class AdminReportsPageComponent {
-	protected readonly total = REPORTS_MOCK.length;
-	protected readonly volumeTrend = VOLUME_TREND_MOCK;
-	protected readonly revenueTrend = REVENUE_TREND_MOCK;
-	protected readonly agencyPerformance = AGENCY_PERFORMANCE_MOCK;
-	protected readonly statusDistribution = STATUS_DISTRIBUTION_MOCK;
+export class AdminReportsPageComponent implements OnInit {
+	private readonly _api = inject(AdminReportsApiService);
 
+	// ─── API state ──────────────────────────────────────────────────────────────
+	protected readonly reports = signal<ReportRow[]>([]);
+	protected readonly summary = signal<ApiReportSummary | null>(null);
+	protected readonly analytics = signal<ApiReportAnalytics | null>(null);
+	protected readonly error = signal<string | null>(null);
+
+	// ─── Analytics display signals ──────────────────────────────────────────────
+	protected readonly volumeTrend = computed<ApiTrendPoint[]>(() =>
+		this.analytics()?.transferVolume ?? [],
+	);
+	protected readonly revenueTrend = computed<ApiRevenueTrendPoint[]>(() =>
+		this.analytics()?.revenueCommissions ?? [],
+	);
+	protected readonly agencyPerformance = computed<ApiAgencyPerformance[]>(() =>
+		this.analytics()?.agencyPerformance ?? [],
+	);
+	protected readonly statusDistribution = computed<ApiStatusDistribution[]>(() =>
+		this.analytics()?.statusDistribution ?? [],
+	);
+
+	// ─── Filters ────────────────────────────────────────────────────────────────
 	protected readonly search = signal<string>('');
 	protected readonly type = signal<string>('all');
 	protected readonly period = signal<string>('all');
@@ -399,9 +463,13 @@ export class AdminReportsPageComponent {
 	protected readonly currency = signal<string>('all');
 	protected readonly status = signal<string>('all');
 
+	// ─── Dialogs ────────────────────────────────────────────────────────────────
 	protected readonly pdfDialog = signal<boolean>(false);
 	protected readonly csvDialog = signal<boolean>(false);
 	protected readonly shareDialog = signal<boolean>(false);
+
+	// ─── Computed ───────────────────────────────────────────────────────────────
+	protected readonly total = computed(() => this.reports().length);
 
 	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
 		{
@@ -484,7 +552,7 @@ export class AdminReportsPageComponent {
 		const currency = this.currency();
 		const status = this.status();
 
-		return REPORTS_MOCK.filter((r) => {
+		return this.reports().filter((r) => {
 			if (type !== 'all' && r.type !== type) return false;
 			if (period !== 'all' && r.period !== period) return false;
 			if (agency !== 'all' && r.agency?.code !== agency) return false;
@@ -501,37 +569,80 @@ export class AdminReportsPageComponent {
 		});
 	});
 
-	protected readonly kpiCards = computed(() =>
-		REPORT_KPIS.map((kpi) => ({
+	protected readonly kpiCards = computed(() => {
+		const s = this.summary();
+		const valueByKey: Record<string, { value: string; change: string }> = {
+			DAILY_VOLUME: { value: s ? String(s.dailyVolume) : '—', change: '' },
+			MONTHLY_VOLUME: { value: s ? this.formatAmount(s.monthlyVolume) + ' MAD' : '—', change: '' },
+			REVENUE: { value: s ? this.formatAmount(s.revenue) + ' MAD' : '—', change: '' },
+			COMMISSIONS: { value: s ? this.formatAmount(s.totalCommissions) + ' MAD' : '—', change: '' },
+			SUCCESS: { value: s ? String(s.successfulTransfers) : '—', change: '' },
+			FAILURE_RATE: { value: s ? s.failureRate.toFixed(1) + '%' : '—', change: '' },
+		};
+		return REPORT_KPIS.map((kpi) => ({
 			...kpi,
-			value: REPORT_KPI_VALUES[kpi.key]?.value ?? '—',
-			change: REPORT_KPI_VALUES[kpi.key]?.change ?? '',
-		})),
-	);
+			value: valueByKey[kpi.key]?.value ?? '—',
+			change: valueByKey[kpi.key]?.change ?? '',
+		}));
+	});
 
+	// ─── Lifecycle ──────────────────────────────────────────────────────────────
+	public ngOnInit(): void {
+		this.loadAll();
+	}
+
+	private loadAll(): void {
+		this.error.set(null);
+
+		this._api.listReports().subscribe({
+			next: (rows) => this.reports.set(rows.map((r) => this.toRow(r))),
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+
+		this._api.getSummary().subscribe({
+			next: (data) => this.summary.set(data),
+			error: () => this.summary.set(null),
+		});
+
+		this._api.getAnalytics().subscribe({
+			next: (data) => this.analytics.set(data),
+			error: () => this.analytics.set(null),
+		});
+	}
+
+	// ─── Mapping ────────────────────────────────────────────────────────────────
+	private toRow(api: ApiReportRow): ReportRow {
+		return {
+			id: String(api.id),
+			name: api.name ?? '—',
+			type: (api.type as ReportType) ?? 'FINANCIAL',
+			period: (api.period as ReportPeriod) ?? 'CUSTOM',
+			periodRange: api.periodRange ?? '—',
+			agency: api.agencyCode
+				? { code: api.agencyCode, name: api.agencyName ?? api.agencyCode }
+				: null,
+			countryCode: api.country ?? 'ALL',
+			country: api.country ?? 'Tous',
+			currency: api.currency ?? 'MULTI',
+			status: (api.status as ReportStatus) ?? 'PREPARING',
+			generatedAt: api.generatedAt ?? '—',
+			owner: api.generatedBy ?? 'Système',
+		};
+	}
+
+	// ─── Filter handler ─────────────────────────────────────────────────────────
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
-			case 'type':
-				this.type.set(change.value);
-				break;
-			case 'period':
-				this.period.set(change.value);
-				break;
-			case 'agency':
-				this.agency.set(change.value);
-				break;
-			case 'country':
-				this.country.set(change.value);
-				break;
-			case 'currency':
-				this.currency.set(change.value);
-				break;
-			case 'status':
-				this.status.set(change.value);
-				break;
+			case 'type': this.type.set(change.value); break;
+			case 'period': this.period.set(change.value); break;
+			case 'agency': this.agency.set(change.value); break;
+			case 'country': this.country.set(change.value); break;
+			case 'currency': this.currency.set(change.value); break;
+			case 'status': this.status.set(change.value); break;
 		}
 	}
 
+	// ─── Export actions ─────────────────────────────────────────────────────────
 	protected openPdfExport(): void {
 		this.pdfDialog.set(true);
 	}
@@ -540,6 +651,7 @@ export class AdminReportsPageComponent {
 		this.csvDialog.set(true);
 	}
 
+	// ─── Label helpers ───────────────────────────────────────────────────────────
 	protected typeLabel(type: ReportType): string {
 		return REPORT_TYPE_LABELS[type];
 	}
@@ -557,25 +669,41 @@ export class AdminReportsPageComponent {
 	}
 
 	protected formatAmount(value: number): string {
-		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
+		const safe = Number.isFinite(value) ? value : 0;
+		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(safe);
 	}
 
+	// ─── Row actions ─────────────────────────────────────────────────────────────
 	protected reportActions(report: ReportRow): UserActionItem[] {
 		const isAvailable = report.status === 'AVAILABLE';
 		const isArchived = report.status === 'ARCHIVED';
+		const numId = Number(report.id);
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', report.id) },
+			{
+				label: 'Voir détails',
+				icon: 'lucideEye',
+				action: () => this._api.getReport(numId).subscribe({
+					next: () => this.logAction('view', report.id),
+					error: () => this.logAction('view-error', report.id),
+				}),
+			},
 			...(isAvailable || isArchived
 				? [
 						{
 							label: 'Télécharger PDF',
 							icon: 'lucideFileText',
-							action: () => this.pdfDialog.set(true),
+							action: () => this._api.exportPdf(numId).subscribe({
+								next: () => this.pdfDialog.set(true),
+								error: () => this.pdfDialog.set(true),
+							}),
 						},
 						{
 							label: 'Télécharger CSV',
 							icon: 'lucideDownload',
-							action: () => this.csvDialog.set(true),
+							action: () => this._api.exportCsv(numId).subscribe({
+								next: () => this.csvDialog.set(true),
+								error: () => this.csvDialog.set(true),
+							}),
 						},
 					]
 				: []),
@@ -595,5 +723,14 @@ export class AdminReportsPageComponent {
 	private logAction(action: string, ref: string): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Reports] ${action}`, ref);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const e = err as { error?: { message?: string }; message?: string };
+			return e.error?.message ?? e.message ?? fallback;
+		}
+		return fallback;
 	}
 }

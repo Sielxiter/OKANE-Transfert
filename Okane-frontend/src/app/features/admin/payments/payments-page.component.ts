@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -23,15 +23,35 @@ import { UsersPageHeaderComponent } from '../users/shared/users-page-header.comp
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
-	PAYMENT_AGENCIES,
-	PAYMENT_AGENTS,
 	PAYMENT_KPIS,
-	PAYMENTS_MOCK,
 	PAYMENT_STATUS_LABELS,
 	PAYMENT_STATUS_VARIANTS,
-	type Payment,
+	type AgencyRef,
+	type AgentRef,
 	type PaymentStatus,
 } from './payments.mock';
+import {
+	AdminPaymentsApiService,
+	type ApiPayment,
+	type ApiPaymentSummary,
+} from './admin-payments.api';
+
+interface PaymentRow {
+	id: number;
+	paymentReference: string;
+	transferReference: string;
+	withdrawalCode: string;
+	beneficiaryName: string;
+	amount: number;
+	currency: string;
+	agency: AgencyRef;
+	agent: AgentRef;
+	status: PaymentStatus;
+	paidAt: string;
+	paidAtRaw: string | null;
+	agencyId: number | null;
+	agentNumericId: number | null;
+}
 
 @Component({
 	selector: 'okane-admin-payments-page',
@@ -75,6 +95,18 @@ import {
 				(addClicked)="openExportDialog()"
 			/>
 
+			@if (error()) {
+				<div
+					class="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-destructive transition-colors"
+				>
+					<ng-icon name="lucideTriangleAlert" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Données partielles</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ error() }} — affichage avec valeurs par défaut.</p>
+					</div>
+				</div>
+			}
+
 			<section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				@for (kpi of kpiCards(); track kpi.key) {
 					<article
@@ -115,7 +147,7 @@ import {
 					<div>
 						<h2 class="text-base font-semibold text-foreground">Paiements</h2>
 						<p class="text-xs text-muted-foreground">
-							{{ filtered().length }} sur {{ total }} paiement{{ total > 1 ? 's' : '' }}
+							{{ filtered().length }} sur {{ total() }} paiement{{ total() > 1 ? 's' : '' }}
 						</p>
 					</div>
 				</div>
@@ -214,8 +246,13 @@ import {
 		/>
 	`,
 })
-export class AdminPaymentsPageComponent {
-	protected readonly total = PAYMENTS_MOCK.length;
+export class AdminPaymentsPageComponent implements OnInit {
+	private readonly _api = inject(AdminPaymentsApiService);
+
+	protected readonly payments = signal<PaymentRow[]>([]);
+	protected readonly summary = signal<ApiPaymentSummary | null>(null);
+	protected readonly loading = signal<boolean>(true);
+	protected readonly error = signal<string | null>(null);
 
 	protected readonly search = signal<string>('');
 	protected readonly status = signal<string>('all');
@@ -226,84 +263,106 @@ export class AdminPaymentsPageComponent {
 
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly blockDialog = signal<boolean>(false);
+	protected readonly pendingBlock = signal<PaymentRow | null>(null);
 
-	protected readonly filterDefs = computed<FilterDefinition[]>(() => [
-		{
-			key: 'status',
-			label: 'Statut',
-			value: this.status(),
-			options: [
-				{ value: 'all', label: 'Tous statuts' },
-				{ value: 'EN_ATTENTE', label: 'En attente' },
-				{ value: 'VALIDE', label: 'Validé' },
-				{ value: 'ECHOUE', label: 'Échoué' },
-				{ value: 'ANNULE', label: 'Annulé' },
-				{ value: 'BLOQUE', label: 'Bloqué' },
-			],
-		},
-		{
-			key: 'currency',
-			label: 'Devise',
-			value: this.currency(),
-			options: [
-				{ value: 'all', label: 'Toutes devises' },
-				{ value: 'MAD', label: 'MAD' },
-				{ value: 'EUR', label: 'EUR' },
-				{ value: 'USD', label: 'USD' },
-				{ value: 'XOF', label: 'XOF' },
-			],
-		},
-		{
-			key: 'agency',
-			label: 'Agence',
-			value: this.agency(),
-			options: [
-				{ value: 'all', label: 'Toutes agences' },
-				...PAYMENT_AGENCIES.map((a) => ({ value: a.code, label: a.name })),
-			],
-		},
-		{
-			key: 'agent',
-			label: 'Agent',
-			value: this.agent(),
-			options: [
-				{ value: 'all', label: 'Tous agents' },
-				...PAYMENT_AGENTS.map((a) => ({ value: a.id, label: a.name })),
-			],
-		},
-		{
-			key: 'date',
-			label: 'Date',
-			value: this.date(),
-			options: [
-				{ value: 'all', label: 'Toutes dates' },
-				{ value: 'today', label: "Aujourd'hui" },
-				{ value: 'week', label: '7 derniers jours' },
-				{ value: 'month', label: '30 derniers jours' },
-			],
-		},
-	]);
+	protected readonly total = computed(() => this.payments().length);
 
-	protected readonly filtered = computed<Payment[]>(() => {
+	protected readonly filterDefs = computed<FilterDefinition[]>(() => {
+		const agencies = Array.from(
+			new Map(
+				this.payments()
+					.filter((p) => p.agency.code !== '—')
+					.map((p) => [p.agency.code, p.agency]),
+			).values(),
+		);
+		const agents = Array.from(
+			new Map(
+				this.payments()
+					.filter((p) => p.agentNumericId != null)
+					.map((p) => [p.agent.id, p.agent]),
+			).values(),
+		);
+
+		return [
+			{
+				key: 'status',
+				label: 'Statut',
+				value: this.status(),
+				options: [
+					{ value: 'all', label: 'Tous statuts' },
+					{ value: 'EN_ATTENTE', label: 'En attente' },
+					{ value: 'VALIDE', label: 'Validé' },
+					{ value: 'ECHOUE', label: 'Échoué' },
+					{ value: 'ANNULE', label: 'Annulé' },
+					{ value: 'BLOQUE', label: 'Bloqué' },
+				],
+			},
+			{
+				key: 'currency',
+				label: 'Devise',
+				value: this.currency(),
+				options: [
+					{ value: 'all', label: 'Toutes devises' },
+					{ value: 'MAD', label: 'MAD' },
+					{ value: 'EUR', label: 'EUR' },
+					{ value: 'USD', label: 'USD' },
+					{ value: 'XOF', label: 'XOF' },
+				],
+			},
+			{
+				key: 'agency',
+				label: 'Agence',
+				value: this.agency(),
+				options: [
+					{ value: 'all', label: 'Toutes agences' },
+					...agencies.map((a) => ({ value: a.code, label: a.name })),
+				],
+			},
+			{
+				key: 'agent',
+				label: 'Agent',
+				value: this.agent(),
+				options: [
+					{ value: 'all', label: 'Tous agents' },
+					...agents.map((a) => ({ value: a.id, label: a.name })),
+				],
+			},
+			{
+				key: 'date',
+				label: 'Date',
+				value: this.date(),
+				options: [
+					{ value: 'all', label: 'Toutes dates' },
+					{ value: 'today', label: "Aujourd'hui" },
+					{ value: 'week', label: '7 derniers jours' },
+					{ value: 'month', label: '30 derniers jours' },
+				],
+			},
+		];
+	});
+
+	protected readonly filtered = computed<PaymentRow[]>(() => {
 		const term = this.search().trim().toLowerCase();
 		const status = this.status();
 		const currency = this.currency();
 		const agency = this.agency();
 		const agent = this.agent();
 		const date = this.date();
-		const now = new Date('2026-05-22T23:59:59');
+		const now = Date.now();
 
-		return PAYMENTS_MOCK.filter((p) => {
+		return this.payments().filter((p) => {
 			if (status !== 'all' && p.status !== status) return false;
 			if (currency !== 'all' && p.currency !== currency) return false;
 			if (agency !== 'all' && p.agency.code !== agency) return false;
 			if (agent !== 'all' && p.agent.id !== agent) return false;
-			if (date !== 'all') {
-				const created = new Date(p.paidAt.replace(' ', 'T'));
-				const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
-				if (date === 'today' && diffDays > 1) return false;
-				if (date === 'week' && diffDays > 7) return false;
-				if (date === 'month' && diffDays > 30) return false;
+			if (date !== 'all' && p.paidAtRaw) {
+				const created = new Date(p.paidAtRaw).getTime();
+				if (Number.isFinite(created)) {
+					const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+					if (date === 'today' && diffDays > 1) return false;
+					if (date === 'week' && diffDays > 7) return false;
+					if (date === 'month' && diffDays > 30) return false;
+				}
 			}
 			if (!term) return true;
 			return (
@@ -316,6 +375,105 @@ export class AdminPaymentsPageComponent {
 	});
 
 	protected readonly kpiCards = computed(() => {
+		const summary = this.summary();
+		const fallbackCounts = this.computeCountsFromRows();
+		const totalPayments = summary?.totalPayments ?? this.payments().length;
+		const todayCount = summary?.paymentsToday ?? 0;
+		const pending = summary?.pendingPayments ?? fallbackCounts.EN_ATTENTE;
+		const validated = summary?.validatedPayments ?? fallbackCounts.VALIDE;
+		const failed = summary?.failedPayments ?? (fallbackCounts.ECHOUE + fallbackCounts.ANNULE + fallbackCounts.BLOQUE);
+		const totalPaid = summary?.totalPaidAmount ?? 0;
+
+		const pct = (n: number) =>
+			totalPayments === 0 ? '0%' : `${Math.round((n / totalPayments) * 100)}%`;
+
+		return PAYMENT_KPIS.map((kpi) => {
+			if (kpi.key === 'TOTAL') {
+				return { ...kpi, value: String(totalPayments), share: '100%', suffix: '' };
+			}
+			if (kpi.key === 'TODAY') {
+				return {
+					...kpi,
+					value: String(todayCount),
+					share: pct(todayCount),
+					suffix: '',
+				};
+			}
+			if (kpi.key === 'AMOUNT') {
+				return {
+					...kpi,
+					value: `${this.formatAmount(totalPaid)} MAD`,
+					share: null as string | null,
+					suffix: 'Cumul des paiements validés',
+				};
+			}
+			if (kpi.key === 'EN_ATTENTE') {
+				return { ...kpi, value: String(pending), share: pct(pending), suffix: '' };
+			}
+			if (kpi.key === 'VALIDE') {
+				return { ...kpi, value: String(validated), share: pct(validated), suffix: '' };
+			}
+			if (kpi.key === 'ECHOUE') {
+				return { ...kpi, value: String(failed), share: pct(failed), suffix: '' };
+			}
+			return { ...kpi, value: '0', share: '0%', suffix: '' };
+		});
+	});
+
+	public ngOnInit(): void {
+		this.refresh();
+	}
+
+	private refresh(): void {
+		this.loading.set(true);
+		this.error.set(null);
+		this._api.list().subscribe({
+			next: (rows) => {
+				this.payments.set(rows.map((row) => this.toRow(row)));
+				this.loading.set(false);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.loading.set(false);
+			},
+		});
+		this._api.getSummary().subscribe({
+			next: (data) => this.summary.set(data),
+			error: () => {
+				// Summary errors are non-fatal: KPIs fall back to client-side
+				// computation from the loaded rows.
+				this.summary.set(null);
+			},
+		});
+	}
+
+	private toRow(api: ApiPayment): PaymentRow {
+		const agencyCode = api.agencyCode ?? '—';
+		const agencyName = api.agencyName ?? 'Non assignée';
+		const agentNumeric = api.agentId;
+		const agentDisplayId = agentNumeric != null ? `AG-${agentNumeric}` : '—';
+		return {
+			id: api.id,
+			paymentReference: api.paymentReference ?? `PMT-${api.id}`,
+			transferReference: api.transferReference ?? '—',
+			withdrawalCode: api.withdrawalCode ?? '—',
+			beneficiaryName: api.beneficiaryName ?? '—',
+			amount: Number(api.amountPaid ?? 0),
+			currency: api.currency ?? '—',
+			agency: { code: agencyCode, name: agencyName },
+			agent: {
+				id: agentDisplayId,
+				name: api.agentName ?? 'Système',
+			},
+			status: api.status,
+			paidAt: this.formatTimestamp(api.paymentDate),
+			paidAtRaw: api.paymentDate,
+			agencyId: api.agencyId,
+			agentNumericId: agentNumeric,
+		};
+	}
+
+	private computeCountsFromRows(): Record<PaymentStatus, number> {
 		const counts: Record<PaymentStatus, number> = {
 			EN_ATTENTE: 0,
 			VALIDE: 0,
@@ -323,48 +481,9 @@ export class AdminPaymentsPageComponent {
 			ANNULE: 0,
 			BLOQUE: 0,
 		};
-		const validatedTotalsByCurrency: Record<string, number> = {};
-		const today = '2026-05-22';
-		let todayCount = 0;
-
-		for (const p of PAYMENTS_MOCK) {
-			counts[p.status]++;
-			if (p.paidAt.startsWith(today)) todayCount++;
-			if (p.status === 'VALIDE') {
-				validatedTotalsByCurrency[p.currency] =
-					(validatedTotalsByCurrency[p.currency] ?? 0) + p.amount;
-			}
-		}
-
-		const total = PAYMENTS_MOCK.length;
-		const pct = (n: number) => (total === 0 ? '0%' : `${Math.round((n / total) * 100)}%`);
-		const madTotal = validatedTotalsByCurrency['MAD'] ?? 0;
-		const otherCurrencies = Object.keys(validatedTotalsByCurrency).filter((c) => c !== 'MAD').length;
-		const amountSuffix = otherCurrencies > 0 ? `+ ${otherCurrencies} devise(s)` : '';
-
-		return PAYMENT_KPIS.map((kpi) => {
-			if (kpi.key === 'TOTAL') {
-				return { ...kpi, value: String(total), share: '100%', suffix: '' };
-			}
-			if (kpi.key === 'TODAY') {
-				return { ...kpi, value: String(todayCount), share: pct(todayCount), suffix: '' };
-			}
-			if (kpi.key === 'AMOUNT') {
-				return {
-					...kpi,
-					value: `${this.formatAmount(madTotal)} MAD`,
-					share: null as string | null,
-					suffix: amountSuffix,
-				};
-			}
-			return {
-				...kpi,
-				value: String(counts[kpi.key as PaymentStatus]),
-				share: pct(counts[kpi.key as PaymentStatus]),
-				suffix: '',
-			};
-		});
-	});
+		for (const row of this.payments()) counts[row.status]++;
+		return counts;
+	}
 
 	protected onFilterChange(change: { key: string; value: string }): void {
 		switch (change.key) {
@@ -402,28 +521,85 @@ export class AdminPaymentsPageComponent {
 		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
 	}
 
-	protected actionsFor(payment: Payment): UserActionItem[] {
+	protected actionsFor(payment: PaymentRow): UserActionItem[] {
 		const isBlocked = payment.status === 'BLOQUE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', payment) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.viewDetails(payment) },
 			{ label: 'Voir transfert', icon: 'lucideArrowRightLeft', action: () => this.logAction('transfer', payment) },
-			{ label: 'Voir reçu', icon: 'lucideReceipt', action: () => this.logAction('receipt', payment) },
-			{ label: 'Voir audit', icon: 'lucideClipboardList', action: () => this.logAction('audit', payment) },
+			{ label: 'Voir reçu', icon: 'lucideReceipt', action: () => this.viewReceipt(payment) },
+			{ label: 'Voir audit', icon: 'lucideClipboardList', action: () => this.viewAudit(payment) },
 			...(isBlocked
 				? []
 				: [
 						{
 							label: 'Marquer bloqué',
 							icon: 'lucideShieldAlert',
-							action: () => this.blockDialog.set(true),
+							action: () => this.requestBlock(payment),
 							variant: 'destructive' as const,
 						},
 					]),
 		];
 	}
 
-	private logAction(action: string, payment: Payment): void {
+	private requestBlock(payment: PaymentRow): void {
+		this.pendingBlock.set(payment);
+		this.blockDialog.set(true);
+		this._api.block(payment.id).subscribe({
+			next: (updated) => {
+				const row = this.toRow(updated);
+				this.payments.update((items) => items.map((p) => (p.id === row.id ? row : p)));
+				this.pendingBlock.set(null);
+			},
+			error: (err) => {
+				this.error.set(this.extractMessage(err));
+				this.pendingBlock.set(null);
+			},
+		});
+	}
+
+	private viewDetails(payment: PaymentRow): void {
+		this._api.getById(payment.id).subscribe({
+			next: (detail) => this.logAction('view', this.toRow(detail)),
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
+	private viewReceipt(payment: PaymentRow): void {
+		this._api.getReceipt(payment.id).subscribe({
+			next: (receipt) => {
+				// eslint-disable-next-line no-console
+				console.info('[Payments] receipt', receipt);
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
+	private viewAudit(payment: PaymentRow): void {
+		this._api.getAuditTrail(payment.id).subscribe({
+			next: (entries) => {
+				// eslint-disable-next-line no-console
+				console.info('[Payments] audit', payment.paymentReference, entries);
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
+	private logAction(action: string, payment: PaymentRow): void {
 		// eslint-disable-next-line no-console
 		console.info(`[Payments] ${action}`, payment.paymentReference);
+	}
+
+	private formatTimestamp(value: string | null): string {
+		if (!value) return '—';
+		return value.replace('T', ' ').slice(0, 16);
+	}
+
+	private extractMessage(err: unknown): string {
+		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';
+		if (typeof err === 'object' && err !== null) {
+			const error = err as { error?: { message?: string }; message?: string };
+			return error.error?.message ?? error.message ?? fallback;
+		}
+		return fallback;
 	}
 }

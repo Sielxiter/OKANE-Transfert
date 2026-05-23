@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -44,6 +44,14 @@ import {
 	type SettingToggle,
 	type ThemeMode,
 } from './settings.mock';
+import {
+	AdminSettingsApiService,
+	type ApiAdminProfile,
+	type ApiNotificationSettings,
+	type ApiPreferencesSettings,
+	type ApiSecuritySettings,
+	type ApiSystemSettings,
+} from './admin-settings.api';
 
 @Component({
 	selector: 'okane-admin-settings-page',
@@ -134,7 +142,7 @@ import {
 						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-0.5 font-mono text-xs text-muted-foreground"
 					>
 						<ng-icon name="lucideShieldCheck" class="text-xs" />
-						{{ profile.role }}
+						{{ profile().role }}
 					</span>
 				</header>
 
@@ -145,7 +153,7 @@ import {
 						<div
 							class="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-2xl font-semibold text-primary ring-1 ring-border"
 						>
-							{{ profile.avatarInitials }}
+							{{ profile().avatarInitials }}
 						</div>
 						<button hlmBtn variant="outline" size="sm" type="button" (click)="profileDialog.set(true)">
 							<ng-icon name="lucidePencil" />
@@ -156,23 +164,23 @@ import {
 					<dl class="grid gap-4 sm:grid-cols-2">
 						<div>
 							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nom complet</dt>
-							<dd class="mt-1 text-sm font-medium text-foreground">{{ profile.fullName }}</dd>
+							<dd class="mt-1 text-sm font-medium text-foreground">{{ profile().fullName }}</dd>
 						</div>
 						<div>
 							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Rôle</dt>
-							<dd class="mt-1 text-sm font-medium text-foreground">{{ profile.roleLabel }}</dd>
+							<dd class="mt-1 text-sm font-medium text-foreground">{{ profile().roleLabel }}</dd>
 						</div>
 						<div>
 							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Email</dt>
-							<dd class="mt-1 text-sm text-foreground">{{ profile.email }}</dd>
+							<dd class="mt-1 text-sm text-foreground">{{ profile().email }}</dd>
 						</div>
 						<div>
 							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Téléphone</dt>
-							<dd class="mt-1 text-sm text-foreground">{{ profile.phone }}</dd>
+							<dd class="mt-1 text-sm text-foreground">{{ profile().phone }}</dd>
 						</div>
 						<div>
 							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Dernière connexion</dt>
-							<dd class="mt-1 font-mono text-sm text-foreground">{{ profile.lastLogin }}</dd>
+							<dd class="mt-1 font-mono text-sm text-foreground">{{ profile().lastLogin }}</dd>
 						</div>
 					</dl>
 				</div>
@@ -423,7 +431,7 @@ import {
 				<hlm-separator class="my-5" />
 
 				<div class="grid gap-3 md:grid-cols-2">
-					@for (setting of systemSettings; track setting.key) {
+					@for (setting of systemSettings(); track setting.key) {
 						<article
 							class="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4 transition-colors"
 						>
@@ -493,10 +501,19 @@ import {
 		/>
 	`,
 })
-export class AdminSettingsPageComponent {
-	protected readonly profile = ADMIN_PROFILE_MOCK;
+export class AdminSettingsPageComponent implements OnInit {
+	private readonly _api = inject(AdminSettingsApiService);
+
+	// ─── Profile (API-backed, falls back to mock) ────────────────────────────────
+	protected readonly profile = signal({ ...ADMIN_PROFILE_MOCK });
+
+	// ─── Sessions (static mock — no session management API yet) ─────────────────
 	protected readonly sessions = ADMIN_SESSIONS_MOCK;
-	protected readonly systemSettings = SYSTEM_SETTINGS_MOCK;
+
+	// ─── System settings (API-backed, falls back to mock) ───────────────────────
+	protected readonly systemSettings = signal([...SYSTEM_SETTINGS_MOCK]);
+
+	// ─── Static option lists ─────────────────────────────────────────────────────
 	protected readonly languages = SUPPORTED_LANGUAGES;
 	protected readonly themes = SUPPORTED_THEMES;
 	protected readonly currencies = SUPPORTED_CURRENCIES;
@@ -510,6 +527,7 @@ export class AdminSettingsPageComponent {
 		{ target: 'system', label: 'Système', icon: 'lucideServer' },
 	];
 
+	// ─── Toggles & preferences (API-backed, fall back to mock) ──────────────────
 	protected readonly notificationToggles = signal<SettingToggle[]>(
 		NOTIFICATION_TOGGLES_MOCK.map((t) => ({ ...t })),
 	);
@@ -519,12 +537,109 @@ export class AdminSettingsPageComponent {
 	protected readonly preferences = signal<AdminPreferences>({ ...ADMIN_PREFERENCES_MOCK });
 	protected readonly maintenanceMode = signal<boolean>(false);
 
+	// ─── Dialogs ────────────────────────────────────────────────────────────────
 	protected readonly saveDialog = signal<boolean>(false);
 	protected readonly resetDialog = signal<boolean>(false);
 	protected readonly profileDialog = signal<boolean>(false);
 	protected readonly passwordDialog = signal<boolean>(false);
 	protected readonly sessionsDialog = signal<boolean>(false);
 
+	// ─── Lifecycle ──────────────────────────────────────────────────────────────
+	public ngOnInit(): void {
+		this.loadAll();
+	}
+
+	private loadAll(): void {
+		// Profile
+		this._api.getProfile().subscribe({
+			next: (data) => this.applyProfile(data),
+			error: () => {}, // keep mock fallback
+		});
+
+		// Security toggles
+		this._api.getSecurity().subscribe({
+			next: (data) => this.applySecuritySettings(data),
+			error: () => {},
+		});
+
+		// Notification toggles
+		this._api.getNotifications().subscribe({
+			next: (data) => this.applyNotificationSettings(data),
+			error: () => {},
+		});
+
+		// Preferences
+		this._api.getPreferences().subscribe({
+			next: (data) => this.applyPreferences(data),
+			error: () => {},
+		});
+
+		// System settings
+		this._api.getSystemSettings().subscribe({
+			next: (data) => this.applySystemSettings(data),
+			error: () => {},
+		});
+	}
+
+	// ─── Apply API responses ─────────────────────────────────────────────────────
+	private applyProfile(data: ApiAdminProfile): void {
+		this.profile.set({
+			fullName: data.fullName ?? ADMIN_PROFILE_MOCK.fullName,
+			email: data.email ?? ADMIN_PROFILE_MOCK.email,
+			phone: data.phone ?? ADMIN_PROFILE_MOCK.phone,
+			role: data.role ?? ADMIN_PROFILE_MOCK.role,
+			roleLabel: data.role === 'ROLE_ADMIN' ? 'Administrateur' : (data.role ?? ADMIN_PROFILE_MOCK.roleLabel),
+			avatarInitials: this.buildInitials(data.fullName ?? ADMIN_PROFILE_MOCK.fullName),
+			lastLogin: data.lastLoginAt ?? ADMIN_PROFILE_MOCK.lastLogin,
+		});
+	}
+
+	private applySecuritySettings(data: ApiSecuritySettings): void {
+		this.securityToggles.update((items) =>
+			items.map((t) => {
+				if (t.key === 'twoFa') return { ...t, value: data.twoFactorEnabled };
+				if (t.key === 'securityAlerts') return { ...t, value: data.securityAlertsEnabled };
+				return t;
+			}),
+		);
+	}
+
+	private applyNotificationSettings(data: ApiNotificationSettings): void {
+		this.notificationToggles.update((items) =>
+			items.map((t) => {
+				if (t.key === 'email') return { ...t, value: data.emailNotifications };
+				if (t.key === 'system') return { ...t, value: data.systemNotifications };
+				if (t.key === 'compliance') return { ...t, value: data.complianceAlerts };
+				if (t.key === 'payments') return { ...t, value: data.paymentAlerts };
+				if (t.key === 'suspicious') return { ...t, value: data.suspiciousTransferAlerts };
+				return t;
+			}),
+		);
+	}
+
+	private applyPreferences(data: ApiPreferencesSettings): void {
+		this.preferences.set({
+			language: (data.language as LanguageCode) ?? ADMIN_PREFERENCES_MOCK.language,
+			theme: (data.theme as ThemeMode) ?? ADMIN_PREFERENCES_MOCK.theme,
+			currency: (data.defaultCurrency as DefaultCurrency) ?? ADMIN_PREFERENCES_MOCK.currency,
+			timezone: data.timezone ?? ADMIN_PREFERENCES_MOCK.timezone,
+		});
+	}
+
+	private applySystemSettings(data: ApiSystemSettings): void {
+		this.maintenanceMode.set(data.maintenanceMode ?? false);
+		this.systemSettings.set(
+			SYSTEM_SETTINGS_MOCK.map((s) => {
+				if (s.key === 'access_token_ttl') return { ...s, value: data.accessTokenDuration ?? s.value };
+				if (s.key === 'refresh_token_ttl') return { ...s, value: data.refreshTokenDuration ?? s.value };
+				if (s.key === 'login_attempts') return { ...s, value: String(data.maxLoginAttempts ?? 5) + ' / 10 min' };
+				if (s.key === 'bcrypt_strength') return { ...s, value: String(data.bcryptStrength ?? 12) };
+				return s;
+			}),
+		);
+	}
+
+	// ─── Persist changes ─────────────────────────────────────────────────────────
 	protected openSaveDialog(): void {
 		this.saveDialog.set(true);
 	}
@@ -537,31 +652,78 @@ export class AdminSettingsPageComponent {
 		this.notificationToggles.update((items) =>
 			items.map((t) => (t.key === key ? { ...t, value } : t)),
 		);
+		// Persist immediately — no Refresh button
+		const toggles = this.notificationToggles();
+		const payload = {
+			emailNotifications: toggles.find((t) => t.key === 'email')?.value ?? true,
+			systemNotifications: toggles.find((t) => t.key === 'system')?.value ?? true,
+			complianceAlerts: toggles.find((t) => t.key === 'compliance')?.value ?? true,
+			paymentAlerts: toggles.find((t) => t.key === 'payments')?.value ?? false,
+			suspiciousTransferAlerts: toggles.find((t) => t.key === 'suspicious')?.value ?? true,
+		};
+		this._api.updateNotifications(payload).subscribe({ error: () => {} });
 	}
 
 	protected onSecurityToggle(key: string, value: boolean): void {
 		this.securityToggles.update((items) =>
 			items.map((t) => (t.key === key ? { ...t, value } : t)),
 		);
+		const toggles = this.securityToggles();
+		const payload = {
+			twoFactorEnabled: toggles.find((t) => t.key === 'twoFa')?.value,
+			securityAlertsEnabled: toggles.find((t) => t.key === 'securityAlerts')?.value,
+		};
+		this._api.updateSecurity(payload).subscribe({ error: () => {} });
 	}
 
 	protected onMaintenanceToggle(value: boolean): void {
 		this.maintenanceMode.set(value);
+		this._api.getSystemSettings().subscribe({
+			next: (current) => {
+				this._api.updateSystemSettings({ ...current, maintenanceMode: value }).subscribe({ error: () => {} });
+			},
+			error: () => {},
+		});
 	}
 
 	protected onLanguageChange(value: LanguageCode): void {
 		this.preferences.update((p) => ({ ...p, language: value }));
+		this.persistPreferences();
 	}
 
 	protected onThemeChange(value: ThemeMode): void {
 		this.preferences.update((p) => ({ ...p, theme: value }));
+		this.persistPreferences();
 	}
 
 	protected onCurrencyChange(value: DefaultCurrency): void {
 		this.preferences.update((p) => ({ ...p, currency: value }));
+		this.persistPreferences();
 	}
 
 	protected onTimezoneChange(value: string): void {
 		this.preferences.update((p) => ({ ...p, timezone: value }));
+		this.persistPreferences();
+	}
+
+	private persistPreferences(): void {
+		const p = this.preferences();
+		this._api.updatePreferences({
+			language: p.language,
+			theme: p.theme,
+			defaultCurrency: p.currency,
+			timezone: p.timezone,
+		}).subscribe({ error: () => {} });
+	}
+
+	// ─── Helpers ────────────────────────────────────────────────────────────────
+	private buildInitials(fullName: string): string {
+		return fullName
+			.split(' ')
+			.map((part) => part[0])
+			.filter(Boolean)
+			.slice(0, 2)
+			.join('')
+			.toUpperCase();
 	}
 }

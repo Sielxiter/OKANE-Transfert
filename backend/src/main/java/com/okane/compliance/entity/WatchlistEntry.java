@@ -33,62 +33,40 @@ public class WatchlistEntry {
     @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
-    public WatchlistEntry() {
-    }
+    @Column(name = "code_pays", length = 10)
+    private String countryCode;
 
-    public Long getId() {
-        return id;
-    }
+    @Column(name = "type_entite", length = 30)
+    private String entityType;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @Column(name = "source", length = 30)
+    private String source;
 
-    public String getFullName() {
-        return fullName;
-    }
+    @Column(name = "statut_liste", length = 30)
+    private String watchlistStatus;
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
+    public WatchlistEntry() {}
 
-    public String getIdentityNumber() {
-        return identityNumber;
-    }
-
-    public void setIdentityNumber(String identityNumber) {
-        this.identityNumber = identityNumber;
-    }
-
-    public String getCountry() {
-        return country;
-    }
-
-    public void setCountry(String country) {
-        this.country = country;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
-    public Boolean getActive() {
-        return active;
-    }
-
-    public void setActive(Boolean active) {
-        this.active = active;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getIdentityNumber() { return identityNumber; }
+    public void setIdentityNumber(String identityNumber) { this.identityNumber = identityNumber; }
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
+    public Boolean getActive() { return active; }
+    public void setActive(Boolean active) { this.active = active; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getCountryCode() { return countryCode; }
+    public void setCountryCode(String countryCode) { this.countryCode = countryCode; }
+    public String getEntityType() { return entityType; }
+    public void setEntityType(String entityType) { this.entityType = entityType; }
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+    public String getWatchlistStatus() { return watchlistStatus; }
+    public void setWatchlistStatus(String watchlistStatus) { this.watchlistStatus = watchlistStatus; }
 }
