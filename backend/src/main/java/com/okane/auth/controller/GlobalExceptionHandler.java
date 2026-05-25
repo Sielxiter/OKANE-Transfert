@@ -66,10 +66,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception, HttpServletRequest request) {
+        exception.printStackTrace();
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         String message = request.getRequestURI().contains("/payout")
                 ? "Erreur serveur lors du paiement."
-                : "Unexpected error";
+                : exception.getClass().getSimpleName() + ": " + exception.getMessage();
         return ResponseEntity.status(status).body(new ApiErrorResponse(
                 LocalDateTime.now(),
                 status.value(),
