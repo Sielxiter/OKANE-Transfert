@@ -1,0 +1,107 @@
+import { isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
+import { Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideBadgeCheck, lucideBell, lucideChevronsUpDown, lucideLogOut } from '@ng-icons/lucide';
+import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
+import { AuthSessionService } from '../../../../shared/auth/auth-session.service';
+
+@Component({
+	selector: 'spartan-nav-user',
+	imports: [HlmSidebarImports, HlmAvatarImports, NgIcon, HlmDropdownMenuImports],
+	providers: [
+		provideIcons({
+			lucideChevronsUpDown,
+			lucideBadgeCheck,
+			lucideBell,
+			lucideLogOut,
+		}),
+	],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		@let u = user();
+		<ul hlmSidebarMenu>
+			<li hlmSidebarMenuItem>
+				<button hlmSidebarMenuButton size="lg" [hlmDropdownMenuTrigger]="menu" [side]="_menuSide()" align="end">
+					<hlm-avatar class="rounded-lg">
+						<img [src]="u.avatar" [alt]="u.name" hlmAvatarImage />
+						<span class="rounded-lg bg-[#FD005B] text-white" hlmAvatarFallback>RG</span>
+					</hlm-avatar>
+					<div class="grid flex-1 text-left text-sm leading-tight">
+						<span class="truncate font-medium">{{ u.name }}</span>
+						<span class="truncate text-xs">{{ u.email }}</span>
+					</div>
+					<ng-icon name="lucideChevronsUpDown" class="ml-auto text-base" />
+				</button>
+			</li>
+		</ul>
+
+		<ng-template #menu>
+			<hlm-dropdown-menu class="min-w-56 rounded-lg">
+				<hlm-dropdown-menu-label>
+					<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+						<hlm-avatar class="rounded-lg">
+							<img [src]="u.avatar" [alt]="u.name" hlmAvatarImage />
+							<span class="rounded-lg bg-[#FD005B] text-white" hlmAvatarFallback>RG</span>
+						</hlm-avatar>
+						<div class="grid flex-1 text-left text-sm leading-tight">
+							<span class="truncate font-medium">{{ u.name }}</span>
+							<span class="truncate text-xs">{{ u.email }}</span>
+						</div>
+					</div>
+				</hlm-dropdown-menu-label>
+				<hlm-dropdown-menu-separator />
+				<hlm-dropdown-menu-group>
+					<button hlmDropdownMenuItem type="button" (click)="goToProfile()">
+						<ng-icon name="lucideBadgeCheck" />
+						Profil
+					</button>
+					<button hlmDropdownMenuItem type="button" (click)="goToNotifications()">
+						<ng-icon name="lucideBell" />
+						Notifications
+					</button>
+				</hlm-dropdown-menu-group>
+				<hlm-dropdown-menu-separator />
+				<button hlmDropdownMenuItem type="button" (click)="signOut()">
+					<ng-icon name="lucideLogOut" />
+					Deconnexion
+				</button>
+			</hlm-dropdown-menu>
+		</ng-template>
+	`,
+})
+export class NavUser {
+	private readonly _router = inject(Router);
+	private readonly _platformId = inject(PLATFORM_ID);
+	private readonly _sidebarService = inject(HlmSidebarService);
+	private readonly _authSession = inject(AuthSessionService);
+	protected readonly _menuSide = computed(() => (this._sidebarService.isMobile() ? 'top' : 'right'));
+
+	public readonly user = input.required<{
+		name: string;
+		email: string;
+		avatar: string;
+	}>();
+
+	public goToProfile(): void {
+		void this._router.navigateByUrl('/agent/settings');
+	}
+
+	public goToNotifications(): void {
+		void this._router.navigateByUrl('/agent/notifications');
+	}
+
+	public signOut(): void {
+		if (!isPlatformBrowser(this._platformId)) {
+			void this._router.navigateByUrl('/login');
+			return;
+		}
+		this._authSession.logout().subscribe({
+			next: () => {
+				void this._router.navigateByUrl('/login');
+			},
+		});
+	}
+}

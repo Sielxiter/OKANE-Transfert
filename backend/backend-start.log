@@ -1,0 +1,1479 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< com.Okane:backend >--------------------------
+[INFO] Building backend Maven Webapp 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.4.1:java (default-cli) @ backend ---
+Hibernate: 
+    create table affectations_agence_utilisateurs (
+        id bigint not null auto_increment,
+        actif bit not null,
+        affecte_le datetime(6),
+        agence_id bigint not null,
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table agences (
+        id bigint not null auto_increment,
+        actif bit not null,
+        adresse varchar(255) not null,
+        ville varchar(100) not null,
+        code varchar(50) not null,
+        pays varchar(100) not null,
+        cree_le datetime(6),
+        plafond_journalier decimal(15,2) not null,
+        email varchar(150),
+        nom varchar(150) not null,
+        telephone varchar(30),
+        modifie_le datetime(6),
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table clients (
+        id bigint not null auto_increment,
+        adresse varchar(255),
+        ville varchar(100),
+        pays varchar(100) not null,
+        cree_le datetime(6),
+        numero_piece_identite varchar(100) not null,
+        type_piece_identite varchar(50) not null,
+        modifie_le datetime(6),
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table clotures_caisse (
+        id bigint not null auto_increment,
+        solde_reel decimal(15,2) not null,
+        cloturee_le datetime(6),
+        montant_ecart decimal(15,2) not null,
+        solde_attendu decimal(15,2) not null,
+        notes varchar(255),
+        session_caisse_id bigint not null,
+        cloture_par bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table codes_otp (
+        id bigint not null auto_increment,
+        canal varchar(50) not null,
+        code varchar(20) not null,
+        cree_le datetime(6),
+        expire_le datetime(6) not null,
+        objectif varchar(50) not null,
+        utilise bit not null,
+        utilise_le datetime(6),
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table controles_aml (
+        id bigint not null auto_increment,
+        seuil_montant_depasse bit not null,
+        beneficiaire_liste_surveillance bit not null,
+        verifie_le datetime(6),
+        notes_resultat varchar(255),
+        score_risque integer not null,
+        expediteur_liste_surveillance bit not null,
+        statut varchar(50) not null,
+        beneficiaire_id bigint not null,
+        expediteur_id bigint not null,
+        transfert_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table corridors_transfert (
+        id bigint not null auto_increment,
+        actif bit not null,
+        cree_le datetime(6),
+        plafond_journalier decimal(15,2),
+        modifie_le datetime(6),
+        pays_destination_id bigint not null,
+        pays_source_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table declarations_soupcon (
+        id bigint not null auto_increment,
+        cree_le datetime(6),
+        description tinytext not null,
+        type_declaration varchar(50) not null,
+        examine_le datetime(6),
+        statut varchar(50) not null,
+        controle_aml_id bigint not null,
+        client_id bigint not null,
+        examine_par bigint,
+        transfert_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table devises (
+        id bigint not null auto_increment,
+        actif bit not null,
+        code varchar(10) not null,
+        cree_le datetime(6),
+        nom varchar(100) not null,
+        symbole varchar(10),
+        modifie_le datetime(6),
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table ecarts_caisse (
+        id bigint not null auto_increment,
+        solde_reel decimal(15,2) not null,
+        description varchar(255),
+        montant_ecart decimal(15,2) not null,
+        type_ecart varchar(50) not null,
+        solde_attendu decimal(15,2) not null,
+        signale_le datetime(6),
+        statut varchar(50) not null,
+        cloture_caisse_id bigint not null,
+        session_caisse_id bigint not null,
+        signale_par bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table grilles_tarifaires (
+        id bigint not null auto_increment,
+        actif bit not null,
+        cree_le datetime(6),
+        date_debut datetime(6),
+        date_fin datetime(6),
+        nom varchar(150) not null,
+        modifie_le datetime(6),
+        corridor_id bigint,
+        cree_par bigint,
+        devise_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table historique_statuts_transfert (
+        id bigint not null auto_increment,
+        modifie_le datetime(6),
+        nouveau_statut varchar(50) not null,
+        ancien_statut varchar(50),
+        motif varchar(255),
+        modifie_par bigint,
+        transfert_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table jetons_actualisation (
+        id bigint not null auto_increment,
+        cree_le datetime(6),
+        date_expiration datetime(6) not null,
+        revoque bit not null,
+        jeton varchar(500) not null,
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table journal_audit (
+        id bigint not null auto_increment,
+        action varchar(100) not null,
+        cree_le datetime(6),
+        description varchar(255),
+        id_entite bigint,
+        nom_entite varchar(100),
+        adresse_ip varchar(100),
+        navigateur_utilisateur varchar(255),
+        role_utilisateur varchar(50),
+        utilisateur_id bigint,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table liste_surveillance (
+        id bigint not null auto_increment,
+        actif bit not null,
+        pays varchar(100),
+        cree_le datetime(6),
+        nom_complet varchar(200) not null,
+        numero_piece_identite varchar(100),
+        motif varchar(255),
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table messages_chatbot (
+        id bigint not null auto_increment,
+        cree_le datetime(6),
+        intention_detectee varchar(100),
+        message tinytext not null,
+        type_expediteur varchar(50) not null,
+        utilisateur_expediteur_id bigint,
+        session_chatbot_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table mouvements_caisse (
+        id bigint not null auto_increment,
+        montant decimal(15,2) not null,
+        cree_le datetime(6),
+        description varchar(255),
+        type_mouvement varchar(50) not null,
+        agence_id bigint not null,
+        session_caisse_id bigint not null,
+        paiement_id bigint,
+        transfert_id bigint,
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table notifications (
+        id bigint not null auto_increment,
+        canal varchar(50) not null,
+        cree_le datetime(6),
+        message tinytext not null,
+        reponse_fournisseur tinytext,
+        envoye_le datetime(6),
+        statut varchar(50) not null,
+        titre varchar(150),
+        type varchar(50) not null,
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table operateurs_mobile_money (
+        id bigint not null auto_increment,
+        actif bit not null,
+        code varchar(50) not null,
+        cree_le datetime(6),
+        nom varchar(100) not null,
+        modifie_le datetime(6),
+        pays_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table paiements_transfert (
+        id bigint not null auto_increment,
+        montant_paye decimal(15,2) not null,
+        paye_le datetime(6),
+        beneficiaire_id bigint not null,
+        session_caisse_id bigint not null,
+        paye_par bigint not null,
+        agence_paiement_id bigint not null,
+        transfert_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table pays (
+        id bigint not null auto_increment,
+        actif bit not null,
+        code varchar(10) not null,
+        cree_le datetime(6),
+        nom varchar(100) not null,
+        modifie_le datetime(6),
+        devise_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table preferences_notification (
+        id bigint not null auto_increment,
+        cree_le datetime(6),
+        email_active bit not null,
+        langue_preferee varchar(10) not null,
+        push_active bit not null,
+        sms_active bit not null,
+        modifie_le datetime(6),
+        utilisateur_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table rapports_generes (
+        id bigint not null auto_increment,
+        chemin_fichier varchar(255),
+        format varchar(20) not null,
+        genere_le datetime(6),
+        date_fin_periode date not null,
+        date_debut_periode date not null,
+        type_declaration varchar(50) not null,
+        statut varchar(50) not null,
+        agence_id bigint,
+        genere_par bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table reconciliations_mobile_money (
+        id bigint not null auto_increment,
+        montant_attendu decimal(15,2) not null,
+        notes varchar(255),
+        montant_operateur decimal(15,2) not null,
+        reference_operateur varchar(100) not null,
+        reconcilie_le datetime(6),
+        statut varchar(50) not null,
+        transfert_mobile_money_id bigint not null,
+        reconcilie_par bigint,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table regles_commission (
+        id bigint not null auto_increment,
+        actif bit not null,
+        pourcentage_agence decimal(5,2) not null,
+        pourcentage_centrale decimal(5,2) not null,
+        cree_le datetime(6),
+        grille_tarifaire_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table roles (
+        id bigint not null auto_increment,
+        nom varchar(50) not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table sessions_caisse_agent (
+        id bigint not null auto_increment,
+        cloturee_le datetime(6),
+        ouverte_le datetime(6),
+        solde_ouverture decimal(15,2) not null,
+        date_session date not null,
+        statut varchar(50) not null,
+        agence_id bigint not null,
+        agent_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table sessions_chatbot (
+        id bigint not null auto_increment,
+        terminee_le datetime(6),
+        langue varchar(10) not null,
+        demarree_le datetime(6),
+        statut varchar(50) not null,
+        utilisateur_id bigint,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table taux_change (
+        id bigint not null auto_increment,
+        applique_le datetime(6),
+        taux decimal(15,6) not null,
+        source varchar(50) not null,
+        cree_par bigint,
+        devise_source_id bigint not null,
+        devise_destination_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table tranches_tarifaires (
+        id bigint not null auto_increment,
+        cree_le datetime(6),
+        type_frais varchar(50) not null,
+        valeur_frais decimal(15,2) not null,
+        montant_max decimal(15,2) not null,
+        montant_min decimal(15,2) not null,
+        grille_tarifaire_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table transferts (
+        id bigint not null auto_increment,
+        montant decimal(15,2) not null,
+        cree_le datetime(6),
+        taux_change decimal(15,6) not null,
+        expire_le datetime(6),
+        montant_frais decimal(15,2) not null,
+        montant_net_recu decimal(15,2) not null,
+        code_reference varchar(50) not null,
+        envoye_le datetime(6),
+        statut varchar(50) not null,
+        modifie_le datetime(6),
+        code_retrait varchar(50) not null,
+        beneficiaire_id bigint not null,
+        session_caisse_id bigint not null,
+        cree_par bigint not null,
+        devise_id bigint not null,
+        expediteur_id bigint not null,
+        agence_source_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table transferts_mobile_money (
+        id bigint not null auto_increment,
+        montant decimal(15,2) not null,
+        terminee_le datetime(6),
+        reference_operateur varchar(100),
+        reponse_fournisseur tinytext,
+        demande_le datetime(6),
+        statut varchar(50) not null,
+        telephone_wallet varchar(30) not null,
+        beneficiaire_id bigint not null,
+        initie_par bigint not null,
+        operateur_id bigint not null,
+        transfert_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table utilisateurs (
+        id bigint not null auto_increment,
+        compte_verrouille bit not null,
+        compte_suspendu bit not null,
+        cree_le datetime(6),
+        email varchar(150) not null,
+        active bit not null,
+        tentatives_echec_connexion integer not null,
+        prenom varchar(100) not null,
+        dernier_login_le datetime(6),
+        nom varchar(100) not null,
+        mot_de_passe_change_le datetime(6),
+        mot_de_passe_hash varchar(255) not null,
+        telephone varchar(30),
+        modifie_le datetime(6),
+        role_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    create table verifications_kyc (
+        id bigint not null auto_increment,
+        verifie_le datetime(6),
+        format_piece_valide bit not null,
+        notes varchar(255),
+        statut varchar(50) not null,
+        verifie_par bigint,
+        client_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+Hibernate: 
+    alter table affectations_agence_utilisateurs 
+       drop index UK1rv66rkmgfc4xsekp1lcp5bbv
+Hibernate: 
+    alter table affectations_agence_utilisateurs 
+       add constraint UK1rv66rkmgfc4xsekp1lcp5bbv unique (agence_id, utilisateur_id)
+Hibernate: 
+    alter table agences 
+       drop index UK_lqbc32hnkh3vwcyqerb9iwgv0
+Hibernate: 
+    alter table agences 
+       add constraint UK_lqbc32hnkh3vwcyqerb9iwgv0 unique (code)
+Hibernate: 
+    alter table clients 
+       drop index UKno7gjj4r1yh04033j87lnl30n
+Hibernate: 
+    alter table clients 
+       add constraint UKno7gjj4r1yh04033j87lnl30n unique (type_piece_identite, numero_piece_identite)
+Hibernate: 
+    alter table clients 
+       drop index UKaq7jubyww3irqsagrfyiq58yl
+Hibernate: 
+    alter table clients 
+       add constraint UKaq7jubyww3irqsagrfyiq58yl unique (utilisateur_id)
+Hibernate: 
+    alter table clotures_caisse 
+       drop index UK_98mr50xmfo7n30yg421gxlmgb
+Hibernate: 
+    alter table clotures_caisse 
+       add constraint UK_98mr50xmfo7n30yg421gxlmgb unique (session_caisse_id)
+Hibernate: 
+    alter table corridors_transfert 
+       drop index UKblsydaovl4lnlmmp5r3301sgu
+Hibernate: 
+    alter table corridors_transfert 
+       add constraint UKblsydaovl4lnlmmp5r3301sgu unique (pays_source_id, pays_destination_id)
+Hibernate: 
+    alter table devises 
+       drop index UK_ixotxbwadltfs8mate3ciswg1
+Hibernate: 
+    alter table devises 
+       add constraint UK_ixotxbwadltfs8mate3ciswg1 unique (code)
+Hibernate: 
+    alter table ecarts_caisse 
+       drop index UK_p5p4unojmr6eqiu5jkdy402it
+Hibernate: 
+    alter table ecarts_caisse 
+       add constraint UK_p5p4unojmr6eqiu5jkdy402it unique (cloture_caisse_id)
+Hibernate: 
+    alter table jetons_actualisation 
+       drop index UK_4xuxc0cm2vhqegrtae2utpmig
+Hibernate: 
+    alter table jetons_actualisation 
+       add constraint UK_4xuxc0cm2vhqegrtae2utpmig unique (jeton)
+Hibernate: 
+    alter table operateurs_mobile_money 
+       drop index UK_gjllsc84mb8sgwt3ebm6b433e
+Hibernate: 
+    alter table operateurs_mobile_money 
+       add constraint UK_gjllsc84mb8sgwt3ebm6b433e unique (code)
+Hibernate: 
+    alter table paiements_transfert 
+       drop index UK_kh1dlo7ng7s2lubg8514hhwih
+Hibernate: 
+    alter table paiements_transfert 
+       add constraint UK_kh1dlo7ng7s2lubg8514hhwih unique (transfert_id)
+Hibernate: 
+    alter table pays 
+       drop index UK_iievwshu2sv589awso3xwlb5f
+Hibernate: 
+    alter table pays 
+       add constraint UK_iievwshu2sv589awso3xwlb5f unique (code)
+Hibernate: 
+    alter table preferences_notification 
+       drop index UK_kdhyhs3rysnv4v54vrmic8yol
+Hibernate: 
+    alter table preferences_notification 
+       add constraint UK_kdhyhs3rysnv4v54vrmic8yol unique (utilisateur_id)
+Hibernate: 
+    alter table reconciliations_mobile_money 
+       drop index UK_3oh8y47imabib2knj4slxs5t9
+Hibernate: 
+    alter table reconciliations_mobile_money 
+       add constraint UK_3oh8y47imabib2knj4slxs5t9 unique (transfert_mobile_money_id)
+Hibernate: 
+    alter table roles 
+       drop index UK_bbxiq3fbrr32wfkco6ichxaly
+Hibernate: 
+    alter table roles 
+       add constraint UK_bbxiq3fbrr32wfkco6ichxaly unique (nom)
+Hibernate: 
+    alter table sessions_caisse_agent 
+       drop index UKpg4w1eyh5exwk0r9a4xempae3
+Hibernate: 
+    alter table sessions_caisse_agent 
+       add constraint UKpg4w1eyh5exwk0r9a4xempae3 unique (agent_id, date_session)
+Hibernate: 
+    alter table transferts 
+       drop index UK_gekw1sot2w2x99av5w6ufxkvs
+Hibernate: 
+    alter table transferts 
+       add constraint UK_gekw1sot2w2x99av5w6ufxkvs unique (code_reference)
+Hibernate: 
+    alter table transferts 
+       drop index UK_rm81lnsnj9tw0rb5s7hqiitob
+Hibernate: 
+    alter table transferts 
+       add constraint UK_rm81lnsnj9tw0rb5s7hqiitob unique (code_retrait)
+Hibernate: 
+    alter table transferts_mobile_money 
+       drop index UK_lrlx16x7bs2bvevq67gjfwbe1
+Hibernate: 
+    alter table transferts_mobile_money 
+       add constraint UK_lrlx16x7bs2bvevq67gjfwbe1 unique (reference_operateur)
+Hibernate: 
+    alter table transferts_mobile_money 
+       drop index UK_8b9vr2p7g4e5e05nl67yu3dim
+Hibernate: 
+    alter table transferts_mobile_money 
+       add constraint UK_8b9vr2p7g4e5e05nl67yu3dim unique (transfert_id)
+Hibernate: 
+    alter table utilisateurs 
+       drop index UK_6ldvumu3hqvnmmxy1b6lsxwqy
+Hibernate: 
+    alter table utilisateurs 
+       add constraint UK_6ldvumu3hqvnmmxy1b6lsxwqy unique (email)
+Hibernate: 
+    alter table affectations_agence_utilisateurs 
+       add constraint FK1nccud30krk7mg55j48r9fg9y 
+       foreign key (agence_id) 
+       references agences (id)
+Hibernate: 
+    alter table affectations_agence_utilisateurs 
+       add constraint FKggcpfpjec4980m6o30nlb4dwl 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table clients 
+       add constraint FKfviksevb0acjakcmjidesj8jb 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table clotures_caisse 
+       add constraint FKhur0vwimsgdb1f1kt9wyo423f 
+       foreign key (session_caisse_id) 
+       references sessions_caisse_agent (id)
+Hibernate: 
+    alter table clotures_caisse 
+       add constraint FKqb3nxk05hrlkcyub1d4npdpp2 
+       foreign key (cloture_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table codes_otp 
+       add constraint FKc7nwshldxsj27xroeqhb4ptkp 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table controles_aml 
+       add constraint FKkyrm5et5pu2y4djbm12fwaqj1 
+       foreign key (beneficiaire_id) 
+       references clients (id)
+Hibernate: 
+    alter table controles_aml 
+       add constraint FKiws6htmt4lwkhewjwsaso042i 
+       foreign key (expediteur_id) 
+       references clients (id)
+Hibernate: 
+    alter table controles_aml 
+       add constraint FK7890ars8g3ku95w94mfy3c8km 
+       foreign key (transfert_id) 
+       references transferts (id)
+Hibernate: 
+    alter table corridors_transfert 
+       add constraint FKijf26dhgflh7oec40o1tqa1dk 
+       foreign key (pays_destination_id) 
+       references pays (id)
+Hibernate: 
+    alter table corridors_transfert 
+       add constraint FKd5r1usokrtfsl64ty0ctfiytf 
+       foreign key (pays_source_id) 
+       references pays (id)
+Hibernate: 
+    alter table declarations_soupcon 
+       add constraint FKemvvwmq4dlod4tnqspk241g83 
+       foreign key (controle_aml_id) 
+       references controles_aml (id)
+Hibernate: 
+    alter table declarations_soupcon 
+       add constraint FKs32tce0ymntl62wffmsw7hd9r 
+       foreign key (client_id) 
+       references clients (id)
+Hibernate: 
+    alter table declarations_soupcon 
+       add constraint FKsxq0cmqfjc6owox4trynui93h 
+       foreign key (examine_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table declarations_soupcon 
+       add constraint FKj1cov8m5v2uxl7f8f1emdfbrm 
+       foreign key (transfert_id) 
+       references transferts (id)
+Hibernate: 
+    alter table ecarts_caisse 
+       add constraint FK9r8vxtx1l07vlcounv6bgm2wf 
+       foreign key (cloture_caisse_id) 
+       references clotures_caisse (id)
+Hibernate: 
+    alter table ecarts_caisse 
+       add constraint FKruehqtyguqwyf2oiw88utr7s 
+       foreign key (session_caisse_id) 
+       references sessions_caisse_agent (id)
+Hibernate: 
+    alter table ecarts_caisse 
+       add constraint FKtdfueglxm79j0lp56icy9pf8g 
+       foreign key (signale_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table grilles_tarifaires 
+       add constraint FKl3ls3n15ec06r1bj1ks0ei97q 
+       foreign key (corridor_id) 
+       references corridors_transfert (id)
+Hibernate: 
+    alter table grilles_tarifaires 
+       add constraint FK8nwkg56cajjnleesby04ltqw8 
+       foreign key (cree_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table grilles_tarifaires 
+       add constraint FKgtx3tye9468hyych0ikn76jf2 
+       foreign key (devise_id) 
+       references devises (id)
+Hibernate: 
+    alter table historique_statuts_transfert 
+       add constraint FKk95mwmex2fpi6lrnm1aa1nf6k 
+       foreign key (modifie_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table historique_statuts_transfert 
+       add constraint FK6g3s6w4l6hv32ihxykg469dwj 
+       foreign key (transfert_id) 
+       references transferts (id)
+Hibernate: 
+    alter table jetons_actualisation 
+       add constraint FK6w5ags7id8julti4ssyqaikua 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table journal_audit 
+       add constraint FKkcddxplh974rqqu8hjq5xhpoa 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table messages_chatbot 
+       add constraint FKhpt31gg8bf6hwth0aix6iqwny 
+       foreign key (utilisateur_expediteur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table messages_chatbot 
+       add constraint FKisvnf7uj6t39sdegxf04puuw9 
+       foreign key (session_chatbot_id) 
+       references sessions_chatbot (id)
+Hibernate: 
+    alter table mouvements_caisse 
+       add constraint FKe8mawkxvm9o7ffor4ktks2anj 
+       foreign key (agence_id) 
+       references agences (id)
+Hibernate: 
+    alter table mouvements_caisse 
+       add constraint FK6ph3l26yjiku6san95fyaknco 
+       foreign key (session_caisse_id) 
+       references sessions_caisse_agent (id)
+Hibernate: 
+    alter table mouvements_caisse 
+       add constraint FKjc2eeyb0j7hy9knxnwt8vtc5l 
+       foreign key (paiement_id) 
+       references paiements_transfert (id)
+Hibernate: 
+    alter table mouvements_caisse 
+       add constraint FKthy8cvtwqoh5424ui8q182oxo 
+       foreign key (transfert_id) 
+       references transferts (id)
+Hibernate: 
+    alter table mouvements_caisse 
+       add constraint FKiarbgvmyep1hx956odnrcwpdv 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table notifications 
+       add constraint FKsoq6jchv8p6wnydvsnf6ubw4y 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table operateurs_mobile_money 
+       add constraint FKs14vw8x3fekl6jv810x0vceee 
+       foreign key (pays_id) 
+       references pays (id)
+Hibernate: 
+    alter table paiements_transfert 
+       add constraint FKtj777k1wwpnn5lsgwa70nitqk 
+       foreign key (beneficiaire_id) 
+       references clients (id)
+Hibernate: 
+    alter table paiements_transfert 
+       add constraint FKglfr4vhftkgoaj9uyg8o61hxl 
+       foreign key (session_caisse_id) 
+       references sessions_caisse_agent (id)
+Hibernate: 
+    alter table paiements_transfert 
+       add constraint FKn70y4h4x66exyr1cq7uyj8h15 
+       foreign key (paye_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table paiements_transfert 
+       add constraint FKo6t6gn2i2eqnh68f909kq7scw 
+       foreign key (agence_paiement_id) 
+       references agences (id)
+Hibernate: 
+    alter table paiements_transfert 
+       add constraint FKl79xv0ob1jqw3sluwyxwhfhyb 
+       foreign key (transfert_id) 
+       references transferts (id)
+Hibernate: 
+    alter table pays 
+       add constraint FKmatkgit40rs1n8y691ssx56q5 
+       foreign key (devise_id) 
+       references devises (id)
+Hibernate: 
+    alter table preferences_notification 
+       add constraint FK8ijj77lt92ltnaiea8a4598gk 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table rapports_generes 
+       add constraint FKcl7wkmumefrn7qn8xumaopted 
+       foreign key (agence_id) 
+       references agences (id)
+Hibernate: 
+    alter table rapports_generes 
+       add constraint FKbngn5d6775p1m3d5mevst4oi5 
+       foreign key (genere_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table reconciliations_mobile_money 
+       add constraint FK7o7ai31v8gagnw1gy55xj9227 
+       foreign key (transfert_mobile_money_id) 
+       references transferts_mobile_money (id)
+Hibernate: 
+    alter table reconciliations_mobile_money 
+       add constraint FK1b38s99cebs29sv0dm9ade3i6 
+       foreign key (reconcilie_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table regles_commission 
+       add constraint FKeujmdwigt6li9pxov58i181vw 
+       foreign key (grille_tarifaire_id) 
+       references grilles_tarifaires (id)
+Hibernate: 
+    alter table sessions_caisse_agent 
+       add constraint FK6va8h5o9pumu9jvwu71gaqv1u 
+       foreign key (agence_id) 
+       references agences (id)
+Hibernate: 
+    alter table sessions_caisse_agent 
+       add constraint FKk2nk37hk1iw8apaf3sancbupt 
+       foreign key (agent_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table sessions_chatbot 
+       add constraint FKs5r9llrt820a0b3msmwt5igwv 
+       foreign key (utilisateur_id) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table taux_change 
+       add constraint FKk05p821vwa25w2dr4a6otcye4 
+       foreign key (cree_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table taux_change 
+       add constraint FK123oa1ki0cr5k0vl60okh0lf7 
+       foreign key (devise_source_id) 
+       references devises (id)
+Hibernate: 
+    alter table taux_change 
+       add constraint FK4qvaq490d6eere9q7wu39n9wr 
+       foreign key (devise_destination_id) 
+       references devises (id)
+Hibernate: 
+    alter table tranches_tarifaires 
+       add constraint FKr91noke6xvokb0aetu4br1pjd 
+       foreign key (grille_tarifaire_id) 
+       references grilles_tarifaires (id)
+Hibernate: 
+    alter table transferts 
+       add constraint FKq3mk5gn2h47jvhgq25ft5q4ck 
+       foreign key (beneficiaire_id) 
+       references clients (id)
+Hibernate: 
+    alter table transferts 
+       add constraint FKrxjd90rt6bcehe6vskmx503l0 
+       foreign key (session_caisse_id) 
+       references sessions_caisse_agent (id)
+Hibernate: 
+    alter table transferts 
+       add constraint FKkfnfwy9dhvvhtie7b6qheoub3 
+       foreign key (cree_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table transferts 
+       add constraint FK5cyy5y6ewjud3g4cfg12v7igl 
+       foreign key (devise_id) 
+       references devises (id)
+Hibernate: 
+    alter table transferts 
+       add constraint FK9d7tvy05jutrrqh9q9c8rfnh2 
+       foreign key (expediteur_id) 
+       references clients (id)
+Hibernate: 
+    alter table transferts 
+       add constraint FKgud8mvn11ta02c2wgcvk1ru1s 
+       foreign key (agence_source_id) 
+       references agences (id)
+Hibernate: 
+    alter table transferts_mobile_money 
+       add constraint FKs0xp76nylk3fxorcdr20vmntu 
+       foreign key (beneficiaire_id) 
+       references clients (id)
+Hibernate: 
+    alter table transferts_mobile_money 
+       add constraint FKsn82044o5w1mwm7qincic5oh7 
+       foreign key (initie_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table transferts_mobile_money 
+       add constraint FK9vu57j0am73s67kl0qhndhjdg 
+       foreign key (operateur_id) 
+       references operateurs_mobile_money (id)
+Hibernate: 
+    alter table transferts_mobile_money 
+       add constraint FK88ixs3k87jcot4xuw25c9v8v 
+       foreign key (transfert_id) 
+       references transferts (id)
+Hibernate: 
+    alter table utilisateurs 
+       add constraint FK2mq6oe6ks9gwwyrmvbime3r08 
+       foreign key (role_id) 
+       references roles (id)
+Hibernate: 
+    alter table verifications_kyc 
+       add constraint FK62dj3vjifg4ah8l4rvrgtqs6m 
+       foreign key (verifie_par) 
+       references utilisateurs (id)
+Hibernate: 
+    alter table verifications_kyc 
+       add constraint FK8p1mqoy0ds7yuk5ckrei2jok4 
+       foreign key (client_id) 
+       references clients (id)
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.nom 
+    from
+        roles r1_0 
+    where
+        r1_0.nom=?
+Hibernate: 
+    insert 
+    into
+        roles
+        (nom) 
+    values
+        (?)
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.nom 
+    from
+        roles r1_0 
+    where
+        r1_0.nom=?
+Hibernate: 
+    insert 
+    into
+        roles
+        (nom) 
+    values
+        (?)
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.nom 
+    from
+        roles r1_0 
+    where
+        r1_0.nom=?
+Hibernate: 
+    insert 
+    into
+        roles
+        (nom) 
+    values
+        (?)
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.nom 
+    from
+        roles r1_0 
+    where
+        r1_0.nom=?
+Hibernate: 
+    insert 
+    into
+        roles
+        (nom) 
+    values
+        (?)
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.actif,
+        a1_0.adresse,
+        a1_0.ville,
+        a1_0.code,
+        a1_0.pays,
+        a1_0.cree_le,
+        a1_0.plafond_journalier,
+        a1_0.email,
+        a1_0.nom,
+        a1_0.telephone,
+        a1_0.modifie_le 
+    from
+        agences a1_0 
+    where
+        a1_0.code=?
+Hibernate: 
+    insert 
+    into
+        agences
+        (actif, adresse, ville, code, pays, cree_le, plafond_journalier, email, nom, telephone, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.compte_verrouille,
+        u1_0.compte_suspendu,
+        u1_0.cree_le,
+        u1_0.email,
+        u1_0.active,
+        u1_0.tentatives_echec_connexion,
+        u1_0.prenom,
+        u1_0.dernier_login_le,
+        u1_0.nom,
+        u1_0.mot_de_passe_change_le,
+        u1_0.mot_de_passe_hash,
+        u1_0.telephone,
+        u1_0.role_id,
+        u1_0.modifie_le 
+    from
+        utilisateurs u1_0 
+    where
+        upper(u1_0.email)=upper(?)
+Hibernate: 
+    insert 
+    into
+        utilisateurs
+        (compte_verrouille, compte_suspendu, cree_le, email, active, tentatives_echec_connexion, prenom, dernier_login_le, nom, mot_de_passe_change_le, mot_de_passe_hash, telephone, role_id, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.compte_verrouille,
+        u1_0.compte_suspendu,
+        u1_0.cree_le,
+        u1_0.email,
+        u1_0.active,
+        u1_0.tentatives_echec_connexion,
+        u1_0.prenom,
+        u1_0.dernier_login_le,
+        u1_0.nom,
+        u1_0.mot_de_passe_change_le,
+        u1_0.mot_de_passe_hash,
+        u1_0.telephone,
+        u1_0.role_id,
+        u1_0.modifie_le 
+    from
+        utilisateurs u1_0 
+    where
+        upper(u1_0.email)=upper(?)
+Hibernate: 
+    insert 
+    into
+        utilisateurs
+        (compte_verrouille, compte_suspendu, cree_le, email, active, tentatives_echec_connexion, prenom, dernier_login_le, nom, mot_de_passe_change_le, mot_de_passe_hash, telephone, role_id, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.compte_verrouille,
+        u1_0.compte_suspendu,
+        u1_0.cree_le,
+        u1_0.email,
+        u1_0.active,
+        u1_0.tentatives_echec_connexion,
+        u1_0.prenom,
+        u1_0.dernier_login_le,
+        u1_0.nom,
+        u1_0.mot_de_passe_change_le,
+        u1_0.mot_de_passe_hash,
+        u1_0.telephone,
+        u1_0.role_id,
+        u1_0.modifie_le 
+    from
+        utilisateurs u1_0 
+    where
+        upper(u1_0.email)=upper(?)
+Hibernate: 
+    insert 
+    into
+        utilisateurs
+        (compte_verrouille, compte_suspendu, cree_le, email, active, tentatives_echec_connexion, prenom, dernier_login_le, nom, mot_de_passe_change_le, mot_de_passe_hash, telephone, role_id, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.compte_verrouille,
+        u1_0.compte_suspendu,
+        u1_0.cree_le,
+        u1_0.email,
+        u1_0.active,
+        u1_0.tentatives_echec_connexion,
+        u1_0.prenom,
+        u1_0.dernier_login_le,
+        u1_0.nom,
+        u1_0.mot_de_passe_change_le,
+        u1_0.mot_de_passe_hash,
+        u1_0.telephone,
+        u1_0.role_id,
+        u1_0.modifie_le 
+    from
+        utilisateurs u1_0 
+    where
+        upper(u1_0.email)=upper(?)
+Hibernate: 
+    insert 
+    into
+        utilisateurs
+        (compte_verrouille, compte_suspendu, cree_le, email, active, tentatives_echec_connexion, prenom, dernier_login_le, nom, mot_de_passe_change_le, mot_de_passe_hash, telephone, role_id, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        au1_0.id,
+        au1_0.actif,
+        au1_0.agence_id,
+        au1_0.affecte_le,
+        au1_0.utilisateur_id 
+    from
+        affectations_agence_utilisateurs au1_0 
+    where
+        au1_0.utilisateur_id=? 
+        and au1_0.actif 
+    limit
+        ?
+Hibernate: 
+    insert 
+    into
+        affectations_agence_utilisateurs
+        (actif, agence_id, affecte_le, utilisateur_id) 
+    values
+        (?, ?, ?, ?)
+Hibernate: 
+    select
+        au1_0.id,
+        au1_0.actif,
+        au1_0.agence_id,
+        au1_0.affecte_le,
+        au1_0.utilisateur_id 
+    from
+        affectations_agence_utilisateurs au1_0 
+    where
+        au1_0.utilisateur_id=? 
+        and au1_0.actif 
+    limit
+        ?
+Hibernate: 
+    insert 
+    into
+        affectations_agence_utilisateurs
+        (actif, agence_id, affecte_le, utilisateur_id) 
+    values
+        (?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.adresse,
+        c1_0.ville,
+        c1_0.pays,
+        c1_0.cree_le,
+        c1_0.numero_piece_identite,
+        c1_0.type_piece_identite,
+        c1_0.modifie_le,
+        c1_0.utilisateur_id 
+    from
+        clients c1_0 
+    where
+        c1_0.utilisateur_id=?
+Hibernate: 
+    insert 
+    into
+        clients
+        (adresse, ville, pays, cree_le, numero_piece_identite, type_piece_identite, modifie_le, utilisateur_id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.nom,
+        c1_0.symbole,
+        c1_0.modifie_le 
+    from
+        devises c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        devises
+        (actif, code, cree_le, nom, symbole, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.nom,
+        c1_0.symbole,
+        c1_0.modifie_le 
+    from
+        devises c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        devises
+        (actif, code, cree_le, nom, symbole, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.nom,
+        c1_0.symbole,
+        c1_0.modifie_le 
+    from
+        devises c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        devises
+        (actif, code, cree_le, nom, symbole, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.nom,
+        c1_0.symbole,
+        c1_0.modifie_le 
+    from
+        devises c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        devises
+        (actif, code, cree_le, nom, symbole, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.devise_id,
+        c1_0.nom,
+        c1_0.modifie_le 
+    from
+        pays c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        pays
+        (actif, code, cree_le, devise_id, nom, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.devise_id,
+        c1_0.nom,
+        c1_0.modifie_le 
+    from
+        pays c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        pays
+        (actif, code, cree_le, devise_id, nom, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        c1_0.id,
+        c1_0.actif,
+        c1_0.code,
+        c1_0.cree_le,
+        c1_0.devise_id,
+        c1_0.nom,
+        c1_0.modifie_le 
+    from
+        pays c1_0 
+    where
+        c1_0.code=?
+Hibernate: 
+    insert 
+    into
+        pays
+        (actif, code, cree_le, devise_id, nom, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        tc1_0.id,
+        tc1_0.actif,
+        tc1_0.cree_le,
+        tc1_0.plafond_journalier,
+        tc1_0.pays_destination_id,
+        tc1_0.pays_source_id,
+        tc1_0.modifie_le 
+    from
+        corridors_transfert tc1_0 
+    where
+        tc1_0.pays_source_id=? 
+        and tc1_0.pays_destination_id=?
+Hibernate: 
+    insert 
+    into
+        corridors_transfert
+        (actif, cree_le, plafond_journalier, pays_destination_id, pays_source_id, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        tc1_0.id,
+        tc1_0.actif,
+        tc1_0.cree_le,
+        tc1_0.plafond_journalier,
+        tc1_0.pays_destination_id,
+        tc1_0.pays_source_id,
+        tc1_0.modifie_le 
+    from
+        corridors_transfert tc1_0 
+    where
+        tc1_0.pays_source_id=? 
+        and tc1_0.pays_destination_id=?
+Hibernate: 
+    insert 
+    into
+        corridors_transfert
+        (actif, cree_le, plafond_journalier, pays_destination_id, pays_source_id, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        er1_0.id,
+        er1_0.cree_par,
+        er1_0.applique_le,
+        er1_0.devise_source_id,
+        er1_0.taux,
+        er1_0.source,
+        er1_0.devise_destination_id 
+    from
+        taux_change er1_0 
+    where
+        er1_0.devise_source_id=? 
+        and er1_0.devise_destination_id=?
+Hibernate: 
+    insert 
+    into
+        taux_change
+        (cree_par, applique_le, devise_source_id, taux, source, devise_destination_id) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        er1_0.id,
+        er1_0.cree_par,
+        er1_0.applique_le,
+        er1_0.devise_source_id,
+        er1_0.taux,
+        er1_0.source,
+        er1_0.devise_destination_id 
+    from
+        taux_change er1_0 
+    where
+        er1_0.devise_source_id=? 
+        and er1_0.devise_destination_id=?
+Hibernate: 
+    insert 
+    into
+        taux_change
+        (cree_par, applique_le, devise_source_id, taux, source, devise_destination_id) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        er1_0.id,
+        er1_0.cree_par,
+        er1_0.applique_le,
+        er1_0.devise_source_id,
+        er1_0.taux,
+        er1_0.source,
+        er1_0.devise_destination_id 
+    from
+        taux_change er1_0 
+    where
+        er1_0.devise_source_id=? 
+        and er1_0.devise_destination_id=?
+Hibernate: 
+    insert 
+    into
+        taux_change
+        (cree_par, applique_le, devise_source_id, taux, source, devise_destination_id) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        fg1_0.id,
+        fg1_0.actif,
+        fg1_0.corridor_id,
+        fg1_0.cree_le,
+        fg1_0.cree_par,
+        fg1_0.devise_id,
+        fg1_0.date_debut,
+        fg1_0.date_fin,
+        fg1_0.nom,
+        fg1_0.modifie_le 
+    from
+        grilles_tarifaires fg1_0 
+    where
+        fg1_0.nom=?
+Hibernate: 
+    insert 
+    into
+        grilles_tarifaires
+        (actif, corridor_id, cree_le, cree_par, devise_id, date_debut, date_fin, nom, modifie_le) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        fb1_0.id 
+    from
+        tranches_tarifaires fb1_0 
+    where
+        fb1_0.grille_tarifaire_id=? 
+        and fb1_0.montant_min=? 
+        and fb1_0.montant_max=? 
+        and fb1_0.type_frais=? 
+        and fb1_0.valeur_frais=? 
+    limit
+        ?
+Hibernate: 
+    insert 
+    into
+        tranches_tarifaires
+        (cree_le, grille_tarifaire_id, type_frais, valeur_frais, montant_max, montant_min) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        fb1_0.id 
+    from
+        tranches_tarifaires fb1_0 
+    where
+        fb1_0.grille_tarifaire_id=? 
+        and fb1_0.montant_min=? 
+        and fb1_0.montant_max=? 
+        and fb1_0.type_frais=? 
+        and fb1_0.valeur_frais=? 
+    limit
+        ?
+Hibernate: 
+    insert 
+    into
+        tranches_tarifaires
+        (cree_le, grille_tarifaire_id, type_frais, valeur_frais, montant_max, montant_min) 
+    values
+        (?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        cr1_0.id 
+    from
+        regles_commission cr1_0 
+    where
+        cr1_0.grille_tarifaire_id=? 
+    limit
+        ?
+Hibernate: 
+    insert 
+    into
+        regles_commission
+        (actif, pourcentage_agence, pourcentage_centrale, cree_le, grille_tarifaire_id) 
+    values
+        (?, ?, ?, ?, ?)
+Okane Transfer backend started on http://localhost:8080
