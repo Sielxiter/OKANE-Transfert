@@ -11,13 +11,25 @@ import { AgentTransferHistoryPageComponent } from './pages/agent/transfer-histor
 import { AgentKycVerificationPageComponent } from './pages/agent/kyc-verification-page.component';
 import { AgentNotificationsPageComponent } from './pages/agent/notifications-page.component';
 import { AgentSettingsPageComponent } from './pages/agent/settings-page.component';
+import { ManagerLayoutShellComponent } from './manager/layout/manager-layout-shell.component';
+import { ManagerClientsPageComponent } from './pages/manager/manager-clients-page.component';
+import { ManagerPaymentsPageComponent } from './pages/manager/manager-payments-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', component: LoginPageComponent },
   { path: 'dashboard', component: DashboardPageComponent },
   { path: 'admin/dashboard', component: DashboardPageComponent },
-  { path: 'manager/dashboard', component: DashboardPageComponent },
+  {
+    path: 'manager',
+    component: ManagerLayoutShellComponent,
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: DashboardPageComponent, data: { pageTitle: 'Tableau de bord' } },
+      { path: 'clients', component: ManagerClientsPageComponent, data: { pageTitle: 'Clients' } },
+      { path: 'payments', component: ManagerPaymentsPageComponent, data: { pageTitle: 'Paiements' } },
+    ],
+  },
   {
     path: 'agent',
     component: AgentLayoutShellComponent,
