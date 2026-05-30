@@ -20,6 +20,8 @@ import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.comp
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../users/shared/confirm-dialog.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
 	resolveCountry,
@@ -66,6 +68,8 @@ interface TransferRow {
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
 		UsersPlaceholderDialogComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
 	providers: [
 		provideIcons({
@@ -233,10 +237,21 @@ interface TransferRow {
 			(close)="exportDialog.set(false)"
 		/>
 
-		<okane-users-placeholder-dialog
-			[open]="cancelDialog()"
-			title="Annuler le transfert"
-			(close)="cancelDialog.set(false)"
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			[subtitle]="detailSubtitle()"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
 		/>
 	`,
 })
@@ -254,6 +269,17 @@ export class AdminTransfersPageComponent implements OnInit {
 	protected readonly currency = signal<string>('all');
 	protected readonly date = signal<string>('all');
 	protected readonly agent = signal<string>('all');
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails transfert');
+	protected readonly detailSubtitle = signal<string>('');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly cancelDialog = signal<boolean>(false);
@@ -474,29 +500,110 @@ export class AdminTransfersPageComponent implements OnInit {
 		const canCancel = transfer.status === 'EN_ATTENTE' || transfer.status === 'SUSPECT';
 		const isSuspect = transfer.status === 'SUSPECT';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', transfer) },
-			{ label: 'Voir reçu', icon: 'lucideReceipt', action: () => this.logAction('receipt', transfer) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.openDetail(transfer) },
+			{ label: 'Voir reçu', icon: 'lucideReceipt', action: () => this.openReceipt(transfer) },
 			...(isSuspect
 				? []
-				: [
-						{
-							label: 'Marquer suspect',
-							icon: 'lucideShieldAlert',
-							action: () => this.markSuspect(transfer),
-						},
-					]),
-			{ label: 'Voir audit', icon: 'lucideClipboardList', action: () => this.logAction('audit', transfer) },
+				: [{ label: 'Marquer suspect', icon: 'lucideShieldAlert', action: () => this.requestMarkSuspect(transfer) }]),
+			{ label: 'Voir audit', icon: 'lucideClipboardList', action: () => this.openAudit(transfer) },
 			...(canCancel
-				? [
-						{
-							label: 'Annuler',
-							icon: 'lucideXCircle',
-							action: () => this.cancelDialog.set(true),
-							variant: 'destructive' as const,
-						},
-					]
+				? [{ label: 'Annuler', icon: 'lucideXCircle', action: () => this.requestCancel(transfer), variant: 'destructive' as const }]
 				: []),
 		];
+	}
+
+	private openDetail(transfer: TransferRow): void {
+		this._api.getById(transfer.id).subscribe({
+			next: (detail) => {
+				this.detailTitle.set(`Transfert ${detail.reference ?? transfer.reference}`);
+				this.detailSubtitle.set('Détails complets du transfert');
+				this.detailFields.set([
+					{ label: 'Référence', value: detail.reference ?? transfer.reference, mono: true },
+					{ label: 'Code retrait', value: detail.withdrawalCode ?? transfer.withdrawalCode, mono: true },
+					{ label: 'Expéditeur', value: detail.senderFullName ?? transfer.senderName },
+					{ label: 'Bénéficiaire', value: detail.beneficiaryFullName ?? transfer.beneficiaryName },
+					{ label: 'Montant', value: `${this.formatAmount(Number(detail.amount ?? transfer.amount))} ${detail.currency ?? transfer.currency}` },
+					{ label: 'Frais', value: `${this.formatAmount(Number(detail.fees ?? transfer.fees))} ${detail.currency ?? transfer.currency}` },
+					{ label: 'Statut', value: TRANSFER_STATUS_LABELS[detail.status ?? transfer.status] },
+					{ label: 'Agent', value: detail.agentName ?? transfer.agentName },
+					{ label: 'Créé le', value: this.formatTimestamp(detail.createdAt ?? transfer.createdAtRaw) },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(`Transfert ${transfer.reference}`);
+				this.detailSubtitle.set('');
+				this.detailFields.set([
+					{ label: 'Référence', value: transfer.reference, mono: true },
+					{ label: 'Code retrait', value: transfer.withdrawalCode, mono: true },
+					{ label: 'Expéditeur', value: transfer.senderName },
+					{ label: 'Bénéficiaire', value: transfer.beneficiaryName },
+					{ label: 'Montant', value: `${this.formatAmount(transfer.amount)} ${transfer.currency}` },
+					{ label: 'Statut', value: TRANSFER_STATUS_LABELS[transfer.status] },
+					{ label: 'Agent', value: transfer.agentName },
+					{ label: 'Créé le', value: transfer.createdAt },
+				]);
+				this.detailOpen.set(true);
+			},
+		});
+	}
+
+	private openReceipt(transfer: TransferRow): void {
+		this.detailTitle.set(`Reçu — ${transfer.reference}`);
+		this.detailSubtitle.set('Reçu de transfert');
+		this.detailFields.set([
+			{ label: 'Référence', value: transfer.reference, mono: true },
+			{ label: 'Code retrait', value: transfer.withdrawalCode, mono: true },
+			{ label: 'Expéditeur', value: transfer.senderName },
+			{ label: 'Bénéficiaire', value: transfer.beneficiaryName },
+			{ label: 'Montant', value: `${this.formatAmount(transfer.amount)} ${transfer.currency}` },
+			{ label: 'Frais', value: `${this.formatAmount(transfer.fees)} ${transfer.currency}` },
+			{ label: 'Statut', value: TRANSFER_STATUS_LABELS[transfer.status] },
+			{ label: 'Date', value: transfer.createdAt },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private openAudit(transfer: TransferRow): void {
+		this.detailTitle.set(`Audit — ${transfer.reference}`);
+		this.detailSubtitle.set('Historique des actions sur ce transfert');
+		this.detailFields.set([
+			{ label: 'Référence', value: transfer.reference, mono: true },
+			{ label: 'Info', value: 'Consultez la page Audit Logs et filtrez par référence pour voir l\'historique complet.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private requestMarkSuspect(transfer: TransferRow): void {
+		this.confirmTitle.set('Marquer comme suspect');
+		this.confirmMessage.set(`Voulez-vous marquer le transfert ${transfer.reference} comme suspect ? Cette action déclenchera une alerte de conformité.`);
+		this.confirmLabel.set('Marquer suspect');
+		this._pendingConfirm = () => this.markSuspect(transfer);
+		this.confirmOpen.set(true);
+	}
+
+	private requestCancel(transfer: TransferRow): void {
+		this.confirmTitle.set('Annuler le transfert');
+		this.confirmMessage.set(`Voulez-vous annuler le transfert ${transfer.reference} ? Cette action est irréversible.`);
+		this.confirmLabel.set('Annuler le transfert');
+		this._pendingConfirm = () => this.cancelTransfer(transfer);
+		this.confirmOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
+	}
+
+	private cancelTransfer(transfer: TransferRow): void {
+		this._api.cancel(transfer.id).subscribe({
+			next: (updated) => {
+				const row = this.toRow(updated);
+				this.transfers.update((items) => items.map((t) => (t.id === row.id ? row : t)));
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
 	}
 
 	private markSuspect(transfer: TransferRow): void {
@@ -511,14 +618,17 @@ export class AdminTransfersPageComponent implements OnInit {
 		});
 	}
 
-	private logAction(action: string, transfer: TransferRow): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Transfers] ${action}`, transfer.reference);
-	}
+	private logAction(_action: string, _transfer: TransferRow): void { /* replaced */ }
 
-	private formatTimestamp(value: string | null): string {
-		if (!value) return '—';
-		return value.replace('T', ' ').slice(0, 16);
+	private formatTimestamp(value: string | Date | number | null | undefined): string {
+		if (value == null) return '—';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return '—';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return '—';
+		}
 	}
 
 	private extractMessage(err: unknown): string {

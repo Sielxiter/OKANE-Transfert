@@ -20,6 +20,7 @@ import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.comp
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
 	AUDIT_KPIS,
@@ -73,6 +74,7 @@ interface AuditRow {
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
 		UsersPlaceholderDialogComponent,
+		ActionDetailModalComponent,
 	],
 	providers: [
 		provideIcons({
@@ -243,15 +245,22 @@ interface AuditRow {
 			title="Exporter le journal d'audit"
 			(close)="exportDialog.set(false)"
 		/>
-		<okane-users-placeholder-dialog
-			[open]="copyDialog()"
-			title="Copier l'identifiant du log"
-			(close)="copyDialog.set(false)"
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			subtitle="Détails du log d'audit (lecture seule)"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
 		/>
 	`,
 })
 export class AdminAuditPageComponent implements OnInit {
 	private readonly _api = inject(AdminAuditApiService);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails log');
+	protected readonly detailFields = signal<DetailField[]>([]);
 
 	// ─── API state ──────────────────────────────────────────────────────────────
 	protected readonly logs = signal<AuditRow[]>([]);
@@ -529,15 +538,12 @@ export class AdminAuditPageComponent implements OnInit {
 			{
 				label: 'Voir détails',
 				icon: 'lucideEye',
-				action: () => this._api.getLog(numId).subscribe({
-					next: () => this.logAction('view', log.id),
-					error: () => this.logAction('view-error', log.id),
-				}),
+				action: () => this.openLogDetail(log, numId),
 			},
 			{
 				label: 'Copier ID log',
 				icon: 'lucideClipboardCopy',
-				action: () => this.copyDialog.set(true),
+				action: () => this.copyLogId(log.id),
 			},
 			...(log.user.role === 'SYSTEM'
 				? []
@@ -545,21 +551,109 @@ export class AdminAuditPageComponent implements OnInit {
 						{
 							label: 'Voir utilisateur',
 							icon: 'lucideUserCheck',
-							action: () => this.logAction('view-user', log.user.id),
+							action: () => this.openUserDetail(log),
 						},
 					]),
 			{
 				label: 'Voir module',
 				icon: 'lucideExternalLink',
-				action: () => this.logAction('view-module', log.module),
+				action: () => this.openModuleDetail(log),
 			},
 		];
 	}
 
-	private logAction(action: string, ref: string): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Audit] ${action}`, ref);
+	private openLogDetail(log: AuditRow, numId: number): void {
+		this._api.getLog(numId).subscribe({
+			next: (detail) => {
+				this.detailTitle.set(`Log ${log.id}`);
+				this.detailFields.set([
+					{ label: 'ID', value: log.id, mono: true },
+					{ label: 'Date / Heure', value: detail.createdAt ?? log.timestamp, mono: true },
+					{ label: 'Utilisateur', value: detail.actorName ?? log.user.name },
+					{ label: 'Email', value: detail.actorEmail ?? log.user.email },
+					{ label: 'Rôle', value: AUDIT_ROLE_LABELS[log.user.role] },
+					{ label: 'Action', value: detail.action ?? log.action, mono: true },
+					{ label: 'Module', value: AUDIT_MODULE_LABELS[log.module] },
+					{ label: 'Cible', value: detail.target ?? log.target },
+					{ label: 'IP', value: detail.ipAddress ?? log.ipAddress, mono: true },
+					{ label: 'Statut', value: AUDIT_STATUS_LABELS[log.status] },
+					{ label: 'Risque', value: AUDIT_RISK_LABELS[log.risk] },
+					{ label: 'Description', value: detail.description ?? '—' },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(`Log ${log.id}`);
+				this.detailFields.set([
+					{ label: 'ID', value: log.id, mono: true },
+					{ label: 'Date / Heure', value: log.timestamp, mono: true },
+					{ label: 'Utilisateur', value: log.user.name },
+					{ label: 'Action', value: log.action, mono: true },
+					{ label: 'Module', value: AUDIT_MODULE_LABELS[log.module] },
+					{ label: 'Cible', value: log.target },
+					{ label: 'IP', value: log.ipAddress, mono: true },
+					{ label: 'Statut', value: AUDIT_STATUS_LABELS[log.status] },
+					{ label: 'Risque', value: AUDIT_RISK_LABELS[log.risk] },
+				]);
+				this.detailOpen.set(true);
+			},
+		});
 	}
+
+	private copyLogId(id: string): void {
+		if (navigator.clipboard) {
+			navigator.clipboard.writeText(id).then(() => {
+				this.detailTitle.set('ID copié');
+				this.detailFields.set([{ label: 'ID log', value: id, mono: true }]);
+				this.detailOpen.set(true);
+			}).catch(() => {
+				this.detailTitle.set('ID log');
+				this.detailFields.set([{ label: 'ID log', value: id, mono: true }]);
+				this.detailOpen.set(true);
+			});
+		} else {
+			this.detailTitle.set('ID log');
+			this.detailFields.set([{ label: 'ID log', value: id, mono: true }]);
+			this.detailOpen.set(true);
+		}
+	}
+
+	private openUserDetail(log: AuditRow): void {
+		this.detailTitle.set(`Utilisateur — ${log.user.name}`);
+		this.detailFields.set([
+			{ label: 'ID', value: log.user.id, mono: true },
+			{ label: 'Nom', value: log.user.name },
+			{ label: 'Email', value: log.user.email },
+			{ label: 'Rôle', value: AUDIT_ROLE_LABELS[log.user.role] },
+			{ label: 'Info', value: 'Consultez la page Utilisateurs pour voir le profil complet.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private openModuleDetail(log: AuditRow): void {
+		const moduleRoutes: Record<string, string> = {
+			AUTH: '/admin/settings',
+			USERS: '/admin/users/clients',
+			AGENCIES: '/admin/agencies',
+			TRANSFERS: '/admin/transfers',
+			PAYMENTS: '/admin/payments',
+			CURRENCY: '/admin/currency',
+			FEES: '/admin/fees',
+			COMPLIANCE: '/admin/compliance',
+			REPORTS: '/admin/reports',
+			SETTINGS: '/admin/settings',
+		};
+		const route = moduleRoutes[log.module] ?? null;
+		this.detailTitle.set(`Module — ${AUDIT_MODULE_LABELS[log.module]}`);
+		this.detailFields.set([
+			{ label: 'Module', value: AUDIT_MODULE_LABELS[log.module] },
+			{ label: 'Action', value: log.action, mono: true },
+			{ label: 'Page associée', value: route ?? 'Non disponible' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private logAction(_action: string, _ref: string): void { /* replaced */ }
 
 	private extractMessage(err: unknown): string {
 		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';

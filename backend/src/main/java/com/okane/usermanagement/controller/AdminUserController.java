@@ -57,6 +57,19 @@ public class AdminUserController {
         return ResponseEntity.ok(userManagementService.getManagers());
     }
 
+    /**
+     * Returns managers available for assignment to an agency.
+     * Available = not currently assigned to any agency, OR already assigned to
+     * the agency identified by {@code agencyId} (so the current manager stays
+     * selectable when editing that agency).
+     */
+    @GetMapping("/managers/available")
+    public ResponseEntity<List<UserResponseDTO>> getAvailableManagers(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long agencyId
+    ) {
+        return ResponseEntity.ok(userManagementService.getAvailableManagers(agencyId));
+    }
+
     @GetMapping("/agents")
     public ResponseEntity<List<UserResponseDTO>> getAgents() {
         return ResponseEntity.ok(userManagementService.getAgents());

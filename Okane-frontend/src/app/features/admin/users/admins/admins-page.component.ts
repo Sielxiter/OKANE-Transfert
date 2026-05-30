@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideShield } from '@ng-icons/lucide';
+import { lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideShield, lucideTriangleAlert } from '@ng-icons/lucide';
 import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.component';
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../shared/users-empty-state.component';
@@ -9,6 +9,8 @@ import { UsersFormDialogComponent } from '../shared/users-form-dialog.component'
 import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UserCreateFormComponent } from '../shared/user-create-form.component';
+import { ActionDetailModalComponent, type DetailField } from '../shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../shared/confirm-dialog.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
@@ -30,8 +32,10 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 		UsersLoadingStateComponent,
 		UsersFormDialogComponent,
 		UserCreateFormComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
-	providers: [provideIcons({ lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideShield })],
+	providers: [provideIcons({ lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideShield, lucideTriangleAlert })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="flex flex-col gap-4">
@@ -140,6 +144,23 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 				(cancelled)="dialogOpen.set(false)"
 			/>
 		</okane-users-form-dialog>
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			subtitle="Informations du compte administrateur"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
+		/>
 	`,
 })
 export class AdminUsersAdminsPageComponent implements OnInit {
@@ -152,6 +173,16 @@ export class AdminUsersAdminsPageComponent implements OnInit {
 	protected readonly search = signal<string>('');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails admin');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly total = computed(() => this.admins().length);
 
@@ -227,9 +258,15 @@ export class AdminUsersAdminsPageComponent implements OnInit {
 			.toUpperCase();
 	}
 
-	protected formatDate(value: string | null): string {
-		if (!value) return 'Jamais';
-		return value.replace('T', ' ').slice(0, 16);
+	protected formatDate(value: string | Date | number | null | undefined): string {
+		if (value == null) return 'Jamais';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return 'Jamais';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return 'Jamais';
+		}
 	}
 
 	protected accountLabel(status: AccountStatus): string {
@@ -243,21 +280,46 @@ export class AdminUsersAdminsPageComponent implements OnInit {
 	protected actionsFor(admin: ApiUser): UserActionItem[] {
 		const isActive = admin.accountStatus === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', admin) },
-			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', admin) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.openDetail(admin) },
+			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.openEdit(admin) },
 			isActive
-				? {
-						label: 'Suspendre',
-						icon: 'lucidePowerOff',
-						action: () => this.changeStatus(admin, 'SUSPENDED'),
-						variant: 'destructive' as const,
-					}
-				: {
-						label: 'Activer',
-						icon: 'lucidePower',
-						action: () => this.changeStatus(admin, 'ACTIVE'),
-					},
+				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.requestStatusChange(admin, 'SUSPENDED'), variant: 'destructive' as const }
+				: { label: 'Activer', icon: 'lucidePower', action: () => this.requestStatusChange(admin, 'ACTIVE') },
 		];
+	}
+
+	private openDetail(admin: ApiUser): void {
+		this.detailTitle.set(admin.fullName);
+		this.detailFields.set([
+			{ label: 'ID', value: String(admin.id), mono: true },
+			{ label: 'Nom complet', value: admin.fullName },
+			{ label: 'Email', value: admin.email },
+			{ label: 'Téléphone', value: admin.phone ?? '—' },
+			{ label: 'Statut compte', value: ACCOUNT_LABELS[admin.accountStatus] },
+			{ label: 'Dernière connexion', value: this.formatDate(admin.lastLoginAt) },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private openEdit(admin: ApiUser): void {
+		this.detailTitle.set(`Modifier — ${admin.fullName}`);
+		this.detailFields.set([{ label: 'Info', value: 'Le formulaire de modification sera disponible dans une prochaine phase.' }]);
+		this.detailOpen.set(true);
+	}
+
+	private requestStatusChange(admin: ApiUser, status: AccountStatus): void {
+		const label = status === 'SUSPENDED' ? 'Suspendre' : 'Activer';
+		this.confirmTitle.set(`${label} le compte`);
+		this.confirmMessage.set(`Voulez-vous ${label.toLowerCase()} le compte de ${admin.fullName} (${admin.email}) ?`);
+		this.confirmLabel.set(label);
+		this._pendingConfirm = () => this.changeStatus(admin, status);
+		this.confirmOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
 	}
 
 	private changeStatus(admin: ApiUser, status: AccountStatus): void {
@@ -271,10 +333,7 @@ export class AdminUsersAdminsPageComponent implements OnInit {
 		});
 	}
 
-	private logAction(action: string, admin: ApiUser): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Admins] ${action}`, admin.id, admin.fullName);
-	}
+	private logAction(_action: string, _admin: ApiUser): void { /* replaced */ }
 
 	private extractMessage(err: unknown): string {
 		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';

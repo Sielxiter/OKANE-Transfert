@@ -24,7 +24,10 @@ import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/us
 import { UsersFormDialogComponent } from '../users/shared/users-form-dialog.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../users/shared/confirm-dialog.component';
 import { CurrencyCreateFormComponent } from './currency-create-form.component';
+import { CorridorCreateFormComponent } from './corridor-create-form.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
 	CORRIDOR_STATUS_LABELS,
@@ -92,7 +95,10 @@ interface FxHistoryRow {
 		UsersEmptyStateComponent,
 		UsersFormDialogComponent,
 		UsersPlaceholderDialogComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 		CurrencyCreateFormComponent,
+		CorridorCreateFormComponent,
 	],
 	providers: [
 		provideIcons({
@@ -260,6 +266,10 @@ interface FxHistoryRow {
 						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
+						<button hlmBtn size="sm" type="button" (click)="openAddCorridor()">
+							<ng-icon name="lucideArrowRightLeft" />
+							Ajouter corridor
+						</button>
 						<select
 							class="h-9 min-w-[10rem] rounded-md border border-input bg-transparent px-2.5 text-sm text-foreground shadow-xs transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 							[value]="corStatus()"
@@ -422,10 +432,35 @@ interface FxHistoryRow {
 			title="Exporter les devises et taux"
 			(close)="exportDialog.set(false)"
 		/>
-		<okane-users-placeholder-dialog
+
+		<okane-users-form-dialog
 			[open]="corridorDialog()"
-			title="Modifier le corridor"
+			title="Ajouter un corridor"
+			subtitle="Définir un nouveau corridor de transfert entre deux pays."
+			icon="lucideArrowRightLeft"
 			(close)="corridorDialog.set(false)"
+		>
+			<okane-corridor-create-form
+				(created)="onCorridorCreated($event)"
+				(cancelled)="corridorDialog.set(false)"
+			/>
+		</okane-users-form-dialog>
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			[subtitle]="detailSubtitle()"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
 		/>
 	`,
 })
@@ -449,6 +484,17 @@ export class AdminCurrencyPageComponent implements OnInit {
 	protected readonly addCurrencyDialog = signal<boolean>(false);
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly corridorDialog = signal<boolean>(false);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails');
+	protected readonly detailSubtitle = signal<string>('');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly totalCurrencies = computed(() => this.currencies().length);
 	protected readonly totalCorridors = computed(() => this.corridors().length);
@@ -540,8 +586,8 @@ export class AdminCurrencyPageComponent implements OnInit {
 		const fallbackSuspended = this.currencies().filter((c) => c.status === 'SUSPENDED').length;
 		const fallbackActiveCorridors = this.corridors().filter((c) => c.status === 'ACTIVE').length;
 		const lastSyncRaw = summary?.lastSyncAt ?? null;
-		const lastSyncDisplay = lastSyncRaw
-			? lastSyncRaw.replace('T', ' ').slice(0, 16)
+		const lastSyncDisplay = this.formatTimestamp(lastSyncRaw) !== '—'
+			? this.formatTimestamp(lastSyncRaw)
 			: this.fxHistory()[0]?.changedAt ?? '—';
 
 		const valueByKey: Record<string, { value: string; suffix: string }> = {
@@ -683,6 +729,20 @@ export class AdminCurrencyPageComponent implements OnInit {
 		this.exportDialog.set(true);
 	}
 
+	protected openAddCorridor(): void {
+		this.corridorDialog.set(true);
+	}
+
+	protected onCorridorCreated(corridor: ApiCorridor): void {
+		const row = this.toCorridorRow(corridor);
+		this.corridors.update((items) => [row, ...items]);
+		this.corridorDialog.set(false);
+		this._api.getSummary().subscribe({
+			next: (data) => this.summary.set(data),
+			error: () => {},
+		});
+	}
+
 	protected currencyStatusLabel(status: CurrencyStatus): string {
 		return CURRENCY_STATUS_LABELS[status];
 	}
@@ -719,41 +779,140 @@ export class AdminCurrencyPageComponent implements OnInit {
 		const isActive = currency.status === 'ACTIVE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.viewDetails(currency) },
-			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit-ccy', currency.code) },
-			{
-				label: 'Voir historique',
-				icon: 'lucideHistory',
-				action: () => this.viewHistory(currency),
-			},
+			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.openEditCurrency(currency) },
+			{ label: 'Voir historique', icon: 'lucideHistory', action: () => this.viewHistory(currency) },
 			isActive
-				? {
-						label: 'Suspendre',
-						icon: 'lucidePowerOff',
-						action: () => this.changeStatus(currency, 'SUSPENDED'),
-						variant: 'destructive' as const,
-					}
-				: {
-						label: 'Activer',
-						icon: 'lucidePower',
-						action: () => this.changeStatus(currency, 'ACTIVE'),
-					},
+				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.requestStatusChange(currency, 'SUSPENDED'), variant: 'destructive' as const }
+				: { label: 'Activer', icon: 'lucidePower', action: () => this.requestStatusChange(currency, 'ACTIVE') },
 		];
 	}
 
 	protected corridorActions(corridor: CorridorRow): UserActionItem[] {
 		const isActive = corridor.status === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view-cor', corridor.id) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.viewCorridorDetail(corridor) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.corridorDialog.set(true) },
 			isActive
-				? {
-						label: 'Désactiver',
-						icon: 'lucidePowerOff',
-						action: () => this.logAction('disable-cor', corridor.id),
-						variant: 'destructive' as const,
-					}
-				: { label: 'Activer', icon: 'lucidePower', action: () => this.logAction('activate-cor', corridor.id) },
+				? { label: 'Désactiver', icon: 'lucidePowerOff', action: () => this.requestCorridorStatusChange(corridor, false), variant: 'destructive' as const }
+				: { label: 'Activer', icon: 'lucidePower', action: () => this.requestCorridorStatusChange(corridor, true) },
 		];
+	}
+
+	private viewDetails(currency: CurrencyRow): void {
+		this._api.getCurrency(currency.id).subscribe({
+			next: (detail) => {
+				this.detailTitle.set(`${detail.code} — ${detail.name}`);
+				this.detailSubtitle.set('Informations de la devise');
+				this.detailFields.set([
+					{ label: 'Code', value: detail.code, mono: true },
+					{ label: 'Nom', value: detail.name },
+					{ label: 'Symbole', value: detail.symbol ?? '—' },
+					{ label: 'Pays principal', value: detail.mainCountry ?? '—' },
+					{ label: 'Taux vers MAD', value: this.formatRate(Number(detail.rateToMad ?? 0)) },
+					{ label: 'Statut', value: CURRENCY_STATUS_LABELS[detail.status] },
+					{ label: 'Dernière MAJ', value: this.formatTimestamp(detail.lastUpdatedAt) },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(`${currency.code} — ${currency.name}`);
+				this.detailSubtitle.set('');
+				this.detailFields.set([
+					{ label: 'Code', value: currency.code, mono: true },
+					{ label: 'Taux vers MAD', value: this.formatRate(currency.rateToMad) },
+					{ label: 'Statut', value: CURRENCY_STATUS_LABELS[currency.status] },
+				]);
+				this.detailOpen.set(true);
+			},
+		});
+	}
+
+	private openEditCurrency(currency: CurrencyRow): void {
+		this.detailTitle.set(`Modifier — ${currency.code}`);
+		this.detailSubtitle.set('');
+		this.detailFields.set([{ label: 'Info', value: 'Le formulaire de modification sera disponible dans une prochaine phase.' }]);
+		this.detailOpen.set(true);
+	}
+
+	private viewHistory(currency: CurrencyRow): void {
+		this._api.getCurrencyHistory(currency.id).subscribe({
+			next: (history) => {
+				this.detailTitle.set(`Historique — ${currency.code}`);
+				this.detailSubtitle.set('Évolution des taux de change');
+				if (history.length === 0) {
+					this.detailFields.set([{ label: 'Info', value: 'Aucun historique disponible.' }]);
+				} else {
+					this.detailFields.set(
+						history.slice(0, 10).map((h) => ({
+							label: this.formatTimestamp(h.changedAt),
+							value: `${h.oldRate ?? '—'} → ${h.newRate ?? '—'} (par ${h.changedByName ?? 'Système'})`,
+							mono: true,
+						})),
+					);
+				}
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(`Historique — ${currency.code}`);
+				this.detailSubtitle.set('');
+				this.detailFields.set([{ label: 'Info', value: 'Historique non disponible.' }]);
+				this.detailOpen.set(true);
+			},
+		});
+	}
+
+	private viewCorridorDetail(corridor: CorridorRow): void {
+		this.detailTitle.set(`Corridor ${corridor.id}`);
+		this.detailSubtitle.set('Informations du corridor de transfert');
+		this.detailFields.set([
+			{ label: 'ID', value: corridor.id, mono: true },
+			{ label: 'Source', value: `${corridor.sourceCountry} (${corridor.sourceCountryCode})` },
+			{ label: 'Destination', value: `${corridor.destCountry} (${corridor.destCountryCode})` },
+			{ label: 'Devise source', value: corridor.sourceCurrency },
+			{ label: 'Devise destination', value: corridor.destCurrency },
+			{ label: 'Frais estimés', value: corridor.estimatedFee },
+			{ label: 'Statut', value: CORRIDOR_STATUS_LABELS[corridor.status] },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private requestStatusChange(currency: CurrencyRow, status: ApiCurrencyStatus): void {
+		const label = status === 'SUSPENDED' ? 'Suspendre' : 'Activer';
+		this.confirmTitle.set(`${label} la devise`);
+		this.confirmMessage.set(`Voulez-vous ${label.toLowerCase()} la devise ${currency.code} (${currency.name}) ?`);
+		this.confirmLabel.set(label);
+		this._pendingConfirm = () => this.changeStatus(currency, status);
+		this.confirmOpen.set(true);
+	}
+
+	private requestCorridorStatusChange(corridor: CorridorRow, activate: boolean): void {
+		const label = activate ? 'Activer' : 'Désactiver';
+		this.confirmTitle.set(`${label} le corridor`);
+		this.confirmMessage.set(`Voulez-vous ${label.toLowerCase()} le corridor ${corridor.sourceCountryCode} → ${corridor.destCountryCode} ?`);
+		this.confirmLabel.set(label);
+		this._pendingConfirm = () => this.changeCorridorStatus(corridor, activate);
+		this.confirmOpen.set(true);
+	}
+
+	private changeCorridorStatus(corridor: CorridorRow, activate: boolean): void {
+		const status = activate ? 'ACTIVE' : 'DISABLED';
+		this._api.changeCorridorStatus(corridor.rawId, status).subscribe({
+			next: (updated) => {
+				const row = this.toCorridorRow(updated);
+				this.corridors.update((items) => items.map((c) => (c.rawId === row.rawId ? row : c)));
+				this._api.getSummary().subscribe({
+					next: (data) => this.summary.set(data),
+					error: () => {},
+				});
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
 	}
 
 	private changeStatus(currency: CurrencyRow, status: ApiCurrencyStatus): void {
@@ -770,31 +929,17 @@ export class AdminCurrencyPageComponent implements OnInit {
 		});
 	}
 
-	private viewDetails(currency: CurrencyRow): void {
-		this._api.getCurrency(currency.id).subscribe({
-			next: (detail) => this.logAction('view-ccy', detail.code),
-			error: (err) => this.error.set(this.extractMessage(err)),
-		});
-	}
+	private logAction(_action: string, _ref: string): void { /* replaced */ }
 
-	private viewHistory(currency: CurrencyRow): void {
-		this._api.getCurrencyHistory(currency.id).subscribe({
-			next: (entries) => {
-				// eslint-disable-next-line no-console
-				console.info('[Currency] history', currency.code, entries);
-			},
-			error: (err) => this.error.set(this.extractMessage(err)),
-		});
-	}
-
-	private logAction(action: string, ref: string): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Currency] ${action}`, ref);
-	}
-
-	private formatTimestamp(value: string | null): string {
-		if (!value) return '—';
-		return value.replace('T', ' ').slice(0, 16);
+	private formatTimestamp(value: string | Date | number | null | undefined): string {
+		if (value == null) return '—';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return '—';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return '—';
+		}
 	}
 
 	private formatPercent(value: number | null | undefined): string {

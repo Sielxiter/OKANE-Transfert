@@ -13,11 +13,16 @@ import com.okane.currencyfx.repository.ExchangeRateRepository;
 import com.okane.currencyfx.repository.TransferCorridorRepository;
 import com.okane.currencymanagement.domain.CorridorStatus;
 import com.okane.currencymanagement.domain.CurrencyStatus;
+import com.okane.currencymanagement.dto.ChangeCorridorStatusRequestDTO;
 import com.okane.currencymanagement.dto.CorridorResponseDTO;
+import com.okane.currencymanagement.dto.CreateCorridorRequestDTO;
 import com.okane.currencymanagement.dto.CreateCurrencyRequestDTO;
 import com.okane.currencymanagement.dto.CurrencyResponseDTO;
 import com.okane.currencymanagement.dto.CurrencySummaryDTO;
 import com.okane.currencymanagement.dto.ExchangeRateHistoryDTO;
+import com.okane.currencymanagement.dto.UpdateCorridorRequestDTO;
+import com.okane.currencymanagement.exception.CorridorAlreadyExistsException;
+import com.okane.currencymanagement.exception.CorridorNotFoundException;
 import com.okane.currencymanagement.exception.CurrencyAlreadyExistsException;
 import com.okane.currencymanagement.exception.CurrencyNotFoundException;
 import java.math.BigDecimal;
@@ -277,6 +282,94 @@ public class AdminCurrencyService {
         List<ExchangeRate> rates = exchangeRateRepository
                 .findAllByOrderByEffectiveAtDescIdDesc(PageRequest.of(0, FX_HISTORY_LIMIT));
         return projectHistory(rates);
+    }
+
+    // ─── Corridor CRUD ───────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public CorridorResponseDTO findCorridorById(Long id, Authentication authentication) {
+        TransferCorridor corridor = transferCorridorRepository.findById(id)
+                .orElseThrow(() -> new CorridorNotFoundException(id));
+        auditService.logCorridorViewed(currentUserOrNull(authentication), corridor.getId());
+        return toResponse(corridor);
+    }
+
+    @Transactional
+    public CorridorResponseDTO createCorridor(CreateCorridorRequestDTO request, Authentication authentication) {
+        String srcCode = request.sourceCountryCode().trim().toUpperCase(Locale.ROOT);
+        String dstCode = request.destinationCountryCode().trim().toUpperCase(Locale.ROOT);
+
+        if (srcCode.equals(dstCode)) {
+            throw new com.okane.auth.exception.ApiException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Le pays source et le pays destination doivent être différents."
+            );
+        }
+
+        Country source = countryRepository.findByCode(srcCode)
+                .orElseThrow(() -> new com.okane.auth.exception.ApiException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Pays source introuvable : " + srcCode
+                ));
+        Country destination = countryRepository.findByCode(dstCode)
+                .orElseThrow(() -> new com.okane.auth.exception.ApiException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Pays destination introuvable : " + dstCode
+                ));
+
+        // Check for duplicate active corridor
+        transferCorridorRepository
+                .findBySourceCountry_IdAndDestinationCountry_Id(source.getId(), destination.getId())
+                .ifPresent(existing -> {
+                    if (Boolean.TRUE.equals(existing.getActive())) {
+                        throw new CorridorAlreadyExistsException(srcCode, dstCode);
+                    }
+                });
+
+        LocalDateTime now = LocalDateTime.now();
+        TransferCorridor corridor = new TransferCorridor();
+        corridor.setSourceCountry(source);
+        corridor.setDestinationCountry(destination);
+        corridor.setActive(Boolean.TRUE.equals(request.active()));
+        corridor.setCreatedAt(now);
+        corridor.setUpdatedAt(now);
+        TransferCorridor saved = transferCorridorRepository.save(corridor);
+
+        auditService.logCorridorViewed(currentUserOrNull(authentication), saved.getId());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public CorridorResponseDTO updateCorridor(Long id, UpdateCorridorRequestDTO request, Authentication authentication) {
+        TransferCorridor corridor = transferCorridorRepository.findById(id)
+                .orElseThrow(() -> new CorridorNotFoundException(id));
+        corridor.setActive(Boolean.TRUE.equals(request.active()));
+        corridor.setUpdatedAt(LocalDateTime.now());
+        TransferCorridor saved = transferCorridorRepository.save(corridor);
+        auditService.logCorridorViewed(currentUserOrNull(authentication), saved.getId());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public CorridorResponseDTO changeCorridorStatus(Long id, ChangeCorridorStatusRequestDTO request, Authentication authentication) {
+        TransferCorridor corridor = transferCorridorRepository.findById(id)
+                .orElseThrow(() -> new CorridorNotFoundException(id));
+        corridor.setActive(request.status() == CorridorStatus.ACTIVE);
+        corridor.setUpdatedAt(LocalDateTime.now());
+        TransferCorridor saved = transferCorridorRepository.save(corridor);
+        auditService.logCorridorViewed(currentUserOrNull(authentication), saved.getId());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public CorridorResponseDTO disableCorridor(Long id, Authentication authentication) {
+        TransferCorridor corridor = transferCorridorRepository.findById(id)
+                .orElseThrow(() -> new CorridorNotFoundException(id));
+        corridor.setActive(false);
+        corridor.setUpdatedAt(LocalDateTime.now());
+        TransferCorridor saved = transferCorridorRepository.save(corridor);
+        auditService.logCorridorViewed(currentUserOrNull(authentication), saved.getId());
+        return toResponse(saved);
     }
 
     private List<ExchangeRateHistoryDTO> projectHistory(List<ExchangeRate> rates) {

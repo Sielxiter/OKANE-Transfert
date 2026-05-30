@@ -65,6 +65,11 @@ export class AdminUsersApiService {
 		return this._http.get<ApiUser[]>(`${this._base}/managers`);
 	}
 
+	public getAvailableManagers(agencyId?: number | null): Observable<ApiUser[]> {
+		const params = agencyId ? `?agencyId=${agencyId}` : '';
+		return this._http.get<ApiUser[]>(`${this._base}/managers/available${params}`);
+	}
+
 	public getAgents(): Observable<ApiUser[]> {
 		return this._http.get<ApiUser[]>(`${this._base}/agents`);
 	}

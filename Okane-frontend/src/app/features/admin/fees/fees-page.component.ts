@@ -46,6 +46,8 @@ import {
 	type ApiFeeSummary,
 } from './admin-fees.api';
 import { FeeGridCreateFormComponent } from './fee-grid-create-form.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../users/shared/confirm-dialog.component';
 
 interface FeeGridRow {
 	id: number;
@@ -93,6 +95,8 @@ interface CommissionRow {
 		UsersFormDialogComponent,
 		UsersPlaceholderDialogComponent,
 		FeeGridCreateFormComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
 	providers: [
 		provideIcons({
@@ -461,6 +465,23 @@ interface CommissionRow {
 			title="Dupliquer la grille"
 			(close)="duplicateDialog.set(false)"
 		/>
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			[subtitle]="detailSubtitle()"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
+		/>
 	`,
 })
 export class AdminFeesPageComponent implements OnInit {
@@ -485,6 +506,17 @@ export class AdminFeesPageComponent implements OnInit {
 	protected readonly addGridDialog = signal<boolean>(false);
 	protected readonly exportDialog = signal<boolean>(false);
 	protected readonly duplicateDialog = signal<boolean>(false);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails');
+	protected readonly detailSubtitle = signal<string>('');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly simAmount = signal<number>(2000);
 	protected readonly simCurrency = signal<FeeCurrency>('MAD');
@@ -785,10 +817,10 @@ export class AdminFeesPageComponent implements OnInit {
 	protected gridActions(grid: FeeGridRow): UserActionItem[] {
 		const isActive = grid.status === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', grid.id) },
-			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', grid.id) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.viewGridDetail(grid) },
+			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.openEditGrid(grid) },
 			{ label: 'Dupliquer', icon: 'lucideCopy', action: () => this.duplicateGrid(grid) },
-			{ label: 'Voir historique', icon: 'lucideHistory', action: () => this.logAction('history', grid.id) },
+			{ label: 'Voir historique', icon: 'lucideHistory', action: () => this.viewGridHistory(grid) },
 			isActive
 				? {
 						label: 'Suspendre',
@@ -802,6 +834,63 @@ export class AdminFeesPageComponent implements OnInit {
 						action: () => this.changeStatus(grid, 'ACTIVE'),
 					},
 		];
+	}
+
+	private viewGridDetail(grid: FeeGridRow): void {
+		this._api.getGrid(grid.id).subscribe({
+			next: (detail) => {
+				this.detailTitle.set(`${detail.name}`);
+				this.detailSubtitle.set('Informations de la grille tarifaire');
+				this.detailFields.set([
+					{ label: 'ID', value: String(detail.id), mono: true },
+					{ label: 'Nom', value: detail.name },
+					{ label: 'Corridor', value: `${detail.sourceCountryCode ?? '—'} → ${detail.destinationCountryCode ?? '—'}` },
+					{ label: 'Devise', value: detail.currency ?? '—', mono: true },
+					{ label: 'Montant min', value: this.formatAmount(Number(detail.minAmount ?? 0)) },
+					{ label: 'Montant max', value: this.formatAmount(Number(detail.maxAmount ?? 0)) },
+					{ label: 'Frais fixes', value: `${this.formatAmount(Number(detail.fixedFee ?? 0))} ${detail.currency ?? ''}` },
+					{ label: 'Pourcentage frais', value: this.formatPct(Number(detail.percentageFee ?? 0)) },
+					{ label: 'Commission agence', value: this.formatPct(Number(detail.agencyCommissionRate ?? 0)) },
+					{ label: 'Commission centrale', value: this.formatPct(Number(detail.centralCommissionRate ?? 0)) },
+					{ label: 'Statut', value: FEE_GRID_STATUS_LABELS[detail.status] },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(grid.name);
+				this.detailSubtitle.set('');
+				this.detailFields.set([
+					{ label: 'ID', value: String(grid.id), mono: true },
+					{ label: 'Corridor', value: `${grid.corridor.sourceCountryCode} → ${grid.corridor.destCountryCode}` },
+					{ label: 'Statut', value: FEE_GRID_STATUS_LABELS[grid.status] },
+				]);
+				this.detailOpen.set(true);
+			},
+		});
+	}
+
+	private openEditGrid(grid: FeeGridRow): void {
+		this.detailTitle.set(`Modifier — ${grid.name}`);
+		this.detailSubtitle.set('');
+		this.detailFields.set([
+			{ label: 'Info', value: 'Le formulaire de modification des grilles sera disponible dans une prochaine phase.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private viewGridHistory(grid: FeeGridRow): void {
+		this.detailTitle.set(`Historique — ${grid.name}`);
+		this.detailSubtitle.set('Modifications de la grille tarifaire');
+		this.detailFields.set([
+			{ label: 'Info', value: 'L\'historique des modifications sera disponible dans une prochaine phase.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
 	}
 
 	private duplicateGrid(grid: FeeGridRow): void {
@@ -831,11 +920,6 @@ export class AdminFeesPageComponent implements OnInit {
 			},
 			error: (err) => this.error.set(this.extractMessage(err)),
 		});
-	}
-
-	private logAction(action: string, ref: string | number): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Fees] ${action}`, ref);
 	}
 
 	private extractMessage(err: unknown): string {

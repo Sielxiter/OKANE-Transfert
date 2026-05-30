@@ -6,6 +6,7 @@ import {
 	lucidePencil,
 	lucidePower,
 	lucidePowerOff,
+	lucideTriangleAlert,
 } from '@ng-icons/lucide';
 import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.component';
 import { UserStatusBadgeComponent } from '../shared/user-status-badge.component';
@@ -15,6 +16,8 @@ import { UsersFormDialogComponent } from '../shared/users-form-dialog.component'
 import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UserCreateFormComponent } from '../shared/user-create-form.component';
+import { ActionDetailModalComponent, type DetailField } from '../shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../shared/confirm-dialog.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
@@ -36,9 +39,11 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 		UsersLoadingStateComponent,
 		UsersFormDialogComponent,
 		UserCreateFormComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
 	providers: [
-		provideIcons({ lucideBuilding2, lucideEye, lucidePencil, lucidePower, lucidePowerOff }),
+		provideIcons({ lucideBuilding2, lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideTriangleAlert }),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -159,6 +164,23 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 				(cancelled)="dialogOpen.set(false)"
 			/>
 		</okane-users-form-dialog>
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			subtitle="Informations du compte manager"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
+		/>
 	`,
 })
 export class AdminUsersManagersPageComponent implements OnInit {
@@ -172,6 +194,16 @@ export class AdminUsersManagersPageComponent implements OnInit {
 	protected readonly agency = signal<string>('all');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails manager');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly total = computed(() => this.managers().length);
 
@@ -275,9 +307,15 @@ export class AdminUsersManagersPageComponent implements OnInit {
 			.toUpperCase();
 	}
 
-	protected formatDate(value: string | null): string {
-		if (!value) return 'Jamais';
-		return value.replace('T', ' ').slice(0, 16);
+	protected formatDate(value: string | Date | number | null | undefined): string {
+		if (value == null) return 'Jamais';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return 'Jamais';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return 'Jamais';
+		}
 	}
 
 	protected accountLabel(status: AccountStatus): string {
@@ -291,22 +329,59 @@ export class AdminUsersManagersPageComponent implements OnInit {
 	protected actionsFor(manager: ApiUser): UserActionItem[] {
 		const isActive = manager.accountStatus === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', manager) },
-			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', manager) },
-			{ label: 'Voir agence', icon: 'lucideBuilding2', action: () => this.logAction('agency', manager) },
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.openDetail(manager) },
+			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.openEdit(manager) },
+			{ label: 'Voir agence', icon: 'lucideBuilding2', action: () => this.openAgencyDetail(manager) },
 			isActive
-				? {
-						label: 'Suspendre',
-						icon: 'lucidePowerOff',
-						action: () => this.changeStatus(manager, 'SUSPENDED'),
-						variant: 'destructive' as const,
-					}
-				: {
-						label: 'Activer',
-						icon: 'lucidePower',
-						action: () => this.changeStatus(manager, 'ACTIVE'),
-					},
+				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.requestStatusChange(manager, 'SUSPENDED'), variant: 'destructive' as const }
+				: { label: 'Activer', icon: 'lucidePower', action: () => this.requestStatusChange(manager, 'ACTIVE') },
 		];
+	}
+
+	private openDetail(manager: ApiUser): void {
+		this.detailTitle.set(manager.fullName);
+		this.detailFields.set([
+			{ label: 'ID', value: String(manager.id), mono: true },
+			{ label: 'Nom complet', value: manager.fullName },
+			{ label: 'Email', value: manager.email },
+			{ label: 'Téléphone', value: manager.phone ?? '—' },
+			{ label: 'Agence', value: manager.agencyName ?? 'Non assignée' },
+			{ label: 'Code agence', value: manager.agencyCode ?? '—', mono: true },
+			{ label: 'Statut compte', value: ACCOUNT_LABELS[manager.accountStatus] },
+			{ label: 'Dernière connexion', value: this.formatDate(manager.lastLoginAt) },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private openEdit(manager: ApiUser): void {
+		this.detailTitle.set(`Modifier — ${manager.fullName}`);
+		this.detailFields.set([{ label: 'Info', value: 'Le formulaire de modification sera disponible dans une prochaine phase.' }]);
+		this.detailOpen.set(true);
+	}
+
+	private openAgencyDetail(manager: ApiUser): void {
+		this.detailTitle.set(`Agence — ${manager.agencyName ?? 'Non assignée'}`);
+		this.detailFields.set([
+			{ label: 'Nom agence', value: manager.agencyName ?? '—' },
+			{ label: 'Code agence', value: manager.agencyCode ?? '—', mono: true },
+			{ label: 'Manager', value: manager.fullName },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private requestStatusChange(manager: ApiUser, status: AccountStatus): void {
+		const label = status === 'SUSPENDED' ? 'Suspendre' : 'Activer';
+		this.confirmTitle.set(`${label} le compte`);
+		this.confirmMessage.set(`Voulez-vous ${label.toLowerCase()} le compte de ${manager.fullName} (${manager.email}) ?`);
+		this.confirmLabel.set(label);
+		this._pendingConfirm = () => this.changeStatus(manager, status);
+		this.confirmOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
 	}
 
 	private changeStatus(manager: ApiUser, status: AccountStatus): void {
@@ -320,10 +395,7 @@ export class AdminUsersManagersPageComponent implements OnInit {
 		});
 	}
 
-	private logAction(action: string, manager: ApiUser): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Managers] ${action}`, manager.id, manager.fullName);
-	}
+	private logAction(_action: string, _manager: ApiUser): void { /* replaced */ }
 
 	private extractMessage(err: unknown): string {
 		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';

@@ -21,6 +21,8 @@ import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.comp
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../users/shared/confirm-dialog.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
 	PAYMENT_KPIS,
@@ -65,6 +67,8 @@ interface PaymentRow {
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
 		UsersPlaceholderDialogComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
 	providers: [
 		provideIcons({
@@ -239,15 +243,37 @@ interface PaymentRow {
 			(close)="exportDialog.set(false)"
 		/>
 
-		<okane-users-placeholder-dialog
-			[open]="blockDialog()"
-			title="Marquer le paiement comme bloqué"
-			(close)="blockDialog.set(false)"
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			[subtitle]="detailSubtitle()"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
 		/>
 	`,
 })
 export class AdminPaymentsPageComponent implements OnInit {
 	private readonly _api = inject(AdminPaymentsApiService);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails paiement');
+	protected readonly detailSubtitle = signal<string>('');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly payments = signal<PaymentRow[]>([]);
 	protected readonly summary = signal<ApiPaymentSummary | null>(null);
@@ -525,73 +551,144 @@ export class AdminPaymentsPageComponent implements OnInit {
 		const isBlocked = payment.status === 'BLOQUE';
 		return [
 			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.viewDetails(payment) },
-			{ label: 'Voir transfert', icon: 'lucideArrowRightLeft', action: () => this.logAction('transfer', payment) },
+			{ label: 'Voir transfert', icon: 'lucideArrowRightLeft', action: () => this.viewTransfer(payment) },
 			{ label: 'Voir reçu', icon: 'lucideReceipt', action: () => this.viewReceipt(payment) },
 			{ label: 'Voir audit', icon: 'lucideClipboardList', action: () => this.viewAudit(payment) },
 			...(isBlocked
 				? []
-				: [
-						{
-							label: 'Marquer bloqué',
-							icon: 'lucideShieldAlert',
-							action: () => this.requestBlock(payment),
-							variant: 'destructive' as const,
-						},
-					]),
+				: [{ label: 'Marquer bloqué', icon: 'lucideShieldAlert', action: () => this.requestBlock(payment), variant: 'destructive' as const }]),
 		];
-	}
-
-	private requestBlock(payment: PaymentRow): void {
-		this.pendingBlock.set(payment);
-		this.blockDialog.set(true);
-		this._api.block(payment.id).subscribe({
-			next: (updated) => {
-				const row = this.toRow(updated);
-				this.payments.update((items) => items.map((p) => (p.id === row.id ? row : p)));
-				this.pendingBlock.set(null);
-			},
-			error: (err) => {
-				this.error.set(this.extractMessage(err));
-				this.pendingBlock.set(null);
-			},
-		});
 	}
 
 	private viewDetails(payment: PaymentRow): void {
 		this._api.getById(payment.id).subscribe({
-			next: (detail) => this.logAction('view', this.toRow(detail)),
-			error: (err) => this.error.set(this.extractMessage(err)),
+			next: (detail) => {
+				const row = this.toRow(detail);
+				this.detailTitle.set(`Paiement ${row.paymentReference}`);
+				this.detailSubtitle.set('Détails complets du paiement');
+				this.detailFields.set([
+					{ label: 'Référence paiement', value: row.paymentReference, mono: true },
+					{ label: 'Référence transfert', value: row.transferReference, mono: true },
+					{ label: 'Code retrait', value: row.withdrawalCode, mono: true },
+					{ label: 'Bénéficiaire', value: row.beneficiaryName },
+					{ label: 'Montant payé', value: `${this.formatAmount(row.amount)} ${row.currency}` },
+					{ label: 'Agence', value: row.agency.name },
+					{ label: 'Agent', value: row.agent.name },
+					{ label: 'Statut', value: PAYMENT_STATUS_LABELS[row.status] },
+					{ label: 'Date paiement', value: row.paidAt },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(`Paiement ${payment.paymentReference}`);
+				this.detailSubtitle.set('');
+				this.detailFields.set([
+					{ label: 'Référence', value: payment.paymentReference, mono: true },
+					{ label: 'Bénéficiaire', value: payment.beneficiaryName },
+					{ label: 'Montant', value: `${this.formatAmount(payment.amount)} ${payment.currency}` },
+					{ label: 'Statut', value: PAYMENT_STATUS_LABELS[payment.status] },
+				]);
+				this.detailOpen.set(true);
+			},
 		});
+	}
+
+	private viewTransfer(payment: PaymentRow): void {
+		this.detailTitle.set(`Transfert lié — ${payment.transferReference}`);
+		this.detailSubtitle.set('Informations du transfert associé');
+		this.detailFields.set([
+			{ label: 'Référence transfert', value: payment.transferReference, mono: true },
+			{ label: 'Code retrait', value: payment.withdrawalCode, mono: true },
+			{ label: 'Bénéficiaire', value: payment.beneficiaryName },
+			{ label: 'Info', value: 'Consultez la page Transferts pour voir les détails complets.' },
+		]);
+		this.detailOpen.set(true);
 	}
 
 	private viewReceipt(payment: PaymentRow): void {
 		this._api.getReceipt(payment.id).subscribe({
-			next: (receipt) => {
-				// eslint-disable-next-line no-console
-				console.info('[Payments] receipt', receipt);
+			next: () => {
+				this.detailTitle.set(`Reçu — ${payment.paymentReference}`);
+				this.detailSubtitle.set('Reçu de paiement');
+				this.detailFields.set([
+					{ label: 'Référence paiement', value: payment.paymentReference, mono: true },
+					{ label: 'Référence transfert', value: payment.transferReference, mono: true },
+					{ label: 'Bénéficiaire', value: payment.beneficiaryName },
+					{ label: 'Montant', value: `${this.formatAmount(payment.amount)} ${payment.currency}` },
+					{ label: 'Agence', value: payment.agency.name },
+					{ label: 'Agent', value: payment.agent.name },
+					{ label: 'Date', value: payment.paidAt },
+				]);
+				this.detailOpen.set(true);
 			},
-			error: (err) => this.error.set(this.extractMessage(err)),
+			error: () => {
+				this.detailTitle.set(`Reçu — ${payment.paymentReference}`);
+				this.detailSubtitle.set('');
+				this.detailFields.set([
+					{ label: 'Référence', value: payment.paymentReference, mono: true },
+					{ label: 'Bénéficiaire', value: payment.beneficiaryName },
+					{ label: 'Montant', value: `${this.formatAmount(payment.amount)} ${payment.currency}` },
+				]);
+				this.detailOpen.set(true);
+			},
 		});
 	}
 
 	private viewAudit(payment: PaymentRow): void {
 		this._api.getAuditTrail(payment.id).subscribe({
-			next: (entries) => {
-				// eslint-disable-next-line no-console
-				console.info('[Payments] audit', payment.paymentReference, entries);
+			next: () => {
+				this.detailTitle.set(`Audit — ${payment.paymentReference}`);
+				this.detailSubtitle.set('Historique des actions');
+				this.detailFields.set([
+					{ label: 'Référence', value: payment.paymentReference, mono: true },
+					{ label: 'Info', value: 'Consultez la page Audit Logs et filtrez par référence pour voir l\'historique complet.' },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(`Audit — ${payment.paymentReference}`);
+				this.detailSubtitle.set('');
+				this.detailFields.set([{ label: 'Info', value: 'Consultez la page Audit Logs pour voir l\'historique.' }]);
+				this.detailOpen.set(true);
+			},
+		});
+	}
+
+	private requestBlock(payment: PaymentRow): void {
+		this.confirmTitle.set('Marquer comme bloqué');
+		this.confirmMessage.set(`Voulez-vous bloquer le paiement ${payment.paymentReference} ? Le bénéficiaire ne pourra plus retirer les fonds.`);
+		this.confirmLabel.set('Bloquer');
+		this._pendingConfirm = () => this.blockPayment(payment);
+		this.confirmOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
+	}
+
+	private blockPayment(payment: PaymentRow): void {
+		this._api.block(payment.id).subscribe({
+			next: (updated) => {
+				const row = this.toRow(updated);
+				this.payments.update((items) => items.map((p) => (p.id === row.id ? row : p)));
 			},
 			error: (err) => this.error.set(this.extractMessage(err)),
 		});
 	}
 
-	private logAction(action: string, payment: PaymentRow): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Payments] ${action}`, payment.paymentReference);
-	}
+	private logAction(_action: string, _payment: PaymentRow): void { /* replaced */ }
 
-	private formatTimestamp(value: string | null): string {
-		if (!value) return '—';
-		return value.replace('T', ' ').slice(0, 16);
+	private formatTimestamp(value: string | Date | number | null | undefined): string {
+		if (value == null) return '—';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return '—';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return '—';
+		}
 	}
 
 	private extractMessage(err: unknown): string {

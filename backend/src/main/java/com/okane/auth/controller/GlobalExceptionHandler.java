@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -61,6 +62,33 @@ public class GlobalExceptionHandler {
                 "Validation failed",
                 request.getRequestURI(),
                 List.of(exception.getMessage())
+        ));
+    }
+
+    /**
+     * Handles malformed JSON or invalid enum values in request bodies.
+     * Without this handler, Jackson deserialization failures fall through to
+     * the generic 500 handler and expose "Unexpected error" to the client.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException exception,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        String message = "Requête invalide : corps JSON malformé ou valeur de champ incorrecte.";
+        // Surface the root cause message when it is safe to do so (no stack trace).
+        Throwable cause = exception.getCause();
+        if (cause != null && cause.getMessage() != null && cause.getMessage().length() < 300) {
+            message = "Requête invalide : " + cause.getMessage();
+        }
+        return ResponseEntity.status(status).body(new ApiErrorResponse(
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                request.getRequestURI(),
+                List.of()
         ));
     }
 

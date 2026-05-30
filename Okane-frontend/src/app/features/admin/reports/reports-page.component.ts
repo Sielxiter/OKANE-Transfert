@@ -26,6 +26,7 @@ import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.comp
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import {
 	REPORT_AGENCIES,
@@ -79,6 +80,7 @@ interface ReportRow {
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
 		UsersPlaceholderDialogComponent,
+		ActionDetailModalComponent,
 	],
 	providers: [
 		provideIcons({
@@ -429,10 +431,22 @@ interface ReportRow {
 			title="Partager le rapport"
 			(close)="shareDialog.set(false)"
 		/>
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			subtitle="Informations du rapport"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
 	`,
 })
 export class AdminReportsPageComponent implements OnInit {
 	private readonly _api = inject(AdminReportsApiService);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails rapport');
+	protected readonly detailFields = signal<DetailField[]>([]);
 
 	// ─── API state ──────────────────────────────────────────────────────────────
 	protected readonly reports = signal<ReportRow[]>([]);
@@ -682,10 +696,7 @@ export class AdminReportsPageComponent implements OnInit {
 			{
 				label: 'Voir détails',
 				icon: 'lucideEye',
-				action: () => this._api.getReport(numId).subscribe({
-					next: () => this.logAction('view', report.id),
-					error: () => this.logAction('view-error', report.id),
-				}),
+				action: () => this.openReportDetail(report, numId),
 			},
 			...(isAvailable || isArchived
 				? [
@@ -714,16 +725,52 @@ export class AdminReportsPageComponent implements OnInit {
 						{
 							label: 'Archiver',
 							icon: 'lucideArchive',
-							action: () => this.logAction('archive', report.id),
+							action: () => this.archiveReport(report),
 						},
 					]),
 		];
 	}
 
-	private logAction(action: string, ref: string): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Reports] ${action}`, ref);
+	private openReportDetail(report: ReportRow, numId: number): void {
+		this._api.getReport(numId).subscribe({
+			next: (detail) => {
+				this.detailTitle.set(detail.name ?? report.name);
+				this.detailFields.set([
+					{ label: 'ID', value: String(detail.id), mono: true },
+					{ label: 'Nom', value: detail.name ?? '—' },
+					{ label: 'Type', value: REPORT_TYPE_LABELS[detail.type as ReportType] ?? detail.type },
+					{ label: 'Période', value: detail.periodRange ?? '—' },
+					{ label: 'Agence', value: detail.agencyName ?? 'Toutes' },
+					{ label: 'Pays', value: detail.country ?? 'Tous' },
+					{ label: 'Devise', value: detail.currency ?? 'MULTI' },
+					{ label: 'Statut', value: REPORT_STATUS_LABELS[detail.status as ReportStatus] ?? detail.status },
+					{ label: 'Généré le', value: detail.generatedAt ?? '—' },
+					{ label: 'Généré par', value: detail.generatedBy ?? 'Système' },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(report.name);
+				this.detailFields.set([
+					{ label: 'Type', value: REPORT_TYPE_LABELS[report.type] },
+					{ label: 'Période', value: report.periodRange },
+					{ label: 'Statut', value: REPORT_STATUS_LABELS[report.status] },
+					{ label: 'Généré le', value: report.generatedAt },
+					{ label: 'Généré par', value: report.owner },
+				]);
+				this.detailOpen.set(true);
+			},
+		});
 	}
+
+	private archiveReport(report: ReportRow): void {
+		// Archive endpoint not yet implemented — show info modal
+		this.detailTitle.set(`Archiver — ${report.name}`);
+		this.detailFields.set([{ label: 'Info', value: 'L\'archivage des rapports sera disponible dans une prochaine phase.' }]);
+		this.detailOpen.set(true);
+	}
+
+	private logAction(_action: string, _ref: string): void { /* replaced */ }
 
 	private extractMessage(err: unknown): string {
 		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';

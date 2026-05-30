@@ -88,6 +88,31 @@ export class AdminCurrencyApiService {
 		return this._http.get<ApiCorridor[]>(`${this._base}/corridors`);
 	}
 
+	public getCorridor(id: number): Observable<ApiCorridor> {
+		return this._http.get<ApiCorridor>(`${this._base}/corridors/${id}`);
+	}
+
+	public createCorridor(payload: {
+		sourceCountryCode: string;
+		destinationCountryCode: string;
+		estimatedFees: number;
+		active: boolean;
+	}): Observable<ApiCorridor> {
+		return this._http.post<ApiCorridor>(`${this._base}/corridors`, payload);
+	}
+
+	public updateCorridor(id: number, payload: { estimatedFees?: number; active: boolean }): Observable<ApiCorridor> {
+		return this._http.put<ApiCorridor>(`${this._base}/corridors/${id}`, payload);
+	}
+
+	public changeCorridorStatus(id: number, status: ApiCorridorStatus): Observable<ApiCorridor> {
+		return this._http.patch<ApiCorridor>(`${this._base}/corridors/${id}/status`, { status });
+	}
+
+	public disableCorridor(id: number): Observable<ApiCorridor> {
+		return this._http.delete<ApiCorridor>(`${this._base}/corridors/${id}`);
+	}
+
 	public getRateHistory(): Observable<ApiExchangeRateHistory[]> {
 		return this._http.get<ApiExchangeRateHistory[]>(`${this._base}/rate-history`);
 	}

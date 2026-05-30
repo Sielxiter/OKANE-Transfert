@@ -104,6 +104,27 @@ public class UserManagementService {
     }
 
     @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAvailableManagers(Long agencyId) {
+        List<User> allManagers = userRepository.findByRole_NameOrderByCreatedAtDesc("ROLE_MANAGER");
+        return allManagers.stream()
+                .filter(manager -> {
+                    // A manager is available if they have no active agency assignment,
+                    // OR if their active assignment is to the agency being edited.
+                    Optional<AgencyUser> assignment = agencyUserRepository.findFirstByUser_IdAndActiveTrue(manager.getId());
+                    if (assignment.isEmpty()) {
+                        return true; // not assigned anywhere
+                    }
+                    if (agencyId != null && assignment.get().getAgency() != null
+                            && assignment.get().getAgency().getId().equals(agencyId)) {
+                        return true; // assigned to the agency being edited — keep selectable
+                    }
+                    return false; // assigned to a different agency
+                })
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<UserResponseDTO> getAgents() {
         return mapAll(userRepository.findByRole_NameOrderByCreatedAtDesc("ROLE_AGENT"));
     }

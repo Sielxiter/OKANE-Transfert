@@ -467,9 +467,15 @@ export class AdminDashboardPageComponent implements OnInit {
 		});
 	}
 
-	protected formatTimestamp(value: string | null): string {
-		if (!value) return '—';
-		return value.replace('T', ' ').slice(0, 16);
+	protected formatTimestamp(value: string | Date | number | null | undefined): string {
+		if (value == null) return '—';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return '—';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return '—';
+		}
 	}
 
 	protected severityLabel(severity: AlertSeverity): string {

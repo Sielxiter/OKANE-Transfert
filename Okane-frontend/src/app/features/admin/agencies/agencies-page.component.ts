@@ -8,21 +8,26 @@ import {
 	lucidePencil,
 	lucidePower,
 	lucidePowerOff,
+	lucideTriangleAlert,
 	lucideUsers,
 } from '@ng-icons/lucide';
 import { UserActionsDropdownComponent } from '../users/shared/user-actions-dropdown.component';
 import { UserStatusBadgeComponent } from '../users/shared/user-status-badge.component';
 import { UsersEmptyStateComponent } from '../users/shared/users-empty-state.component';
 import { UsersFiltersComponent, type FilterDefinition } from '../users/shared/users-filters.component';
+import { UsersFormDialogComponent } from '../users/shared/users-form-dialog.component';
 import { UsersLoadingStateComponent } from '../users/shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
-import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
+import { ActionDetailModalComponent, type DetailField } from '../users/shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../users/shared/confirm-dialog.component';
 import type { StatusVariant, UserActionItem } from '../users/shared/user-status.types';
 import {
 	AdminAgenciesApiService,
 	type ApiAgency,
 	type ApiAgencyStatus,
 } from './admin-agencies.api';
+import { AgencyCreateFormComponent } from './agency-create-form.component';
+import { AgencyEditFormComponent } from './agency-edit-form.component';
 
 const AGENCY_STATUS_LABELS: Record<ApiAgencyStatus, string> = {
 	ACTIVE: 'Active',
@@ -47,7 +52,11 @@ const AGENCY_STATUS_VARIANTS: Record<ApiAgencyStatus, StatusVariant> = {
 		UserActionsDropdownComponent,
 		UsersEmptyStateComponent,
 		UsersLoadingStateComponent,
-		UsersPlaceholderDialogComponent,
+		UsersFormDialogComponent,
+		AgencyCreateFormComponent,
+		AgencyEditFormComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
 	providers: [
 		provideIcons({
@@ -58,6 +67,7 @@ const AGENCY_STATUS_VARIANTS: Record<ApiAgencyStatus, StatusVariant> = {
 			lucidePencil,
 			lucidePower,
 			lucidePowerOff,
+			lucideTriangleAlert,
 			lucideUsers,
 		}),
 	],
@@ -189,10 +199,50 @@ const AGENCY_STATUS_VARIANTS: Record<ApiAgencyStatus, StatusVariant> = {
 			</section>
 		</div>
 
-		<okane-users-placeholder-dialog
+		<okane-users-form-dialog
 			[open]="dialogOpen()"
 			title="Ajouter une agence"
+			subtitle="Créer une nouvelle agence dans le réseau Okane."
+			icon="lucideBuilding2"
 			(close)="dialogOpen.set(false)"
+		>
+			<okane-agency-create-form
+				(created)="onAgencyCreated($event)"
+				(cancelled)="dialogOpen.set(false)"
+			/>
+		</okane-users-form-dialog>
+
+		@if (editAgency()) {
+			<okane-users-form-dialog
+				[open]="editDialogOpen()"
+				title="Modifier l'agence"
+				subtitle="Mettre à jour les informations et le manager assigné."
+				icon="lucidePencil"
+				(close)="editDialogOpen.set(false)"
+			>
+				<okane-agency-edit-form
+					[agency]="editAgency()!"
+					(updated)="onAgencyUpdated($event)"
+					(cancelled)="editDialogOpen.set(false)"
+				/>
+			</okane-users-form-dialog>
+		}
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			subtitle="Informations de l'agence"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
 		/>
 	`,
 })
@@ -208,6 +258,18 @@ export class AdminAgenciesPageComponent implements OnInit {
 	protected readonly country = signal<string>('all');
 	protected readonly city = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
+	protected readonly editDialogOpen = signal<boolean>(false);
+	protected readonly editAgency = signal<ApiAgency | null>(null);
+
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails agence');
+	protected readonly detailFields = signal<import('../users/shared/action-detail-modal.component').DetailField[]>([]);
+
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly total = computed(() => this.agencies().length);
 
@@ -306,6 +368,17 @@ export class AdminAgenciesPageComponent implements OnInit {
 		this.dialogOpen.set(true);
 	}
 
+	protected onAgencyCreated(agency: ApiAgency): void {
+		this.agencies.update((items) => [agency, ...items]);
+		this.dialogOpen.set(false);
+	}
+
+	protected onAgencyUpdated(agency: ApiAgency): void {
+		this.agencies.update((items) => items.map((a) => (a.id === agency.id ? agency : a)));
+		this.editDialogOpen.set(false);
+		this.editAgency.set(null);
+	}
+
 	protected initials(name: string): string {
 		return name
 			.split(' ')
@@ -329,35 +402,103 @@ export class AdminAgenciesPageComponent implements OnInit {
 		return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
 	}
 
-	protected formatDate(value: string | null): string {
-		if (!value) return '—';
-		return value.replace('T', ' ').slice(0, 10);
+	protected formatDate(value: string | Date | number | null | undefined): string {
+		if (value == null) return '—';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return '—';
+			return d.toISOString().slice(0, 10);
+		} catch {
+			return '—';
+		}
 	}
 
 	protected actionsFor(agency: ApiAgency): UserActionItem[] {
 		const isActive = agency.status === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', agency) },
-			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', agency) },
-			{ label: 'Voir agents', icon: 'lucideUsers', action: () => this.logAction('agents', agency) },
-			{
-				label: 'Voir performance',
-				icon: 'lucideChartLine',
-				action: () => this.logAction('performance', agency),
-			},
+			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.openDetail(agency) },
+			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.openEdit(agency) },
+			{ label: 'Voir agents', icon: 'lucideUsers', action: () => this.openAgentsDetail(agency) },
+			{ label: 'Voir performance', icon: 'lucideChartLine', action: () => this.openPerformance(agency) },
 			isActive
-				? {
-						label: 'Suspendre',
-						icon: 'lucidePowerOff',
-						action: () => this.changeStatus(agency, 'SUSPENDED'),
-						variant: 'destructive' as const,
-					}
-				: {
-						label: 'Activer',
-						icon: 'lucidePower',
-						action: () => this.changeStatus(agency, 'ACTIVE'),
-					},
+				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.requestStatusChange(agency, 'SUSPENDED'), variant: 'destructive' as const }
+				: { label: 'Activer', icon: 'lucidePower', action: () => this.requestStatusChange(agency, 'ACTIVE') },
 		];
+	}
+
+	private openDetail(agency: ApiAgency): void {
+		this._api.getById(agency.id).subscribe({
+			next: (detail) => {
+				this.detailTitle.set(detail.name);
+				this.detailFields.set([
+					{ label: 'ID', value: String(detail.id), mono: true },
+					{ label: 'Nom', value: detail.name },
+					{ label: 'Code', value: detail.code, mono: true },
+					{ label: 'Ville', value: detail.city },
+					{ label: 'Pays', value: detail.country },
+					{ label: 'Adresse', value: detail.address },
+					{ label: 'Téléphone', value: detail.phone ?? '—' },
+					{ label: 'Email', value: detail.email ?? '—' },
+					{ label: 'Plafond journalier', value: `${this.formatAmount(detail.dailyLimit)} MAD` },
+					{ label: 'Manager', value: detail.managerName ?? 'Non assigné' },
+					{ label: 'Agents', value: String(detail.agentsCount) },
+					{ label: 'Statut', value: AGENCY_STATUS_LABELS[detail.status] },
+					{ label: 'Créé le', value: this.formatDate(detail.createdAt) },
+				]);
+				this.detailOpen.set(true);
+			},
+			error: () => {
+				this.detailTitle.set(agency.name);
+				this.detailFields.set([
+					{ label: 'Code', value: agency.code, mono: true },
+					{ label: 'Ville', value: agency.city },
+					{ label: 'Pays', value: agency.country },
+					{ label: 'Statut', value: AGENCY_STATUS_LABELS[agency.status] },
+				]);
+				this.detailOpen.set(true);
+			},
+		});
+	}
+
+	private openEdit(agency: ApiAgency): void {
+		this.editAgency.set(agency);
+		this.editDialogOpen.set(true);
+	}
+
+	private openAgentsDetail(agency: ApiAgency): void {
+		this.detailTitle.set(`Agents — ${agency.name}`);
+		this.detailFields.set([
+			{ label: 'Agence', value: agency.name },
+			{ label: 'Code', value: agency.code, mono: true },
+			{ label: 'Nombre d\'agents', value: String(agency.agentsCount) },
+			{ label: 'Info', value: 'La liste détaillée des agents sera disponible dans une prochaine phase.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private openPerformance(agency: ApiAgency): void {
+		this.detailTitle.set(`Performance — ${agency.name}`);
+		this.detailFields.set([
+			{ label: 'Agence', value: agency.name },
+			{ label: 'Code', value: agency.code, mono: true },
+			{ label: 'Info', value: 'Les statistiques de performance seront disponibles dans une prochaine phase.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private requestStatusChange(agency: ApiAgency, status: ApiAgencyStatus): void {
+		const label = status === 'SUSPENDED' ? 'Suspendre' : 'Activer';
+		this.confirmTitle.set(`${label} l'agence`);
+		this.confirmMessage.set(`Voulez-vous ${label.toLowerCase()} l'agence ${agency.name} (${agency.code}) ?`);
+		this.confirmLabel.set(label);
+		this._pendingConfirm = () => this.changeStatus(agency, status);
+		this.confirmOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
 	}
 
 	private changeStatus(agency: ApiAgency, status: ApiAgencyStatus): void {
@@ -371,10 +512,7 @@ export class AdminAgenciesPageComponent implements OnInit {
 		});
 	}
 
-	private logAction(action: string, agency: ApiAgency): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Agencies] ${action}`, agency.code, agency.name);
-	}
+	private logAction(_action: string, _agency: ApiAgency): void { /* replaced */ }
 
 	private extractMessage(err: unknown): string {
 		const fallback = 'Erreur réseau. Vérifiez votre connexion ou votre session.';

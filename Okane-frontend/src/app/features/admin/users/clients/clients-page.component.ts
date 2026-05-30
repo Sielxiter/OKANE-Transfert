@@ -5,6 +5,7 @@ import {
 	lucidePencil,
 	lucidePower,
 	lucidePowerOff,
+	lucideTriangleAlert,
 	lucideUserPlus,
 } from '@ng-icons/lucide';
 import { UserActionsDropdownComponent } from '../shared/user-actions-dropdown.component';
@@ -15,6 +16,8 @@ import { UsersFormDialogComponent } from '../shared/users-form-dialog.component'
 import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UserCreateFormComponent } from '../shared/user-create-form.component';
+import { ActionDetailModalComponent, type DetailField } from '../shared/action-detail-modal.component';
+import { ConfirmDialogComponent } from '../shared/confirm-dialog.component';
 import {
 	ACCOUNT_LABELS,
 	ACCOUNT_VARIANTS,
@@ -38,8 +41,10 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 		UsersLoadingStateComponent,
 		UsersFormDialogComponent,
 		UserCreateFormComponent,
+		ActionDetailModalComponent,
+		ConfirmDialogComponent,
 	],
-	providers: [provideIcons({ lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideUserPlus })],
+	providers: [provideIcons({ lucideEye, lucidePencil, lucidePower, lucidePowerOff, lucideUserPlus, lucideTriangleAlert })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<div class="flex flex-col gap-4">
@@ -150,6 +155,23 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 				(cancelled)="dialogOpen.set(false)"
 			/>
 		</okane-users-form-dialog>
+
+		<okane-action-detail-modal
+			[open]="detailOpen()"
+			[title]="detailTitle()"
+			subtitle="Informations du compte client"
+			[fields]="detailFields()"
+			(close)="detailOpen.set(false)"
+		/>
+
+		<okane-confirm-dialog
+			[open]="confirmOpen()"
+			[title]="confirmTitle()"
+			[message]="confirmMessage()"
+			[confirmLabel]="confirmLabel()"
+			(confirm)="onConfirm()"
+			(cancel)="confirmOpen.set(false)"
+		/>
 	`,
 })
 export class AdminUsersClientsPageComponent implements OnInit {
@@ -164,6 +186,18 @@ export class AdminUsersClientsPageComponent implements OnInit {
 	protected readonly kyc = signal<string>('all');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
+
+	// ─── Detail modal ────────────────────────────────────────────────────────────
+	protected readonly detailOpen = signal<boolean>(false);
+	protected readonly detailTitle = signal<string>('Détails client');
+	protected readonly detailFields = signal<DetailField[]>([]);
+
+	// ─── Confirm dialog ──────────────────────────────────────────────────────────
+	protected readonly confirmOpen = signal<boolean>(false);
+	protected readonly confirmTitle = signal<string>('Confirmer');
+	protected readonly confirmMessage = signal<string>('');
+	protected readonly confirmLabel = signal<string>('Confirmer');
+	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly total = computed(() => this.clients().length);
 
@@ -279,9 +313,15 @@ export class AdminUsersClientsPageComponent implements OnInit {
 			.toUpperCase();
 	}
 
-	protected formatDate(value: string | null): string {
-		if (!value) return '—';
-		return value.replace('T', ' ').slice(0, 16);
+	protected formatDate(value: string | Date | number | null | undefined): string {
+		if (value == null) return '—';
+		try {
+			const d = value instanceof Date ? value : new Date(value);
+			if (isNaN(d.getTime())) return '—';
+			return d.toISOString().replace('T', ' ').slice(0, 16);
+		} catch {
+			return '—';
+		}
 	}
 
 	protected kycLabel(status: KycStatus | null): string {
@@ -303,21 +343,71 @@ export class AdminUsersClientsPageComponent implements OnInit {
 	protected actionsFor(client: ApiUser): UserActionItem[] {
 		const isActive = client.accountStatus === 'ACTIVE';
 		return [
-			{ label: 'Voir détails', icon: 'lucideEye', action: () => this.logAction('view', client) },
-			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.logAction('edit', client) },
+			{
+				label: 'Voir détails',
+				icon: 'lucideEye',
+				action: () => this.openDetail(client),
+			},
+			{
+				label: 'Modifier',
+				icon: 'lucidePencil',
+				action: () => this.openEdit(client),
+			},
 			isActive
 				? {
 						label: 'Suspendre',
 						icon: 'lucidePowerOff',
-						action: () => this.changeStatus(client, 'SUSPENDED'),
+						action: () => this.requestStatusChange(client, 'SUSPENDED'),
 						variant: 'destructive' as const,
 					}
 				: {
 						label: 'Activer',
 						icon: 'lucidePower',
-						action: () => this.changeStatus(client, 'ACTIVE'),
+						action: () => this.requestStatusChange(client, 'ACTIVE'),
 					},
 		];
+	}
+
+	private openDetail(client: ApiUser): void {
+		this.detailTitle.set(`${client.fullName}`);
+		this.detailFields.set([
+			{ label: 'ID', value: String(client.id), mono: true },
+			{ label: 'Nom complet', value: client.fullName },
+			{ label: 'Email', value: client.email },
+			{ label: 'Téléphone', value: client.phone ?? '—' },
+			{ label: 'Pays', value: client.country ?? '—' },
+			{ label: 'Statut compte', value: ACCOUNT_LABELS[client.accountStatus] },
+			{ label: 'KYC', value: client.kycStatus ? KYC_LABELS[client.kycStatus as KycStatus] ?? client.kycStatus : '—' },
+			{ label: 'Créé le', value: this.formatDate(client.createdAt) },
+			{ label: 'Dernière connexion', value: this.formatDate(client.lastLoginAt) },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private openEdit(client: ApiUser): void {
+		// TODO: implement edit form in a future phase
+		this.detailTitle.set(`Modifier — ${client.fullName}`);
+		this.detailFields.set([
+			{ label: 'Info', value: 'Le formulaire de modification sera disponible dans une prochaine phase.' },
+		]);
+		this.detailOpen.set(true);
+	}
+
+	private requestStatusChange(client: ApiUser, status: AccountStatus): void {
+		const label = status === 'SUSPENDED' ? 'Suspendre' : 'Activer';
+		this.confirmTitle.set(`${label} le compte`);
+		this.confirmMessage.set(
+			`Voulez-vous ${label.toLowerCase()} le compte de ${client.fullName} (${client.email}) ?`,
+		);
+		this.confirmLabel.set(label);
+		this._pendingConfirm = () => this.changeStatus(client, status);
+		this.confirmOpen.set(true);
+	}
+
+	protected onConfirm(): void {
+		this.confirmOpen.set(false);
+		this._pendingConfirm?.();
+		this._pendingConfirm = null;
 	}
 
 	private changeStatus(client: ApiUser, status: AccountStatus): void {
@@ -329,11 +419,6 @@ export class AdminUsersClientsPageComponent implements OnInit {
 				this.error.set(this.extractMessage(err));
 			},
 		});
-	}
-
-	private logAction(action: string, client: ApiUser): void {
-		// eslint-disable-next-line no-console
-		console.info(`[Clients] ${action}`, client.id, client.fullName);
 	}
 
 	private extractMessage(err: unknown): string {
