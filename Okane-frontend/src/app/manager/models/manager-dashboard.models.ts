@@ -50,3 +50,48 @@ export interface ManagerPayment {
 export interface CancelPayoutRequest {
   raison: string;
 }
+
+export interface ManagerAgentRequest {
+  prenom: string;
+  nom: string;
+  email: string;
+  motDePasse: string;
+  telephone: string;
+  actif: boolean;
+}
+
+export interface ManagerAgentUpdateRequest {
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone: string;
+  actif: boolean;
+}
+
+export interface ManagerAgentResponse {
+  id: number;
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone: string;
+  actif: boolean;
+  role: string;
+  agencyName: string;
+  creeLe: string;
+  modifieLe: string;
+}
+
+export interface ManagerDashboardData {
+  agencyOpeningBalance: number;
+  agencyCurrentBalance: number;
+  todayTransfersCount: number;
+  todayTransfersAmount: number;
+  todayFeesAmount: number;
+  agencyCommission: number;
+  centralShare: number;
+  pendingPayoutsCount: number;
+  pendingPayoutsAmount: number;
+  activeAgentsCount: number;
+  totalAgentsCount: number;
+  unresolvedDiscrepanciesCount: number;
+}

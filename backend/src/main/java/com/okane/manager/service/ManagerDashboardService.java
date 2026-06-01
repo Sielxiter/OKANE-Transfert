@@ -9,6 +9,7 @@ import com.okane.auth.repository.UserRepository;
 import com.okane.auth.security.OkaneUserPrincipal;
 import com.okane.cash.entity.AgentCashSession;
 import com.okane.cash.repository.AgentCashSessionRepository;
+import com.okane.cash.repository.CashMovementRepository;  // ← À AJOUTER
 import com.okane.cash.repository.FundDiscrepancyRepository;
 import com.okane.feescommission.repository.CommissionRuleRepository;
 import com.okane.manager.dto.ManagerDashboardDTO;
@@ -35,9 +36,9 @@ public class ManagerDashboardService {
     private final AgentCashSessionRepository sessionRepository;
     private final TransferRepository transferRepository;
     private final FundDiscrepancyRepository discrepancyRepository;
-    private final CommissionRuleRepository commissionRuleRepository;  // ← AJOUTÉ
+    private final CommissionRuleRepository commissionRuleRepository;
+    private final CashMovementRepository cashMovementRepository;  // ← AJOUTER
 
-    // ✅ VALEURS PAR DÉFAUT (si aucune règle n'existe en base)
     private static final BigDecimal DEFAULT_AGENCY_COMMISSION = BigDecimal.valueOf(40);
     private static final BigDecimal DEFAULT_CENTRAL_COMMISSION = BigDecimal.valueOf(60);
 
@@ -47,14 +48,16 @@ public class ManagerDashboardService {
             AgentCashSessionRepository sessionRepository,
             TransferRepository transferRepository,
             FundDiscrepancyRepository discrepancyRepository,
-            CommissionRuleRepository commissionRuleRepository  // ← AJOUTÉ
+            CommissionRuleRepository commissionRuleRepository,
+            CashMovementRepository cashMovementRepository  // ← AJOUTER
     ) {
         this.userRepository = userRepository;
         this.agencyUserRepository = agencyUserRepository;
         this.sessionRepository = sessionRepository;
         this.transferRepository = transferRepository;
         this.discrepancyRepository = discrepancyRepository;
-        this.commissionRuleRepository = commissionRuleRepository;  // ← AJOUTÉ
+        this.commissionRuleRepository = commissionRuleRepository;
+        this.cashMovementRepository = cashMovementRepository;  // ← AJOUTER
     }
 
     @Transactional(readOnly = true)
@@ -64,14 +67,35 @@ public class ManagerDashboardService {
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
 
-        // 1. 💰 Solde de l'agence
-        List<AgentCashSession> todaySessions = sessionRepository.findByAgency_IdAndSessionDateBetween(agency.getId(), today, today);
-        BigDecimal agencyCashBalance = todaySessions.stream()
-                .map(AgentCashSession::getOpeningBalance)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<AgentCashSession> activeSessions = sessionRepository.findByAgency_IdAndStatus(agency.getId(), "OPEN");
+        BigDecimal agencyOpeningBalance = BigDecimal.ZERO;
+        BigDecimal agencyCurrentBalance = BigDecimal.ZERO;
 
-        // 2. 📊 Transferts du jour
+        if (activeSessions != null && !activeSessions.isEmpty()) {
+            for (AgentCashSession session : activeSessions) {
+                // Solde d'ouverture (début de journée)
+                BigDecimal openingBalance = session.getOpeningBalance();
+                if (openingBalance != null) {
+                    agencyOpeningBalance = agencyOpeningBalance.add(openingBalance);
+                } else {
+                    agencyOpeningBalance = agencyOpeningBalance.add(BigDecimal.ZERO);
+                }
+
+                // Calcul du solde courant = ouverture + encaissements - décaissements
+                BigDecimal totalEntries = cashMovementRepository.sumAmountBySessionAndType(session.getId(), "IN");
+                BigDecimal totalExits = cashMovementRepository.sumAmountBySessionAndType(session.getId(), "OUT");
+
+                if (totalEntries == null) totalEntries = BigDecimal.ZERO;
+                if (totalExits == null) totalExits = BigDecimal.ZERO;
+
+                BigDecimal sessionOpening = openingBalance != null ? openingBalance : BigDecimal.ZERO;
+                BigDecimal currentBalance = sessionOpening.add(totalEntries).subtract(totalExits);
+                agencyCurrentBalance = agencyCurrentBalance.add(currentBalance);
+            }
+        }
+
+
+        // 2. Transferts du jour
         List<Transfer> allTransfers = transferRepository.findBySourceAgency_IdOrderByCreatedAtDesc(agency.getId());
 
         List<Transfer> todayTransfers = allTransfers.stream()
@@ -92,11 +116,10 @@ public class ManagerDashboardService {
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3. 💸 Commission - Lecture depuis la base de données
+        // 3. Commission
         BigDecimal agencyCommissionPercentage = DEFAULT_AGENCY_COMMISSION;
         BigDecimal centralCommissionPercentage = DEFAULT_CENTRAL_COMMISSION;
 
-        // ✅ Récupérer la règle active depuis la base (sans @Query)
         var activeRule = commissionRuleRepository.findFirstByActiveTrueOrderByCreatedAtDesc();
         if (activeRule.isPresent()) {
             agencyCommissionPercentage = activeRule.get().getAgencyPercentage();
@@ -110,7 +133,7 @@ public class ManagerDashboardService {
                 .multiply(centralCommissionPercentage)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
-        // 4. ⏳ Paiements en attente
+        // 4. Paiements en attente
         List<Transfer> pendingTransfers = allTransfers.stream()
                 .filter(t -> "PENDING".equalsIgnoreCase(t.getStatus()))
                 .toList();
@@ -122,15 +145,28 @@ public class ManagerDashboardService {
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 5. 👥 Agents
-        long activeAgentsCount = agencyUserRepository.countByAgency_IdAndActiveTrue(agency.getId());
-        long totalAgentsCount = agencyUserRepository.countByAgency_Id(agency.getId());
+        // 5. Agents
+        List<AgencyUser> agencyUsers = agencyUserRepository.findByAgency_IdAndActiveTrue(agency.getId());
 
-        // 6. ⚠️ Écarts non résolus
+        long totalAgentsCount = agencyUsers.stream()
+                .filter(au -> au.getUser() != null &&
+                        au.getUser().getRole() != null &&
+                        "ROLE_AGENT".equals(au.getUser().getRole().getName()))
+                .count();
+
+        long activeAgentsCount = agencyUsers.stream()
+                .filter(au -> au.getUser() != null &&
+                        au.getUser().getRole() != null &&
+                        "ROLE_AGENT".equals(au.getUser().getRole().getName()) &&
+                        au.getUser().getEnabled())
+                .count();
+
+        // 6. Écarts non résolus
         long unresolvedDiscrepanciesCount = discrepancyRepository.countByCashSession_Agency_IdAndStatus(agency.getId(), "OPEN");
 
         return new ManagerDashboardDTO(
-                agencyCashBalance,
+                agencyOpeningBalance,
+                agencyCurrentBalance,
                 todayTransfersCount,
                 todayTransfersAmount,
                 todayFeesAmount,

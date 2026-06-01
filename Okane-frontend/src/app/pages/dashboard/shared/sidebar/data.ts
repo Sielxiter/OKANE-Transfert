@@ -134,15 +134,8 @@ const managerItems: SidebarItem[] = [
 		icon: 'lucideSquareTerminal',
 		url: '/manager/dashboard',
 		isActive: true,
-		items: [
-			{ title: 'Solde agence' },
-			{ title: 'Transferts du jour' },
-			{ title: 'Paiements en attente' },
-			{ title: 'Agents actifs' },
-			{ title: 'Transferts suspects' },
-		],
 	},
-	{ title: 'Agents', icon: 'lucideBot', items: [{ title: 'Créer un agent' }, { title: 'Activer / désactiver' }, { title: 'Affecter les horaires' }] },
+	{ title: 'Agents', icon: 'lucideBot', url: '/manager/agents'},
 	{ title: 'Clients', icon: 'lucideBookOpen', url: '/manager/clients' },
 	{
 		title: 'Transferts',

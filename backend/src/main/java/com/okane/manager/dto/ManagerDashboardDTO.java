@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 
 public record ManagerDashboardDTO(
 
-        BigDecimal agencyCashBalance,
-
+        BigDecimal agencyOpeningBalance,
+        BigDecimal agencyCurrentBalance,
         long todayTransfersCount,
         BigDecimal todayTransfersAmount,
 

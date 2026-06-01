@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AgencyUserRepository extends JpaRepository<AgencyUser, Long> {
     Optional<AgencyUser> findFirstByUser_IdAndActiveTrue(Long userId);
 
+    List<AgencyUser> findByAgency_Id(Long agencyId);
     List<AgencyUser> findByAgency_IdAndActiveTrue(Long agencyId);
     Optional<AgencyUser> findByUser_IdAndAgency_Id(Long userId, Long agencyId);
     List<AgencyUser> findByAgency_IdAndUser_Role_NameAndActiveTrue(Long agencyId, String roleNom);

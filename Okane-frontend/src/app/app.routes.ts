@@ -14,6 +14,8 @@ import { AgentSettingsPageComponent } from './pages/agent/settings-page.componen
 import { ManagerLayoutShellComponent } from './manager/layout/manager-layout-shell.component';
 import { ManagerClientsPageComponent } from './pages/manager/manager-clients-page.component';
 import { ManagerPaymentsPageComponent } from './pages/manager/manager-payments-page.component';
+import { ManagerAgentsPageComponent } from './pages/manager/manager-agents-page.component';
+import { ManagerDashboardPageComponent } from './pages/manager/manager-dashboard-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -25,9 +27,22 @@ export const routes: Routes = [
     component: ManagerLayoutShellComponent,
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-      { path: 'dashboard', component: DashboardPageComponent, data: { pageTitle: 'Tableau de bord' } },
+      {
+        path: 'dashboard',
+        component: ManagerDashboardPageComponent,
+        data: { pageTitle: 'Tableau de bord' },
+      },
       { path: 'clients', component: ManagerClientsPageComponent, data: { pageTitle: 'Clients' } },
-      { path: 'payments', component: ManagerPaymentsPageComponent, data: { pageTitle: 'Paiements' } },
+      {
+        path: 'payments',
+        component: ManagerPaymentsPageComponent,
+        data: { pageTitle: 'Paiements' },
+      },
+      {
+        path: 'agents',
+        component: ManagerAgentsPageComponent,
+        data: { pageTitle: 'Agents' },
+      },
     ],
   },
   {
@@ -35,15 +50,47 @@ export const routes: Routes = [
     component: AgentLayoutShellComponent,
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-      { path: 'dashboard', component: AgentDashboardPageComponent, data: { pageTitle: 'Tableau de bord' } },
-      { path: 'new-transfer', component: AgentNewTransferPageComponent, data: { pageTitle: 'Nouvel envoi' } },
-      { path: 'payout-transfer', component: AgentPayoutTransferPageComponent, data: { pageTitle: "Paiement d'un transfert" } },
+      {
+        path: 'dashboard',
+        component: AgentDashboardPageComponent,
+        data: { pageTitle: 'Tableau de bord' },
+      },
+      {
+        path: 'new-transfer',
+        component: AgentNewTransferPageComponent,
+        data: { pageTitle: 'Nouvel envoi' },
+      },
+      {
+        path: 'payout-transfer',
+        component: AgentPayoutTransferPageComponent,
+        data: { pageTitle: "Paiement d'un transfert" },
+      },
       { path: 'customers', component: AgentCustomersPageComponent, data: { pageTitle: 'Clients' } },
-      { path: 'cash-register', component: AgentCashRegisterPageComponent, data: { pageTitle: 'Gestion de caisse' } },
-      { path: 'transfer-history', component: AgentTransferHistoryPageComponent, data: { pageTitle: 'Historique des transferts' } },
-      { path: 'kyc-verification', component: AgentKycVerificationPageComponent, data: { pageTitle: 'Vérification KYC' } },
-      { path: 'notifications', component: AgentNotificationsPageComponent, data: { pageTitle: 'Notifications' } },
-      { path: 'settings', component: AgentSettingsPageComponent, data: { pageTitle: 'Paramètres' } },
+      {
+        path: 'cash-register',
+        component: AgentCashRegisterPageComponent,
+        data: { pageTitle: 'Gestion de caisse' },
+      },
+      {
+        path: 'transfer-history',
+        component: AgentTransferHistoryPageComponent,
+        data: { pageTitle: 'Historique des transferts' },
+      },
+      {
+        path: 'kyc-verification',
+        component: AgentKycVerificationPageComponent,
+        data: { pageTitle: 'Vérification KYC' },
+      },
+      {
+        path: 'notifications',
+        component: AgentNotificationsPageComponent,
+        data: { pageTitle: 'Notifications' },
+      },
+      {
+        path: 'settings',
+        component: AgentSettingsPageComponent,
+        data: { pageTitle: 'Paramètres' },
+      },
     ],
   },
   { path: 'client/dashboard', component: DashboardPageComponent },
