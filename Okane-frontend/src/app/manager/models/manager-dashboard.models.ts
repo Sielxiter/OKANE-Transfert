@@ -95,3 +95,90 @@ export interface ManagerDashboardData {
   totalAgentsCount: number;
   unresolvedDiscrepanciesCount: number;
 }
+//Gestion de caisse
+export interface AgencyCashSummary {
+  totalOpeningBalance: number;
+  totalEntries: number;
+  totalExits: number;
+  totalCurrentBalance: number;
+}
+
+export interface AgentCashSummary {
+  agentId: number;
+  agentName: string;
+  openingBalance: number;
+  entries: number;
+  exits: number;
+  currentBalance: number;
+  sessionStatus: string;
+}
+
+export interface ManagerCashSummary {
+  date: string;
+  agencySummary: AgencyCashSummary;
+  agentsSummary: AgentCashSummary[];
+  openSessionsCount: number;
+  pendingDiscrepanciesCount: number;
+}
+
+export interface ManagerCashSession {
+  id: number;
+  agentId: string;
+  agentName: string;
+  agentEmail: string;
+  sessionDate: string;
+  openingBalance: number;
+  totalEntries: number;
+  totalExits: number;
+  currentBalance: number;
+  status: string;
+  openedAt: string;
+  closedAt: string | null;
+}
+
+export interface ManagerCashMovementDetail {
+  movementId: number;
+  movementType: string;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  processedBy: string;
+  transferReference: string | null;
+  senderName: string | null;
+  senderPhone: string | null;
+  senderCountry: string | null;
+  beneficiaryName: string | null;
+  beneficiaryPhone: string | null;
+  beneficiaryIdType: string | null;
+  beneficiaryIdNumber: string | null;
+  transferStatus: string | null;
+}
+
+export interface ManagerCashClosure {
+  id: number;
+  sessionId: number;
+  agentName: string;
+  closedBy: string;
+  closedAt: string;
+  expectedBalance: number;
+  actualBalance: number;
+  difference: number;
+  note: string;
+}
+
+export interface ManagerCashDiscrepancy {
+  id: number;
+  sessionId: number;
+  agentName: string;
+  agentEmail: string;
+  reportedAt: string;
+  expectedBalance: number;
+  actualBalance: number;
+  difference: number;
+  discrepancyType: string;
+  status: string;
+  description: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+

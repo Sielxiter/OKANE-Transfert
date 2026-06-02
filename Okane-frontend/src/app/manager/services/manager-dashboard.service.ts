@@ -11,6 +11,11 @@ import {
   ManagerAgentRequest,
   ManagerAgentUpdateRequest,
   ManagerDashboardData,
+  ManagerCashClosure,
+  ManagerCashDiscrepancy,
+  ManagerCashSummary,
+  ManagerCashSession,
+  ManagerCashMovementDetail,
 } from '../models/manager-dashboard.models';
 
 @Injectable({ providedIn: 'root' })
@@ -75,5 +80,68 @@ export class ManagerDashboardService {
 
   getDashboard(): Observable<ManagerDashboardData> {
     return this._http.get<ManagerDashboardData>('/api/manager/dashboard');
+  }
+
+  //Gestion de caisse
+  private readonly _cashUrl = '/api/manager/cash';
+
+  getCashDashboard(): Observable<ManagerCashSummary> {
+    return this._http.get<ManagerCashSummary>(`${this._cashUrl}/dashboard`);
+  }
+
+  getSessions(startDate?: string, endDate?: string): Observable<ManagerCashSession[]> {
+    let url = `${this._cashUrl}/sessions`;
+    if (startDate || endDate) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      url += `?${params.toString()}`;
+    }
+    return this._http.get<ManagerCashSession[]>(url);
+  }
+
+  getSessionDetails(sessionId: number): Observable<ManagerCashSession> {
+    return this._http.get<ManagerCashSession>(`${this._cashUrl}/sessions/${sessionId}`);
+  }
+
+  getMovementDetails(movementId: number): Observable<ManagerCashMovementDetail> {
+    return this._http.get<ManagerCashMovementDetail>(
+      `${this._cashUrl}/movements/${movementId}/details`,
+    );
+  }
+
+  getClosures(startDate?: string, endDate?: string): Observable<ManagerCashClosure[]> {
+    let url = `${this._cashUrl}/closures`;
+    if (startDate || endDate) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      url += `?${params.toString()}`;
+    }
+    return this._http.get<ManagerCashClosure[]>(url);
+  }
+
+  getClosureDetails(sessionId: number): Observable<ManagerCashClosure> {
+    return this._http.get<ManagerCashClosure>(`${this._cashUrl}/closures/${sessionId}`);
+  }
+
+  getDiscrepancies(status?: string): Observable<ManagerCashDiscrepancy[]> {
+    let url = `${this._cashUrl}/discrepancies`;
+    if (status) {
+      url += `?status=${status}`;
+    }
+    return this._http.get<ManagerCashDiscrepancy[]>(url);
+  }
+
+  resolveDiscrepancy(discrepancyId: number): Observable<ManagerCashDiscrepancy> {
+    return this._http.patch<ManagerCashDiscrepancy>(
+      `${this._cashUrl}/discrepancies/${discrepancyId}/resolve`,
+      {},
+    );
+  }
+  getSessionMovements(sessionId: number): Observable<ManagerCashMovementDetail[]> {
+    return this._http.get<ManagerCashMovementDetail[]>(
+      `${this._cashUrl}/sessions/${sessionId}/movements`,
+    );
   }
 }

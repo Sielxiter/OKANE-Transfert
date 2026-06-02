@@ -177,10 +177,11 @@ public class ManagerCashManagementService {
         Agency agency = resolveAgency(authentication);
 
         List<FundDiscrepancy> discrepancies;
-        if (status != null && !status.isBlank()) {
-            discrepancies = discrepancyRepository.findByCashSession_Agency_IdAndStatus(agency.getId(), status.toUpperCase());
+        // Gérer le cas "all" correctement
+        if (status != null && !status.isBlank() && !"all".equalsIgnoreCase(status)) {
+            discrepancies = discrepancyRepository.findByCashSession_Agency_IdAndStatusWithFetch(agency.getId(), status.toUpperCase());
         } else {
-            discrepancies = discrepancyRepository.findByCashSession_Agency_IdOrderByReportedAtDesc(agency.getId());
+            discrepancies = discrepancyRepository.findByCashSession_Agency_IdOrderByReportedAtDescWithFetch(agency.getId());
         }
 
         return discrepancies.stream()
@@ -246,11 +247,29 @@ public class ManagerCashManagementService {
 
     private ManagerCashDiscrepancyDTO toDiscrepancyDTO(FundDiscrepancy discrepancy) {
         AgentCashSession session = discrepancy.getCashSession();
+
+        // Récupérer le nom de l'agent correctement
+        String agentName = "Agent inconnu";
+        String agentEmail = "email@inconnu.com";
+
+        if (session != null && session.getAgent() != null) {
+            User agent = session.getAgent();
+            String firstName = agent.getFirstName() != null ? agent.getFirstName() : "";
+            String lastName = agent.getLastName() != null ? agent.getLastName() : "";
+            agentName = (firstName + " " + lastName).trim();
+            if (agentName.isEmpty()) {
+                agentName = agent.getEmail() != null ? agent.getEmail() : "Agent " + agent.getId();
+            }
+            agentEmail = agent.getEmail() != null ? agent.getEmail() : "email@inconnu.com";
+        } else if (session == null) {
+            agentName = "Session non trouvée";
+        }
+
         return new ManagerCashDiscrepancyDTO(
                 discrepancy.getId(),
-                session.getId(),
-                session.getAgent().getFirstName() + " " + session.getAgent().getLastName(),
-                session.getAgent().getEmail(),
+                session != null ? session.getId() : null,
+                agentName,
+                agentEmail,
                 discrepancy.getReportedAt(),
                 discrepancy.getExpectedBalance(),
                 discrepancy.getActualBalance(),
@@ -353,5 +372,25 @@ public class ManagerCashManagementService {
         }
         return userRepository.findById(principal.getUser().getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ManagerCashMovementDetailDTO> getSessionMovements(Authentication authentication, Long sessionId) {
+        Agency agency = resolveAgency(authentication);
+
+        // Vérifier que la session existe et appartient à l'agence
+        AgentCashSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Session non trouvée"));
+
+        if (!session.getAgency().getId().equals(agency.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Cette session n'appartient pas à votre agence");
+        }
+
+        // Récupérer les mouvements de la session
+        List<CashMovement> movements = movementRepository.findByCashSession_IdOrderByCreatedAtDesc(sessionId);
+
+        return movements.stream()
+                .map(this::toMovementDetailDTO)
+                .toList();
     }
 }

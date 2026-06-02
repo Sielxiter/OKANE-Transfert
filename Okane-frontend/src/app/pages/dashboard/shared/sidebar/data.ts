@@ -143,7 +143,7 @@ const managerItems: SidebarItem[] = [
 		items: [{ title: 'Valider les transferts sensibles' }, { title: 'Approuver les plafonds' }, { title: 'Transferts en attente' }],
 	},
 	{ title: 'Paiements', icon: 'lucideSettings2', url: '/manager/payments' },
-	{ title: 'Gestion de caisse', icon: 'lucideSettings2', items: [{ title: 'Sessions de caisse' }, { title: 'Réconciliation fin de journée' }, { title: 'Écarts' }] },
+	{ title: 'Gestion de caisse', icon: 'lucideSettings2', url:'/manager/cash'},
 	{ title: 'Conformité', icon: 'lucideSettings2', items: [{ title: 'Transferts suspects' }, { title: 'Liste de surveillance' }, { title: 'Revues KYC' }] },
 	{ title: 'Rapports', icon: 'lucideBookOpen', items: [{ title: 'Performance agence' }, { title: 'Commissions' }] },
 	{ title: 'Notifications', icon: 'lucideSettings2', items: [{ title: 'Modèles' }, { title: 'Canaux' }] },

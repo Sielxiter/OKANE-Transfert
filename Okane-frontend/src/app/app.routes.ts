@@ -16,6 +16,7 @@ import { ManagerClientsPageComponent } from './pages/manager/manager-clients-pag
 import { ManagerPaymentsPageComponent } from './pages/manager/manager-payments-page.component';
 import { ManagerAgentsPageComponent } from './pages/manager/manager-agents-page.component';
 import { ManagerDashboardPageComponent } from './pages/manager/manager-dashboard-page.component';
+import { ManagerCashPageComponent } from './pages/manager/manager-cash-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -42,6 +43,16 @@ export const routes: Routes = [
         path: 'agents',
         component: ManagerAgentsPageComponent,
         data: { pageTitle: 'Agents' },
+      },
+      {
+        path: 'cash',
+        component: ManagerCashPageComponent,
+        data: { pageTitle: 'Gestion de caisse' },
+      },
+      {
+        path: 'cash-register',
+        component: ManagerCashPageComponent,
+        data: { pageTitle: 'Gestion de caisse' },
       },
     ],
   },

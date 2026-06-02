@@ -96,4 +96,12 @@ public class ManagerCashManagementController {
     ) {
         return ResponseEntity.ok(cashService.resolveDiscrepancy(authentication, discrepancyId));
     }
+
+    @GetMapping("/sessions/{sessionId}/movements")
+    public ResponseEntity<List<ManagerCashMovementDetailDTO>> getSessionMovements(
+            @PathVariable Long sessionId,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(cashService.getSessionMovements(authentication, sessionId));
+    }
 }
