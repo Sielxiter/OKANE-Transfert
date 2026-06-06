@@ -16,7 +16,7 @@ import { AgentLayoutComponent } from '../../agent/layout/agent-layout.component'
   imports: [AgentLayoutComponent, RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <okane-agent-layout [pageTitle]="pageTitle">
+    <okane-agent-layout [pageTitle]="pageTitle" rootLabel="Manager" rootLink="/manager/dashboard">
       <router-outlet />
     </okane-agent-layout>
   `,

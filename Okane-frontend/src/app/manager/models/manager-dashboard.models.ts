@@ -9,6 +9,7 @@ export interface ManagerClient {
   typePiece: string;
   numeroPiece: string;
   statutKyc: string;
+  statutCompte: string;
   creeLe: string;
 }
 
@@ -49,4 +50,64 @@ export interface ManagerPayment {
 
 export interface CancelPayoutRequest {
   raison: string;
+}
+
+export interface ManagerReportSummary {
+  date: string;
+  totalTransferts: number;
+  transfertsPaies: number;
+  transfertsEnAttente: number;
+  transfertsAnnules: number;
+  transfertsExpires: number;
+  totalMontantEnvoye: number;
+  totalFraisCollectes: number;
+  commissionAgence: number;
+  commissionCentrale: number;
+  chiffreAffaires: number;
+  devise: string;
+}
+
+export interface ManagerTransferReportLine {
+  id: string;
+  codeReference: string;
+  nomExpediteur: string;
+  telephoneExpediteur: string;
+  nomBeneficiaire: string;
+  telephoneBeneficiaire: string;
+  paysDestination: string | null;
+  montant: number;
+  frais: number;
+  montantNet: number;
+  tauxChange: number;
+  deviseSource: string;
+  deviseDestination: string;
+  statut: string;
+  creeLe: string;
+  agentCreateur: string | null;
+}
+
+export interface ManagerDailyReport {
+  summary: ManagerReportSummary;
+  transfers: ManagerTransferReportLine[];
+}
+
+export interface ManagerRevenueDayLine {
+  date: string;
+  transfertsPaies: number;
+  fraisCollectes: number;
+  commissionAgence: number;
+  commissionCentrale: number;
+  chiffreAffaires: number;
+}
+
+export interface ManagerRevenueReport {
+  periodStart: string;
+  periodEnd: string;
+  totalChiffreAffaires: number;
+  totalCommissionAgence: number;
+  totalCommissionCentrale: number;
+  totalFraisCollectes: number;
+  totalTransfertsPaies: number;
+  devise: string;
+  byDay: ManagerRevenueDayLine[];
 }

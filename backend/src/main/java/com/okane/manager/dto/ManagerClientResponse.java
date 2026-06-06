@@ -9,5 +9,6 @@ public record ManagerClientResponse(
         String typePiece,
         String numeroPiece,
         String statutKyc,
-        String creeLe
+        String creeLe,
+        String statutCompte
 ) {}

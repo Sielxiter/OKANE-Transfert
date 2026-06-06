@@ -114,6 +114,19 @@ import {
                   </div>
                 }
               </div>
+              <div class="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  class="rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                  [class]="isSuspended()
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-rose-600 text-white hover:bg-rose-700'"
+                  [disabled]="suspending"
+                  (click)="toggleSuspend()"
+                >
+                  {{ suspending ? 'En cours...' : isSuspended() ? 'Débloquer' : 'Bloquer' }}
+                </button>
+              </div>
             }
 
             @if (activePanel === 'history') {
@@ -188,6 +201,7 @@ export class ManagerClientsPageComponent implements OnInit {
   search = '';
   loading = false;
   loadingDetail = false;
+  suspending = false;
   error = '';
 
   ngOnInit(): void {
@@ -216,6 +230,7 @@ export class ManagerClientsPageComponent implements OnInit {
       { label: 'Type de pièce', value: c.typePiece },
       { label: 'Numéro de pièce', value: this.maskDoc(c.numeroPiece) },
       { label: 'Statut KYC', value: this.formatKyc(c.statutKyc) },
+      { label: 'Statut compte', value: this.formatStatutCompte(c.statutCompte) },
       { label: 'Créé le', value: this.formatDate(c.creeLe) },
     ];
   }
@@ -235,6 +250,35 @@ export class ManagerClientsPageComponent implements OnInit {
         this._cdr.markForCheck();
       },
     });
+  }
+
+  isSuspended(): boolean {
+    return this.selectedClient?.client.statutCompte === 'SUSPENDU';
+  }
+
+  toggleSuspend(): void {
+    if (!this.selectedClient) return;
+    this.suspending = true;
+    this._service.suspendClient(this.selectedClient.client.id).subscribe({
+      next: (updated) => {
+        this.clients = this.clients.map(c => c.id === updated.id ? updated : c);
+        this.selectedClient = { ...this.selectedClient!, client: updated };
+        this.suspending = false;
+        this._cdr.markForCheck();
+      },
+      error: () => {
+        this.suspending = false;
+        this._cdr.markForCheck();
+      },
+    });
+  }
+
+  formatStatutCompte(statut: string): string {
+    if (statut === 'ACTIF') return '✅ Actif';
+    if (statut === 'SUSPENDU') return '🚫 Suspendu';
+    if (statut === 'VERROUILLE') return '🔒 Verrouillé';
+    if (statut === 'INACTIF') return '⛔ Inactif';
+    return statut;
   }
 
   formatKyc(status: string): string {

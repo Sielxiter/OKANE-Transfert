@@ -100,6 +100,7 @@ public class ManagerClientService {
 
     private ManagerClientResponse toClientResponse(Customer customer) {
         User user = customer.getUser();
+        String statutCompte = resolveStatutCompte(user);
         return new ManagerClientResponse(
                 customer.getId().toString(),
                 user != null ? user.getFirstName() : "",
@@ -108,10 +109,20 @@ public class ManagerClientService {
                 customer.getCountry(),
                 customer.getIdentityType(),
                 customer.getIdentityNumber(),
-                "PENDING",   // KYC pas encore implémenté
+                "PENDING",
+                statutCompte,
                 customer.getCreatedAt() != null ? customer.getCreatedAt().toString() : ""
         );
     }
+
+    private String resolveStatutCompte(User user) {
+        if (user == null) return "INCONNU";
+        if (Boolean.TRUE.equals(user.getAccountSuspended())) return "SUSPENDU";
+        if (Boolean.TRUE.equals(user.getAccountLocked())) return "VERROUILLE";
+        if (!Boolean.TRUE.equals(user.getEnabled())) return "INACTIF";
+        return "ACTIF";
+    }
+
 
     private ManagerClientTransactionResponse toTransactionResponse(Transfer t, Long clientId) {
         boolean isSender = t.getSender() != null && t.getSender().getId().equals(clientId);
@@ -157,4 +168,26 @@ public class ManagerClientService {
         return userRepository.findById(principal.getUser().getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required"));
     }
+
+
+    @Transactional
+    public ManagerClientResponse toggleSuspend(Authentication authentication, Long clientId) {
+        resolveAgency(authentication); // vérifie que le manager est bien affecté
+
+        Customer customer = customerRepository.findByIdWithUser(clientId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Client introuvable."));
+
+        User user = customer.getUser();
+        if (user == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Ce client n'a pas de compte utilisateur.");
+        }
+
+        boolean currentlySuspended = Boolean.TRUE.equals(user.getAccountSuspended());
+        user.setAccountSuspended(!currentlySuspended);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
+        return toClientResponse(customer);
+    }
+
 }

@@ -13,7 +13,7 @@ import { AgentCashSessionStoreService } from '../services/agent-cash-session-sto
 	imports: [CommonModule, ReactiveFormsModule, AgentLayoutComponent, RouterOutlet],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<okane-agent-layout [pageTitle]="pageTitle">
+		<okane-agent-layout [pageTitle]="pageTitle" [rootLabel]="rootLabel" [rootLink]="rootLink">
 			<div class="relative">
 				<div
 					class="transition duration-200"
@@ -115,6 +115,8 @@ export class AgentLayoutShellComponent implements OnInit {
 	private readonly _cdr = inject(ChangeDetectorRef);
 
 	public pageTitle = 'Agent';
+	public rootLabel = 'Agent';
+	public rootLink = '/agent/dashboard';
 	public isAgentRoute = false;
 	public shouldLockContent = false;
 	public shouldShowMandatoryOpenModal = false;
@@ -136,6 +138,7 @@ export class AgentLayoutShellComponent implements OnInit {
 			.subscribe(() => {
 				this.pageTitle = this.getPageTitle() ?? 'Agent';
 				this.isAgentRoute = this._router.url.startsWith('/agent');
+				this.resolveRootBreadcrumb();
 				this._cdr.markForCheck();
 			});
 
@@ -198,6 +201,20 @@ export class AgentLayoutShellComponent implements OnInit {
 				this._cdr.markForCheck();
 			},
 		});
+	}
+
+	private resolveRootBreadcrumb(): void {
+		const url = this._router.url;
+		if (url.startsWith('/manager')) {
+			this.rootLabel = 'Manager';
+			this.rootLink = '/manager/dashboard';
+		} else if (url.startsWith('/admin')) {
+			this.rootLabel = 'Admin';
+			this.rootLink = '/admin/dashboard';
+		} else {
+			this.rootLabel = 'Agent';
+			this.rootLink = '/agent/dashboard';
+		}
 	}
 
 	private getPageTitle(): string | null {

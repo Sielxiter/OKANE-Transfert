@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,4 +34,14 @@ public class ManagerClientController {
     ) {
         return ResponseEntity.ok(clientService.getClientDetail(authentication, clientId));
     }
+
+
+    @PostMapping("/{clientId}/suspend")
+    public ResponseEntity<ManagerClientResponse> toggleSuspend(
+            @PathVariable Long clientId,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(clientService.toggleSuspend(authentication, clientId));
+    }
+
 }

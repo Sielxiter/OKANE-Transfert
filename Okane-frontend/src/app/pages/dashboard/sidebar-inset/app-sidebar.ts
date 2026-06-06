@@ -54,19 +54,20 @@ import { NavUser } from '../shared/sidebar/nav-user';
 export class AppSidebarInset {
 	private readonly _router = inject(Router);
 	private readonly _authSession = inject(AuthSessionService);
-	private readonly _role = this.resolveRole();
 
-	public readonly data = computed(() =>
-		getSidebarData(this._role, this.resolveSidebarUser())
-	);
+	public readonly data = computed(() => {
+		const user = this._authSession.user();
+		const role = user?.role
+			? (user.role as DashboardRole)
+			: resolveRoleFromPath(this._router.url || '/client/dashboard');
+		return getSidebarData(role, this.resolveSidebarUser());
+	});
 
 	constructor() {
 		this._authSession.hydrateFromStorage();
-		this._authSession.refreshCurrentUser().subscribe();
-	}
-
-	private resolveRole(): DashboardRole {
-		return resolveRoleFromPath(this._router.url || '/client/dashboard');
+		if (!this._authSession.user()) {
+			this._authSession.refreshCurrentUser().subscribe();
+		}
 	}
 
 	private resolveSidebarUser() {

@@ -38,4 +38,19 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     long countBySourceAgency_IdAndStatusIn(Long agencyId, Collection<String> statuses);
 
     long countBySourceAgency_IdAndCreatedAtBetween(Long agencyId, LocalDateTime start, LocalDateTime end);
+
+    // Transferts d'une agence entre deux dates
+    List<Transfer> findBySourceAgency_IdAndCreatedAtBetweenOrderByCreatedAtDesc(
+            Long agencyId,
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
+    // Transferts PAID d'une agence entre deux dates
+    List<Transfer> findBySourceAgency_IdAndStatusInAndCreatedAtBetween(
+            Long agencyId,
+            Collection<String> statuses,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
