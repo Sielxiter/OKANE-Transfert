@@ -8,7 +8,9 @@ import java.util.Optional;
 public interface CommissionRuleRepository extends JpaRepository<CommissionRule, Long> {
 	boolean existsByFeeGrid_Id(Long feeGridId);
 
-	Optional<CommissionRule> findFirstByFeeGrid_Corridor_IdAndActiveTrue(Long corridorId);
+    Optional<CommissionRule> findFirstByActiveTrueOrderByCreatedAtDesc();
 
-	Optional<CommissionRule> findFirstByFeeGrid_ActiveTrueOrderByFeeGrid_CreatedAtDesc();
+    Optional<CommissionRule> findFirstByFeeGrid_Corridor_IdAndActiveTrue(Long corridorId);
+
+    Optional<CommissionRule> findFirstByFeeGrid_ActiveTrueOrderByFeeGrid_CreatedAtDesc();
 }

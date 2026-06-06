@@ -2,6 +2,7 @@ package com.okane.cash.repository;
 
 import com.okane.cash.entity.AgentCashSession;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -15,4 +16,7 @@ public interface AgentCashSessionRepository extends JpaRepository<AgentCashSessi
             LocalDate sessionDate,
             String status
     );
+    List<AgentCashSession> findByAgency_IdAndSessionDateBetween(Long agencyId, LocalDate startDate, LocalDate endDate);
+    List<AgentCashSession> findByAgency_IdAndStatus(Long agencyId, String status);
+    long countByAgency_IdAndStatus(Long agencyId, String status);
 }

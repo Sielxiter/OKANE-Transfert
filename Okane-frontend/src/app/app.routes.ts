@@ -15,6 +15,9 @@ import { ManagerLayoutShellComponent } from './manager/layout/manager-layout-she
 import { ManagerClientsPageComponent } from './pages/manager/manager-clients-page.component';
 import { ManagerPaymentsPageComponent } from './pages/manager/manager-payments-page.component';
 import { ManagerReportsPageComponent } from './pages/manager/manager-reports-page.component';
+import { ManagerAgentsPageComponent } from './pages/manager/manager-agents-page.component';
+import { ManagerDashboardPageComponent } from './pages/manager/manager-dashboard-page.component';
+import { ManagerCashPageComponent } from './pages/manager/manager-cash-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -28,7 +31,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
         path: 'dashboard',
-        component: DashboardPageComponent,
+        component: ManagerDashboardPageComponent,
         data: { pageTitle: 'Tableau de bord' },
       },
       { path: 'clients', component: ManagerClientsPageComponent, data: { pageTitle: 'Clients' } },
@@ -41,6 +44,21 @@ export const routes: Routes = [
         path: 'reports',
         component: ManagerReportsPageComponent,
         data: { pageTitle: 'Rapports' },
+      },
+      {
+        path: 'agents',
+        component: ManagerAgentsPageComponent,
+        data: { pageTitle: 'Agents' },
+      },
+      {
+        path: 'cash',
+        component: ManagerCashPageComponent,
+        data: { pageTitle: 'Gestion de caisse' },
+      },
+      {
+        path: 'cash-register',
+        component: ManagerCashPageComponent,
+        data: { pageTitle: 'Gestion de caisse' },
       },
     ],
   },
