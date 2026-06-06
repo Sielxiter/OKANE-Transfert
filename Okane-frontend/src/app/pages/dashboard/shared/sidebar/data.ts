@@ -144,7 +144,6 @@ const managerItems: SidebarItem[] = [
 	},
 	{ title: 'Paiements', icon: 'lucideSettings2', url: '/manager/payments' },
 	{ title: 'Gestion de caisse', icon: 'lucideSettings2', url:'/manager/cash'},
-	{ title: 'Conformité', icon: 'lucideSettings2', items: [{ title: 'Transferts suspects' }, { title: 'Liste de surveillance' }, { title: 'Revues KYC' }] },
 	{ title: 'Rapports', icon: 'lucideBookOpen', url: '/manager/reports' },
 	{ title: 'Notifications', icon: 'lucideSettings2', items: [{ title: 'Modèles' }, { title: 'Canaux' }] },
 	sharedSettings,
