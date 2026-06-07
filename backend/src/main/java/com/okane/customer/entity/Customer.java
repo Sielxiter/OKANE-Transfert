@@ -42,6 +42,18 @@ public class Customer {
     @Column(name = "adresse", length = 255)
     private String address;
 
+    @Column(name = "nationalite", length = 100)
+    private String nationality;
+
+    @Column(name = "statut_kyc", length = 30)
+    private String kycStatus;
+
+    @Column(name = "niveau_risque_aml", length = 20)
+    private String amlRiskLevel;
+
+    @Column(name = "restreint")
+    private Boolean restricted;
+
     @Column(name = "cree_le")
     private LocalDateTime createdAt;
 
@@ -51,75 +63,42 @@ public class Customer {
     public Customer() {
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
-    public User getUser() {
-        return user;
-    }
+    public String getIdentityType() { return identityType; }
+    public void setIdentityType(String identityType) { this.identityType = identityType; }
 
-    public void setUser(User user) {
-        this.user = user;
-    }
+    public String getIdentityNumber() { return identityNumber; }
+    public void setIdentityNumber(String identityNumber) { this.identityNumber = identityNumber; }
 
-    public String getIdentityType() {
-        return identityType;
-    }
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
 
-    public void setIdentityType(String identityType) {
-        this.identityType = identityType;
-    }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
 
-    public String getIdentityNumber() {
-        return identityNumber;
-    }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
 
-    public void setIdentityNumber(String identityNumber) {
-        this.identityNumber = identityNumber;
-    }
+    public String getNationality() { return nationality; }
+    public void setNationality(String nationality) { this.nationality = nationality; }
 
-    public String getCountry() {
-        return country;
-    }
+    public String getKycStatus() { return kycStatus; }
+    public void setKycStatus(String kycStatus) { this.kycStatus = kycStatus; }
 
-    public void setCountry(String country) {
-        this.country = country;
-    }
+    public String getAmlRiskLevel() { return amlRiskLevel; }
+    public void setAmlRiskLevel(String amlRiskLevel) { this.amlRiskLevel = amlRiskLevel; }
 
-    public String getCity() {
-        return city;
-    }
+    public Boolean getRestricted() { return restricted; }
+    public void setRestricted(Boolean restricted) { this.restricted = restricted; }
 
-    public void setCity(String city) {
-        this.city = city;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

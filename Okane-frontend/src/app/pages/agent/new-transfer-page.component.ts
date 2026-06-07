@@ -1,112 +1,119 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmInputImports } from '@spartan-ng/helm/input';
 import { AgentLayoutComponent } from '../../agent/layout/agent-layout.component';
+import { AgentPageIntroComponent } from '../../agent/ui/agent-page-intro.component';
+import { AgentSectionCardComponent } from '../../agent/ui/agent-section-card.component';
+import { SenderSearchComponent } from './components/sender-search.component';
+import { AddSenderModalComponent } from './components/add-sender-modal.component';
+import type { ClientSearchResult } from './services/kyc-client.api';
 
 @Component({
 	selector: 'okane-agent-new-transfer-page',
 	standalone: true,
-	imports: [CommonModule, ReactiveFormsModule, AgentLayoutComponent],
+	imports: [
+		CommonModule,
+		ReactiveFormsModule,
+		HlmButtonImports,
+		HlmInputImports,
+		AgentLayoutComponent,
+		AgentPageIntroComponent,
+		AgentSectionCardComponent,
+		SenderSearchComponent,
+		AddSenderModalComponent,
+	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<okane-agent-layout pageTitle="Nouvel envoi">
-			<form class="grid gap-4" [formGroup]="form">
-				<section class="rounded-xl border bg-background p-4 shadow-sm">
-					<h2 class="text-base font-semibold">Informations de l'expéditeur</h2>
-					<div class="mt-4 grid gap-3 md:grid-cols-2">
-						<label class="text-sm">
-							<span class="text-muted-foreground">Prénom</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="senderFirstName" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Nom</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="senderLastName" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">CIN / Passeport</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="senderId" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Téléphone</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="senderPhone" />
-						</label>
-						<label class="text-sm md:col-span-2">
-							<span class="text-muted-foreground">Pays</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="senderCountry" />
-						</label>
-					</div>
-				</section>
+			<div class="flex flex-col gap-6 md:gap-8">
+				<okane-agent-page-intro
+					title="Nouvel envoi"
+					subtitle="Saisie locale du transfert. Les validations metier API seront branchees plus tard."
+				/>
 
-				<section class="rounded-xl border bg-background p-4 shadow-sm">
-					<h2 class="text-base font-semibold">Informations du bénéficiaire</h2>
-					<div class="mt-4 grid gap-3 md:grid-cols-2">
-						<label class="text-sm">
-							<span class="text-muted-foreground">Prénom</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="receiverFirstName" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Nom</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="receiverLastName" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Téléphone</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="receiverPhone" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Pays de réception</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="receiverCountry" />
-						</label>
-					</div>
-				</section>
+				<form class="grid gap-4 md:gap-6" [formGroup]="form">
+					<okane-agent-section-card title="Informations de l'expéditeur">
+						<okane-sender-search
+							(senderSelected)="onSenderSelected($event)"
+							(senderCleared)="onSenderCleared()"
+							(addSender)="addSenderOpen.set(true)"
+							(verifyKyc)="onVerifyKyc($event)"
+						/>
+					</okane-agent-section-card>
 
-				<section class="rounded-xl border bg-background p-4 shadow-sm">
-					<h2 class="text-base font-semibold">Informations du transfert</h2>
-					<div class="mt-4 grid gap-3 md:grid-cols-3">
-						<label class="text-sm">
-							<span class="text-muted-foreground">Devise source</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="sourceCurrency" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Devise de destination</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="destinationCurrency" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Mode de paiement</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" formControlName="paymentMethod" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Montant envoyé</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" type="number" formControlName="amountSent" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Taux de change</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" type="number" formControlName="exchangeRate" />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Frais</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" type="number" formControlName="fees" readonly />
-						</label>
-						<label class="text-sm">
-							<span class="text-muted-foreground">Montant net reçu</span>
-							<input class="mt-1 w-full rounded-md border px-3 py-2" type="number" formControlName="amountReceived" readonly />
-						</label>
-					</div>
-					<div class="mt-4 flex flex-wrap gap-3">
-						<button class="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" type="button" (click)="calculateFees()">
-							Calculer les frais
-						</button>
-						<button class="rounded-md border px-4 py-2 text-sm font-semibold" type="button" (click)="validateTransfer()">
-							Valider l'envoi
-						</button>
-						<button class="rounded-md border px-4 py-2 text-sm font-semibold" type="button" (click)="printReceipt()">
-							Imprimer le reçu
-						</button>
-					</div>
-					@if (statusMessage) {
-						<p class="mt-3 text-sm text-muted-foreground">{{ statusMessage }}</p>
-					}
-				</section>
-			</form>
+					<okane-agent-section-card title="Informations du beneficiaire">
+						<div class="grid gap-3 md:gap-4 md:grid-cols-2">
+							<label class="text-sm">
+								<span class="text-muted-foreground">Prenom</span>
+								<input hlmInput class="mt-1 w-full" formControlName="receiverFirstName" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Nom</span>
+								<input hlmInput class="mt-1 w-full" formControlName="receiverLastName" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Telephone</span>
+								<input hlmInput class="mt-1 w-full" formControlName="receiverPhone" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Pays de reception</span>
+								<input hlmInput class="mt-1 w-full" formControlName="receiverCountry" />
+							</label>
+						</div>
+					</okane-agent-section-card>
+
+					<okane-agent-section-card title="Informations du transfert">
+						<div class="grid gap-3 md:gap-4 md:grid-cols-3">
+							<label class="text-sm">
+								<span class="text-muted-foreground">Devise source</span>
+								<input hlmInput class="mt-1 w-full" formControlName="sourceCurrency" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Devise destination</span>
+								<input hlmInput class="mt-1 w-full" formControlName="destinationCurrency" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Mode de paiement</span>
+								<input hlmInput class="mt-1 w-full" formControlName="paymentMethod" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Montant envoye</span>
+								<input hlmInput class="mt-1 w-full" type="number" formControlName="amountSent" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Taux de change</span>
+								<input hlmInput class="mt-1 w-full" type="number" formControlName="exchangeRate" />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Frais</span>
+								<input hlmInput class="mt-1 w-full" type="number" formControlName="fees" readonly />
+							</label>
+							<label class="text-sm">
+								<span class="text-muted-foreground">Montant net recu</span>
+								<input hlmInput class="mt-1 w-full" type="number" formControlName="amountReceived" readonly />
+							</label>
+						</div>
+
+						<div class="mt-4 flex flex-wrap gap-2">
+							<button hlmBtn type="button" (click)="calculateFees()">Calculer les frais</button>
+							<button hlmBtn variant="outline" type="button" (click)="validateTransfer()">Valider l'envoi</button>
+							<button hlmBtn variant="outline" type="button" (click)="printReceipt()">Imprimer le recu</button>
+						</div>
+						@if (statusMessage) {
+							<p class="mt-3 text-sm text-muted-foreground">{{ statusMessage }}</p>
+						}
+					</okane-agent-section-card>
+				</form>
+			</div>
+
+			<okane-add-sender-modal
+				[open]="addSenderOpen()"
+				[existingClientId]="verifyingClientId()"
+				(closed)="onModalClosed()"
+				(created)="onSenderCreated($event)"
+			/>
 		</okane-agent-layout>
 	`,
 })
@@ -114,25 +121,75 @@ export class AgentNewTransferPageComponent {
 	private readonly _fb = inject(FormBuilder);
 
 	public statusMessage = '';
+	protected readonly addSenderOpen = signal<boolean>(false);
+	protected readonly selectedSender = signal<ClientSearchResult | null>(null);
+	protected readonly verifyingClientId = signal<number | null>(null);
+
+	@ViewChild(SenderSearchComponent) senderSearch!: SenderSearchComponent;
 
 	public readonly form = this._fb.group({
-		senderFirstName: 'Amina',
-		senderLastName: 'El Idrissi',
-		senderId: 'BK778899',
-		senderPhone: '+212612345678',
-		senderCountry: 'Maroc',
+		senderFirstName: '',
+		senderLastName: '',
+		senderId: '',
+		senderPhone: '',
+		senderCountry: '',
 		receiverFirstName: 'Mamadou',
 		receiverLastName: 'Diallo',
 		receiverPhone: '+221771234567',
-		receiverCountry: 'Sénégal',
+		receiverCountry: 'Senegal',
 		sourceCurrency: 'MAD',
 		destinationCurrency: 'XOF',
 		amountSent: 1000,
 		exchangeRate: 65,
 		fees: 0,
 		amountReceived: 0,
-		paymentMethod: 'Espèces',
+		paymentMethod: 'Especes',
 	});
+
+	protected onSenderSelected(client: ClientSearchResult): void {
+		this.selectedSender.set(client);
+		const [first, ...rest] = (client.fullName ?? '').split(' ');
+		this.form.patchValue({
+			senderFirstName: first ?? '',
+			senderLastName: rest.join(' ') ?? '',
+			senderId: client.identityNumber ?? '',
+			senderPhone: client.phone ?? '',
+			senderCountry: client.country ?? '',
+		});
+		this.statusMessage = '';
+	}
+
+	protected onSenderCleared(): void {
+		this.selectedSender.set(null);
+		this.form.patchValue({
+			senderFirstName: '',
+			senderLastName: '',
+			senderId: '',
+			senderPhone: '',
+			senderCountry: '',
+		});
+	}
+
+	protected onSenderCreated(client: ClientSearchResult): void {
+		this.addSenderOpen.set(false);
+		this.verifyingClientId.set(null);
+		this.onSenderSelected(client);
+		if (this.senderSearch) {
+			this.senderSearch.selectExternalClient(client);
+		}
+		this.statusMessage = 'Expéditeur créé et sélectionné.';
+	}
+
+	protected onModalClosed(): void {
+		this.addSenderOpen.set(false);
+		this.verifyingClientId.set(null);
+	}
+
+	protected onVerifyKyc(_client: ClientSearchResult): void {
+		// Open the add sender modal in KYC verification mode for existing client
+		this.verifyingClientId.set(_client.id);
+		this.addSenderOpen.set(true);
+	}
 
 	public calculateFees(): void {
 		const amount = Number(this.form.get('amountSent')?.value ?? 0);
@@ -144,18 +201,19 @@ export class AgentNewTransferPageComponent {
 			fees: this.round(fee),
 			amountReceived: this.round(received),
 		});
-		this.statusMessage = 'Frais recalculés localement.';
+		this.statusMessage = 'Frais recalcules localement.';
 	}
 
 	public validateTransfer(): void {
-		this.statusMessage = 'Envoi validé localement. Prêt pour envoi API.';
+		this.statusMessage = "Envoi valide localement. Pret pour envoi API.";
 	}
 
 	public printReceipt(): void {
-		this.statusMessage = 'Reçu préparé pour impression.';
+		this.statusMessage = 'Recu prepare pour impression.';
 	}
 
 	private round(value: number): number {
 		return Math.round(value * 100) / 100;
 	}
 }
+

@@ -12,7 +12,7 @@ import { AgentSiteHeaderComponent } from './agent-site-header.component';
 		<spartan-app-sidebar-inset>
 			<main hlmSidebarInset>
 				<okane-agent-site-header [pageTitle]="pageTitle()" />
-				<div class="flex flex-1 flex-col gap-4 p-4">
+				<div class="flex flex-1 flex-col gap-6 p-4 md:p-6">
 					<ng-content />
 				</div>
 			</main>

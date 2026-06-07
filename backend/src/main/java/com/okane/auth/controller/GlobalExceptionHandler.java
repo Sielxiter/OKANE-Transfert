@@ -94,12 +94,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception, HttpServletRequest request) {
+        // Log the actual exception for debugging
+        System.err.println("[GlobalExceptionHandler] Unexpected error on " + request.getRequestURI() + ": " + exception.getClass().getName() + " - " + exception.getMessage());
+        exception.printStackTrace(System.err);
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         return ResponseEntity.status(status).body(new ApiErrorResponse(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
-                "Unexpected error",
+                "Unexpected error: " + exception.getMessage(),
                 request.getRequestURI(),
                 List.of()
         ));

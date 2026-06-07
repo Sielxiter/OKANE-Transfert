@@ -46,7 +46,13 @@ public class UserManagementAuditService {
     private void log(User actor, String action, User target, String description) {
         AuditLog auditLog = new AuditLog();
         auditLog.setUser(actor);
-        auditLog.setUserRole(actor != null && actor.getRole() != null ? actor.getRole().getName() : null);
+        String role = null;
+        try {
+            role = actor != null && actor.getRole() != null ? actor.getRole().getName() : null;
+        } catch (RuntimeException ignored) {
+            // LazyInitializationException safety
+        }
+        auditLog.setUserRole(role);
         auditLog.setAction(action);
         auditLog.setEntityName(ENTITY_NAME);
         auditLog.setEntityId(target != null ? target.getId() : null);

@@ -65,7 +65,13 @@ public class AgencyAuditService {
     private void log(User actor, String action, Agency agency, String description) {
         AuditLog auditLog = new AuditLog();
         auditLog.setUser(actor);
-        auditLog.setUserRole(actor != null && actor.getRole() != null ? actor.getRole().getName() : null);
+        String role = null;
+        try {
+            role = actor != null && actor.getRole() != null ? actor.getRole().getName() : null;
+        } catch (RuntimeException ignored) {
+            // LazyInitializationException safety
+        }
+        auditLog.setUserRole(role);
         auditLog.setAction(action);
         auditLog.setEntityName(ENTITY_NAME);
         auditLog.setEntityId(agency != null ? agency.getId() : null);

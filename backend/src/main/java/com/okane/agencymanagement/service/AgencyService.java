@@ -337,7 +337,12 @@ public class AgencyService {
             if (user == null || user.getId() == null) {
                 return null;
             }
-            return userRepository.findById(user.getId()).orElse(null);
+            User managed = userRepository.findById(user.getId()).orElse(null);
+            // Eagerly initialize Role to avoid LazyInitializationException in audit
+            if (managed != null && managed.getRole() != null) {
+                managed.getRole().getName();
+            }
+            return managed;
         }
         return null;
     }

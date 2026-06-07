@@ -303,6 +303,15 @@ public class UserManagementService {
         if (customer == null || customer.getId() == null) {
             return KycStatus.PENDING;
         }
+
+        // First check the Customer.kycStatus field (set by agent KYC flow)
+        String customerKyc = customer.getKycStatus();
+        if (customerKyc != null && !customerKyc.isBlank()) {
+            KycStatus mapped = KYC_STATUS_BY_DB_VALUE.get(customerKyc.trim().toUpperCase(Locale.ROOT));
+            if (mapped != null) return mapped;
+        }
+
+        // Fallback: check the KycCheck table for the latest verification
         try {
             TypedQuery<KycCheck> query = entityManager.createQuery(
                     "select k from KycCheck k where k.customer.id = :customerId order by k.checkedAt desc",
@@ -403,7 +412,12 @@ public class UserManagementService {
             if (user == null || user.getId() == null) {
                 return null;
             }
-            return userRepository.findById(user.getId()).orElse(null);
+            User managed = userRepository.findById(user.getId()).orElse(null);
+            // Eagerly initialize Role to avoid LazyInitializationException in audit
+            if (managed != null && managed.getRole() != null) {
+                managed.getRole().getName();
+            }
+            return managed;
         }
         return null;
     }

@@ -16,6 +16,7 @@ import { UsersFormDialogComponent } from '../shared/users-form-dialog.component'
 import { UsersLoadingStateComponent } from '../shared/users-loading-state.component';
 import { UsersPageHeaderComponent } from '../shared/users-page-header.component';
 import { UserCreateFormComponent } from '../shared/user-create-form.component';
+import { UserEditFormComponent } from '../shared/user-edit-form.component';
 import { ActionDetailModalComponent, type DetailField } from '../shared/action-detail-modal.component';
 import { ConfirmDialogComponent } from '../shared/confirm-dialog.component';
 import {
@@ -41,6 +42,7 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 		UsersLoadingStateComponent,
 		UsersFormDialogComponent,
 		UserCreateFormComponent,
+		UserEditFormComponent,
 		ActionDetailModalComponent,
 		ConfirmDialogComponent,
 	],
@@ -172,6 +174,22 @@ import { AdminUsersApiService, type ApiUser } from '../shared/admin-users.api';
 			(confirm)="onConfirm()"
 			(cancel)="confirmOpen.set(false)"
 		/>
+
+		@if (editingUser()) {
+			<okane-users-form-dialog
+				[open]="editOpen()"
+				[title]="'Modifier — ' + editingUser()!.fullName"
+				subtitle="Modifier les informations du compte."
+				icon="lucidePencil"
+				(close)="editOpen.set(false)"
+			>
+				<okane-user-edit-form
+					[user]="editingUser()!"
+					(saved)="onUserEdited($event)"
+					(cancelled)="editOpen.set(false)"
+				/>
+			</okane-users-form-dialog>
+		}
 	`,
 })
 export class AdminUsersClientsPageComponent implements OnInit {
@@ -186,6 +204,8 @@ export class AdminUsersClientsPageComponent implements OnInit {
 	protected readonly kyc = signal<string>('all');
 	protected readonly account = signal<string>('all');
 	protected readonly dialogOpen = signal<boolean>(false);
+	protected readonly editOpen = signal<boolean>(false);
+	protected readonly editingUser = signal<ApiUser | null>(null);
 
 	// ─── Detail modal ────────────────────────────────────────────────────────────
 	protected readonly detailOpen = signal<boolean>(false);
@@ -303,6 +323,12 @@ export class AdminUsersClientsPageComponent implements OnInit {
 		this.dialogOpen.set(false);
 	}
 
+	protected onUserEdited(user: ApiUser): void {
+		this.clients.update((items) => items.map((c) => (c.id === user.id ? user : c)));
+		this.editOpen.set(false);
+		this.editingUser.set(null);
+	}
+
 	protected initials(name: string): string {
 		return name
 			.split(' ')
@@ -385,12 +411,8 @@ export class AdminUsersClientsPageComponent implements OnInit {
 	}
 
 	private openEdit(client: ApiUser): void {
-		// TODO: implement edit form in a future phase
-		this.detailTitle.set(`Modifier — ${client.fullName}`);
-		this.detailFields.set([
-			{ label: 'Info', value: 'Le formulaire de modification sera disponible dans une prochaine phase.' },
-		]);
-		this.detailOpen.set(true);
+		this.editingUser.set(client);
+		this.editOpen.set(true);
 	}
 
 	private requestStatusChange(client: ApiUser, status: AccountStatus): void {

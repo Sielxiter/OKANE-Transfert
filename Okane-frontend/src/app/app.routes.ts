@@ -26,14 +26,16 @@ import { AdminCompliancePageComponent } from './features/admin/compliance/compli
 import { AdminReportsPageComponent } from './features/admin/reports/reports-page.component';
 import { AdminAuditPageComponent } from './features/admin/audit/audit-page.component';
 import { AdminSettingsPageComponent } from './features/admin/settings/settings-page.component';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', component: LoginPageComponent },
-  { path: 'dashboard', component: DashboardPageComponent },
+  { path: 'dashboard', component: DashboardPageComponent, canActivate: [authGuard] },
   {
     path: 'admin',
     component: AdminLayoutComponent,
+    canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardPageComponent },
@@ -52,16 +54,16 @@ export const routes: Routes = [
       { path: 'settings', component: AdminSettingsPageComponent, data: { title: 'Paramètres' } },
     ],
   },
-  { path: 'manager/dashboard', component: DashboardPageComponent },
-  { path: 'agent/dashboard', component: AgentDashboardPageComponent },
-  { path: 'agent/new-transfer', component: AgentNewTransferPageComponent },
-  { path: 'agent/payout-transfer', component: AgentPayoutTransferPageComponent },
-  { path: 'agent/customers', component: AgentCustomersPageComponent },
-  { path: 'agent/cash-register', component: AgentCashRegisterPageComponent },
-  { path: 'agent/transfer-history', component: AgentTransferHistoryPageComponent },
-  { path: 'agent/kyc-verification', component: AgentKycVerificationPageComponent },
-  { path: 'agent/notifications', component: AgentNotificationsPageComponent },
-  { path: 'agent/settings', component: AgentSettingsPageComponent },
-  { path: 'client/dashboard', component: DashboardPageComponent },
+  { path: 'manager/dashboard', component: DashboardPageComponent, canActivate: [authGuard] },
+  { path: 'agent/dashboard', component: AgentDashboardPageComponent, canActivate: [authGuard] },
+  { path: 'agent/new-transfer', component: AgentNewTransferPageComponent, canActivate: [authGuard] },
+  { path: 'agent/payout-transfer', component: AgentPayoutTransferPageComponent, canActivate: [authGuard] },
+  { path: 'agent/customers', component: AgentCustomersPageComponent, canActivate: [authGuard] },
+  { path: 'agent/cash-register', component: AgentCashRegisterPageComponent, canActivate: [authGuard] },
+  { path: 'agent/transfer-history', component: AgentTransferHistoryPageComponent, canActivate: [authGuard] },
+  { path: 'agent/kyc-verification', component: AgentKycVerificationPageComponent, canActivate: [authGuard] },
+  { path: 'agent/notifications', component: AgentNotificationsPageComponent, canActivate: [authGuard] },
+  { path: 'agent/settings', component: AgentSettingsPageComponent, canActivate: [authGuard] },
+  { path: 'client/dashboard', component: DashboardPageComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: 'login' },
 ];
