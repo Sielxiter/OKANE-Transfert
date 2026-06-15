@@ -10,12 +10,48 @@ import { AgentTransferHistoryPageComponent } from './pages/agent/transfer-histor
 import { AgentKycVerificationPageComponent } from './pages/agent/kyc-verification-page.component';
 import { AgentNotificationsPageComponent } from './pages/agent/notifications-page.component';
 import { AgentSettingsPageComponent } from './pages/agent/settings-page.component';
+import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
+import { AdminPlaceholderPageComponent } from './pages/admin/admin-placeholder-page.component';
+import { AdminDashboardPageComponent } from './features/admin/dashboard/admin-dashboard-page.component';
+import { AdminUsersClientsPageComponent } from './features/admin/users/clients/clients-page.component';
+import { AdminUsersAdminsPageComponent } from './features/admin/users/admins/admins-page.component';
+import { AdminUsersManagersPageComponent } from './features/admin/users/managers/managers-page.component';
+import { AdminUsersAgentsPageComponent } from './features/admin/users/agents/agents-page.component';
+import { AdminAgenciesPageComponent } from './features/admin/agencies/agencies-page.component';
+import { AdminTransfersPageComponent } from './features/admin/transfers/transfers-page.component';
+import { AdminPaymentsPageComponent } from './features/admin/payments/payments-page.component';
+import { AdminCurrencyPageComponent } from './features/admin/currency/currency-page.component';
+import { AdminFeesPageComponent } from './features/admin/fees/fees-page.component';
+import { AdminCompliancePageComponent } from './features/admin/compliance/compliance-page.component';
+import { AdminReportsPageComponent } from './features/admin/reports/reports-page.component';
+import { AdminAuditPageComponent } from './features/admin/audit/audit-page.component';
+import { AdminSettingsPageComponent } from './features/admin/settings/settings-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', component: LoginPageComponent },
   { path: 'dashboard', component: DashboardPageComponent },
-  { path: 'admin/dashboard', component: DashboardPageComponent },
+  {
+    path: 'admin',
+    component: AdminLayoutComponent,
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: AdminDashboardPageComponent },
+      { path: 'users/clients', component: AdminUsersClientsPageComponent, data: { title: 'Utilisateurs - Clients' } },
+      { path: 'users/admins', component: AdminUsersAdminsPageComponent, data: { title: 'Utilisateurs - Admins' } },
+      { path: 'users/managers', component: AdminUsersManagersPageComponent, data: { title: 'Utilisateurs - Managers' } },
+      { path: 'users/agents', component: AdminUsersAgentsPageComponent, data: { title: 'Utilisateurs - Agents' } },
+      { path: 'agencies', component: AdminAgenciesPageComponent, data: { title: 'Agences' } },
+      { path: 'transfers', component: AdminTransfersPageComponent, data: { title: 'Transferts' } },
+      { path: 'payments', component: AdminPaymentsPageComponent, data: { title: 'Paiements' } },
+      { path: 'currency', component: AdminCurrencyPageComponent, data: { title: 'Devises et change' } },
+      { path: 'fees', component: AdminFeesPageComponent, data: { title: 'Frais et commissions' } },
+      { path: 'compliance', component: AdminCompliancePageComponent, data: { title: 'Conformité / KYC' } },
+      { path: 'reports', component: AdminReportsPageComponent, data: { title: 'Rapports' } },
+      { path: 'audit', component: AdminAuditPageComponent, data: { title: "Journal d'audit" } },
+      { path: 'settings', component: AdminSettingsPageComponent, data: { title: 'Paramètres' } },
+    ],
+  },
   { path: 'manager/dashboard', component: DashboardPageComponent },
   { path: 'agent/dashboard', component: AgentDashboardPageComponent },
   { path: 'agent/new-transfer', component: AgentNewTransferPageComponent },

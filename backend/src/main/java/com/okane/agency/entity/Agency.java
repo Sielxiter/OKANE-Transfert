@@ -2,6 +2,8 @@ package com.okane.agency.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,6 +44,10 @@ public class Agency {
 
     @Column(name = "actif", nullable = false)
     private Boolean active;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut", length = 30)
+    private com.okane.agencymanagement.domain.AgencyStatus status;
 
     @Column(name = "cree_le")
     private LocalDateTime createdAt;
@@ -130,6 +136,14 @@ public class Agency {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public com.okane.agencymanagement.domain.AgencyStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(com.okane.agencymanagement.domain.AgencyStatus status) {
+        this.status = status;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -2,6 +2,7 @@ export type DashboardRole = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_AGENT' | 'ROLE
 
 export interface SidebarSubItem {
 	title: string;
+	url?: string;
 }
 
 export interface SidebarItem {
@@ -52,80 +53,64 @@ const sharedSettings: SidebarItem = {
 const adminItems: SidebarItem[] = [
 	{
 		title: 'Tableau de bord',
-		icon: 'lucideSquareTerminal',
+		icon: 'lucideLayoutDashboard',
 		url: '/admin/dashboard',
-		isActive: true,
-		items: [
-			{ title: 'Indicateurs' },
-			{ title: 'Total des transferts' },
-			{ title: 'Transferts en attente' },
-			{ title: 'Transferts payés' },
-			{ title: 'Transferts expirés' },
-			{ title: 'Transferts suspects' },
-			{ title: 'Total des commissions' },
-			{ title: "Chiffre d'affaires total" },
-			{ title: 'Agences actives' },
-			{ title: 'Agents actifs' },
-		],
 	},
 	{
 		title: 'Utilisateurs',
-		icon: 'lucideBot',
+		icon: 'lucideUsers',
 		items: [
-			{ title: 'Liste des utilisateurs' },
-			{ title: 'Créer un utilisateur' },
-			{ title: 'Activer / suspendre' },
-			{ title: 'Affecter les rôles' },
+			{ title: 'Clients', url: '/admin/users/clients' },
+			{ title: 'Admins', url: '/admin/users/admins' },
+			{ title: 'Managers', url: '/admin/users/managers' },
+			{ title: 'Agents', url: '/admin/users/agents' },
 		],
 	},
 	{
 		title: 'Agences',
-		icon: 'lucideBookOpen',
-		items: [
-			{ title: 'Créer une agence' },
-			{ title: 'Modifier une agence' },
-			{ title: 'Suspendre' },
-			{ title: 'Affecter un manager' },
-			{ title: 'Définir les plafonds' },
-		],
+		icon: 'lucideBuilding2',
+		url: '/admin/agencies',
 	},
-	{ title: 'Managers', icon: 'lucideSettings2', items: [{ title: 'Liste des managers' }, { title: 'Affecter les agences' }] },
-	{ title: 'Agents', icon: 'lucideSettings2', items: [{ title: 'Liste des agents' }, { title: 'Créer un agent' }, { title: 'Activer / désactiver' }] },
-	{ title: 'Clients', icon: 'lucideSettings2', items: [{ title: 'Liste des clients' }, { title: 'Créer un client' }, { title: 'Suspendre / réactiver' }] },
 	{
 		title: 'Transferts',
-		icon: 'lucideBookOpen',
-		items: [
-			{ title: 'Tous les transferts' },
-			{ title: 'Recherche par OTP' },
-			{ title: 'Filtrer par pays' },
-			{ title: 'Transferts échoués' },
-			{ title: 'Transferts expirés' },
-		],
+		icon: 'lucideArrowRightLeft',
+		url: '/admin/transfers',
 	},
-	{ title: 'Paiements', icon: 'lucideBookOpen', items: [{ title: 'Historique des paiements' }, { title: 'Paiements en attente' }, { title: 'Annulation' }] },
+	{
+		title: 'Paiements',
+		icon: 'lucideWallet',
+		url: '/admin/payments',
+	},
 	{
 		title: 'Devises et change',
-		icon: 'lucideBookOpen',
-		items: [{ title: 'Gérer les devises' }, { title: 'Taux de change en direct' }, { title: 'Historique du change' }],
+		icon: 'lucideCoins',
+		url: '/admin/currency',
 	},
 	{
 		title: 'Frais et commissions',
-		icon: 'lucideSettings2',
-		items: [{ title: 'Grille tarifaire' }, { title: 'Simulation' }, { title: 'Part agence' }, { title: 'Part centrale' }],
+		icon: 'lucideBadgePercent',
+		url: '/admin/fees',
 	},
-	{ title: 'Corridors', icon: 'lucideBookOpen', items: [{ title: 'Maroc -> Sénégal' }, { title: 'Créer' }, { title: 'Activer' }, { title: 'Désactiver' }] },
 	{
 		title: 'Conformité / KYC',
-		icon: 'lucideSettings2',
-		items: [{ title: 'Utilisateurs signalés' }, { title: 'Transactions suspectes' }, { title: 'Liste noire' }, { title: 'Seuils AML' }],
+		icon: 'lucideShieldCheck',
+		url: '/admin/compliance',
 	},
-	{ title: 'Rapports', icon: 'lucideBookOpen', items: [{ title: 'Revenus' }, { title: 'Volume' }, { title: 'Tendances des transferts' }, { title: 'Finance mensuelle' }, { title: 'Exports' }] },
-	{ title: "Journal d'audit", icon: 'lucideSettings2', items: [{ title: 'Qui a fait quoi' }, { title: 'IP' }, { title: 'Horodatage' }, { title: "Type d'action" }] },
-	{ title: 'Mobile Money', icon: 'lucideBookOpen', items: [{ title: 'Opérateurs' }, { title: 'Transferts' }, { title: 'Réconciliation' }] },
-	{ title: 'Notifications', icon: 'lucideSettings2', items: [{ title: 'Modèles' }, { title: 'Canaux' }, { title: "Historique d'envoi" }] },
-	{ title: 'Supervision chatbot', icon: 'lucideBot', items: [{ title: 'Conversations' }, { title: 'Alertes' }, { title: 'Performance FAQ' }] },
-	sharedSettings,
+	{
+		title: 'Rapports',
+		icon: 'lucideBarChart3',
+		url: '/admin/reports',
+	},
+	{
+		title: "Journal d'audit",
+		icon: 'lucideClipboardList',
+		url: '/admin/audit',
+	},
+	{
+		title: 'Paramètres',
+		icon: 'lucideSettings2',
+		url: '/admin/settings',
+	},
 ];
 
 const managerItems: SidebarItem[] = [
@@ -220,6 +205,7 @@ export function resolveRoleFromPath(pathname: string): DashboardRole {
 
 export function getSidebarData(role: DashboardRole, user?: Partial<SidebarUser>): SidebarData {
 	const isAgent = role === 'ROLE_AGENT';
+	const isAdmin = role === 'ROLE_ADMIN';
 
 	return {
 		user: {
@@ -229,13 +215,13 @@ export function getSidebarData(role: DashboardRole, user?: Partial<SidebarUser>)
 			roleLabel: user?.roleLabel ?? role.replace('ROLE_', ''),
 		},
 		navMain: roleNavMap[role] ?? clientItems,
-		navSecondary: isAgent
+		navSecondary: isAgent || isAdmin
 			? []
 			: [
 				{ title: 'Assistance', url: '.', icon: 'lucideLifeBuoy' },
 				{ title: 'Retour utilisateur', url: '.', icon: 'lucideSend' },
 			],
-		projects: isAgent
+		projects: isAgent || isAdmin
 			? []
 			: [
 				{ name: 'Conception produit', url: '.', icon: 'lucideFrame' },
@@ -244,3 +230,4 @@ export function getSidebarData(role: DashboardRole, user?: Partial<SidebarUser>)
 			],
 	};
 }
+

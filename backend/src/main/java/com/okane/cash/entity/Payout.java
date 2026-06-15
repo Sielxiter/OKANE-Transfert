@@ -47,6 +47,9 @@ public class Payout {
     @Column(name = "montant_paye", nullable = false, precision = 15, scale = 2)
     private BigDecimal paidAmount;
 
+    @Column(name = "statut", length = 30)
+    private String status;
+
     @Column(name = "paye_le")
     private LocalDateTime paidAt;
 
@@ -107,6 +110,14 @@ public class Payout {
 
     public void setPaidAmount(BigDecimal paidAmount) {
         this.paidAmount = paidAmount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public LocalDateTime getPaidAt() {

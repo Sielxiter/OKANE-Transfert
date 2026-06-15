@@ -1,0 +1,421 @@
+package com.okane.currencymanagement.service;
+
+import com.okane.auth.entity.User;
+import com.okane.auth.repository.UserRepository;
+import com.okane.auth.security.OkaneUserPrincipal;
+import com.okane.currencyfx.entity.Country;
+import com.okane.currencyfx.entity.Currency;
+import com.okane.currencyfx.entity.ExchangeRate;
+import com.okane.currencyfx.entity.TransferCorridor;
+import com.okane.currencyfx.repository.CountryRepository;
+import com.okane.currencyfx.repository.CurrencyRepository;
+import com.okane.currencyfx.repository.ExchangeRateRepository;
+import com.okane.currencyfx.repository.TransferCorridorRepository;
+import com.okane.currencymanagement.domain.CorridorStatus;
+import com.okane.currencymanagement.domain.CurrencyStatus;
+import com.okane.currencymanagement.dto.CorridorResponseDTO;
+import com.okane.currencymanagement.dto.CreateCurrencyRequestDTO;
+import com.okane.currencymanagement.dto.CurrencyResponseDTO;
+import com.okane.currencymanagement.dto.CurrencySummaryDTO;
+import com.okane.currencymanagement.dto.ExchangeRateHistoryDTO;
+import com.okane.currencymanagement.exception.CurrencyAlreadyExistsException;
+import com.okane.currencymanagement.exception.CurrencyNotFoundException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AdminCurrencyService {
+
+    private static final String MAD_CODE = "MAD";
+    private static final BigDecimal SCALE_RATE = BigDecimal.ONE.setScale(6);
+    private static final int FX_HISTORY_LIMIT = 25;
+    private static final BigDecimal DEFAULT_FEE_PERCENT = new BigDecimal("1.50");
+
+    private final CurrencyRepository currencyRepository;
+    private final CountryRepository countryRepository;
+    private final TransferCorridorRepository transferCorridorRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
+    private final UserRepository userRepository;
+    private final CurrencyAuditService auditService;
+
+    public AdminCurrencyService(
+            CurrencyRepository currencyRepository,
+            CountryRepository countryRepository,
+            TransferCorridorRepository transferCorridorRepository,
+            ExchangeRateRepository exchangeRateRepository,
+            UserRepository userRepository,
+            CurrencyAuditService auditService
+    ) {
+        this.currencyRepository = currencyRepository;
+        this.countryRepository = countryRepository;
+        this.transferCorridorRepository = transferCorridorRepository;
+        this.exchangeRateRepository = exchangeRateRepository;
+        this.userRepository = userRepository;
+        this.auditService = auditService;
+    }
+
+    @Transactional(readOnly = true)
+    public CurrencySummaryDTO getSummary() {
+        long active = currencyRepository.countByActive(true);
+        long suspended = currencyRepository.countByActive(false);
+        long activeCorridors = transferCorridorRepository.countByActive(true);
+
+        long ratesUpdatedToday = 0L;
+        try {
+            LocalDate today = LocalDate.now();
+            ratesUpdatedToday = exchangeRateRepository.countByEffectiveAtBetween(
+                    today.atStartOfDay(),
+                    today.atTime(LocalTime.MAX)
+            );
+        } catch (RuntimeException ignored) {
+            // safe fallback
+        }
+
+        LocalDateTime lastSync = exchangeRateRepository
+                .findFirstByOrderByEffectiveAtDescIdDesc()
+                .map(ExchangeRate::getEffectiveAt)
+                .orElse(null);
+
+        return new CurrencySummaryDTO(active, activeCorridors, ratesUpdatedToday, suspended, lastSync);
+    }
+
+    @Transactional
+    public CurrencyResponseDTO createCurrency(CreateCurrencyRequestDTO request, Authentication authentication) {
+        String code = request.code() == null ? null : request.code().trim().toUpperCase(Locale.ROOT);
+        if (code == null || code.isBlank()) {
+            throw new CurrencyAlreadyExistsException("(empty)");
+        }
+        if (currencyRepository.existsByCodeIgnoreCase(code)) {
+            throw new CurrencyAlreadyExistsException(code);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        Currency currency = new Currency();
+        currency.setCode(code);
+        currency.setName(request.name() != null ? request.name().trim() : code);
+        currency.setSymbol(request.symbol() != null ? request.symbol().trim() : null);
+        boolean isActive = request.status() == null || request.status() == CurrencyStatus.ACTIVE;
+        currency.setActive(isActive);
+        currency.setCreatedAt(now);
+        currency.setUpdatedAt(now);
+        Currency saved = currencyRepository.save(currency);
+
+        // Ensure the country dictionary contains the main country (best-effort).
+        // We only persist a new Country row when nothing matches the provided
+        // label yet; otherwise we link the existing one to the new currency
+        // when its code happens to match (e.g. "EUR" on Country code "EU").
+        if (request.mainCountry() != null && !request.mainCountry().isBlank()) {
+            ensureCountryFor(saved, request.mainCountry().trim(), now);
+        }
+
+        // Persist an initial exchange rate so /currencies projects rateToMad
+        // immediately and so /rate-history shows the new currency's first
+        // entry (acts as our ExchangeRateHistory row).
+        Currency mad = currencyRepository.findByCode(MAD_CODE).orElse(null);
+        if (mad != null && !mad.getId().equals(saved.getId()) && request.rateToMad() != null) {
+            ExchangeRate initialRate = new ExchangeRate();
+            initialRate.setFromCurrency(saved);
+            initialRate.setToCurrency(mad);
+            initialRate.setRate(scaleSafe(request.rateToMad()));
+            initialRate.setSource("ADMIN");
+            initialRate.setEffectiveAt(now);
+            initialRate.setCreatedBy(currentUserOrNull(authentication));
+            exchangeRateRepository.save(initialRate);
+        }
+
+        auditService.logCurrencyCreated(currentUserOrNull(authentication), saved);
+
+        return toResponse(
+                saved,
+                mad,
+                buildPrimaryCountryMap().get(saved.getId())
+        );
+    }
+
+    private void ensureCountryFor(Currency currency, String countryName, LocalDateTime now) {
+        // If a Country with this exact name already exists, leave it alone -
+        // we only ever attach the *first* country to a currency for display.
+        for (Country country : countryRepository.findAll()) {
+            if (countryName.equalsIgnoreCase(country.getName())) {
+                return;
+            }
+        }
+        // Build a tolerant code: first 2 letters of the name, padded if needed.
+        String code = countryName.replaceAll("[^A-Za-z]", "")
+                .toUpperCase(Locale.ROOT);
+        if (code.length() < 2) {
+            code = (code + "XX").substring(0, 2);
+        } else if (code.length() > 5) {
+            code = code.substring(0, 5);
+        }
+        // Ensure unique code on the country table.
+        String baseCode = code;
+        int suffix = 1;
+        while (countryRepository.findByCode(code).isPresent()) {
+            code = baseCode + suffix++;
+            if (code.length() > 10) {
+                code = code.substring(0, 10);
+            }
+        }
+
+        Country country = new Country();
+        country.setCode(code);
+        country.setName(countryName);
+        country.setCurrency(currency);
+        country.setActive(true);
+        country.setCreatedAt(now);
+        country.setUpdatedAt(now);
+        countryRepository.save(country);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CurrencyResponseDTO> findAllCurrencies() {
+        List<Currency> currencies = currencyRepository.findAllByOrderByCodeAsc();
+        Currency mad = currencyRepository.findByCode(MAD_CODE).orElse(null);
+        Map<Long, Country> primaryCountryByCurrency = buildPrimaryCountryMap();
+
+        List<CurrencyResponseDTO> responses = new ArrayList<>(currencies.size());
+        for (Currency currency : currencies) {
+            responses.add(toResponse(currency, mad, primaryCountryByCurrency.get(currency.getId())));
+        }
+        return responses;
+    }
+
+    @Transactional
+    public CurrencyResponseDTO findCurrencyById(Long id, Authentication authentication) {
+        Currency currency = currencyRepository.findById(id)
+                .orElseThrow(() -> new CurrencyNotFoundException(id));
+        auditService.logFxRateViewed(currentUserOrNull(authentication));
+
+        Currency mad = currencyRepository.findByCode(MAD_CODE).orElse(null);
+        Country mainCountry = buildPrimaryCountryMap().get(currency.getId());
+        return toResponse(currency, mad, mainCountry);
+    }
+
+    @Transactional
+    public CurrencyResponseDTO changeStatus(
+            Long id,
+            CurrencyStatus status,
+            Authentication authentication
+    ) {
+        Currency currency = currencyRepository.findById(id)
+                .orElseThrow(() -> new CurrencyNotFoundException(id));
+
+        boolean shouldBeActive = status == CurrencyStatus.ACTIVE;
+        if (Boolean.valueOf(shouldBeActive).equals(currency.getActive())) {
+            // idempotent: nothing to do
+            return toResponse(
+                    currency,
+                    currencyRepository.findByCode(MAD_CODE).orElse(null),
+                    buildPrimaryCountryMap().get(currency.getId())
+            );
+        }
+
+        currency.setActive(shouldBeActive);
+        currency.setUpdatedAt(LocalDateTime.now());
+        Currency saved = currencyRepository.save(currency);
+
+        auditService.logCurrencyStatusChanged(
+                currentUserOrNull(authentication),
+                saved,
+                status.name()
+        );
+
+        return toResponse(
+                saved,
+                currencyRepository.findByCode(MAD_CODE).orElse(null),
+                buildPrimaryCountryMap().get(saved.getId())
+        );
+    }
+
+    @Transactional
+    public List<ExchangeRateHistoryDTO> findHistoryForCurrency(Long id, Authentication authentication) {
+        Currency currency = currencyRepository.findById(id)
+                .orElseThrow(() -> new CurrencyNotFoundException(id));
+        auditService.logCurrencyHistoryViewed(currentUserOrNull(authentication), currency);
+
+        Currency mad = currencyRepository.findByCode(MAD_CODE).orElse(null);
+        if (mad == null || mad.getId().equals(currency.getId())) {
+            return List.of();
+        }
+        List<ExchangeRate> rates = exchangeRateRepository
+                .findByFromCurrency_IdAndToCurrency_IdOrderByEffectiveAtDescIdDesc(
+                        currency.getId(),
+                        mad.getId()
+                );
+        return projectHistory(rates);
+    }
+
+    @Transactional
+    public List<CorridorResponseDTO> findAllCorridors(Authentication authentication) {
+        List<TransferCorridor> corridors = transferCorridorRepository.findAllByOrderByIdAsc();
+        auditService.logCorridorViewed(currentUserOrNull(authentication), null);
+
+        List<CorridorResponseDTO> responses = new ArrayList<>(corridors.size());
+        for (TransferCorridor corridor : corridors) {
+            responses.add(toResponse(corridor));
+        }
+        return responses;
+    }
+
+    @Transactional
+    public List<ExchangeRateHistoryDTO> findRateHistory(Authentication authentication) {
+        auditService.logFxHistoryViewed(currentUserOrNull(authentication));
+        List<ExchangeRate> rates = exchangeRateRepository
+                .findAllByOrderByEffectiveAtDescIdDesc(PageRequest.of(0, FX_HISTORY_LIMIT));
+        return projectHistory(rates);
+    }
+
+    private List<ExchangeRateHistoryDTO> projectHistory(List<ExchangeRate> rates) {
+        // For each (from->to) pair the immediately newer record holds the
+        // current rate; the next one represents the "old" rate. We pair them
+        // so each entry exposes oldRate + newRate.
+        Map<String, ExchangeRate> latestPerPair = new HashMap<>();
+        List<ExchangeRateHistoryDTO> result = new ArrayList<>();
+        for (ExchangeRate rate : rates) {
+            String pairKey = pairKey(rate);
+            ExchangeRate newer = latestPerPair.get(pairKey);
+            BigDecimal oldRate = rate.getRate();
+            BigDecimal newRate = newer != null ? newer.getRate() : rate.getRate();
+            String currencyCode = rate.getFromCurrency() != null ? rate.getFromCurrency().getCode() : null;
+            String pair = (currencyCode == null ? "?" : currencyCode)
+                    + " → "
+                    + (rate.getToCurrency() != null ? rate.getToCurrency().getCode() : "?");
+            result.add(new ExchangeRateHistoryDTO(
+                    rate.getId(),
+                    currencyCode,
+                    pair,
+                    oldRate,
+                    newRate,
+                    rate.getEffectiveAt(),
+                    actorLabel(rate.getCreatedBy())
+            ));
+            latestPerPair.put(pairKey, rate);
+        }
+        return result;
+    }
+
+    private CurrencyResponseDTO toResponse(Currency currency, Currency mad, Country mainCountry) {
+        BigDecimal rate = computeRateToMad(currency, mad);
+        LocalDateTime lastUpdate = resolveLastUpdate(currency, mad);
+        String mainCountryName = mainCountry != null ? mainCountry.getName() : null;
+        String mainCountryCode = mainCountry != null ? mainCountry.getCode() : null;
+
+        return new CurrencyResponseDTO(
+                currency.getId(),
+                currency.getCode(),
+                currency.getName(),
+                currency.getSymbol(),
+                mainCountryName,
+                mainCountryCode,
+                rate,
+                Boolean.TRUE.equals(currency.getActive()) ? CurrencyStatus.ACTIVE : CurrencyStatus.SUSPENDED,
+                lastUpdate
+        );
+    }
+
+    private BigDecimal computeRateToMad(Currency currency, Currency mad) {
+        if (currency == null) return null;
+        if (mad == null) return null;
+        if (mad.getId().equals(currency.getId())) {
+            return SCALE_RATE;
+        }
+        return exchangeRateRepository
+                .findByFromCurrency_IdAndToCurrency_Id(currency.getId(), mad.getId())
+                .map(ExchangeRate::getRate)
+                .orElse(null);
+    }
+
+    private LocalDateTime resolveLastUpdate(Currency currency, Currency mad) {
+        if (currency == null) return null;
+        if (mad != null && !mad.getId().equals(currency.getId())) {
+            LocalDateTime fxUpdate = exchangeRateRepository
+                    .findByFromCurrency_IdAndToCurrency_Id(currency.getId(), mad.getId())
+                    .map(ExchangeRate::getEffectiveAt)
+                    .orElse(null);
+            if (fxUpdate != null) {
+                return fxUpdate;
+            }
+        }
+        return currency.getUpdatedAt();
+    }
+
+    private CorridorResponseDTO toResponse(TransferCorridor corridor) {
+        Country source = corridor.getSourceCountry();
+        Country dest = corridor.getDestinationCountry();
+        Currency sourceCurrency = source != null ? source.getCurrency() : null;
+        Currency destCurrency = dest != null ? dest.getCurrency() : null;
+
+        CorridorStatus status;
+        if (Boolean.TRUE.equals(corridor.getActive())) {
+            status = CorridorStatus.ACTIVE;
+        } else {
+            status = CorridorStatus.DISABLED;
+        }
+
+        return new CorridorResponseDTO(
+                corridor.getId(),
+                source != null ? source.getCode() : null,
+                source != null ? source.getName() : null,
+                dest != null ? dest.getCode() : null,
+                dest != null ? dest.getName() : null,
+                sourceCurrency != null ? sourceCurrency.getCode() : null,
+                destCurrency != null ? destCurrency.getCode() : null,
+                DEFAULT_FEE_PERCENT,
+                status
+        );
+    }
+
+    private Map<Long, Country> buildPrimaryCountryMap() {
+        Map<Long, Country> map = new HashMap<>();
+        for (Country country : countryRepository.findAll()) {
+            Currency currency = country.getCurrency();
+            if (currency == null) continue;
+            map.putIfAbsent(currency.getId(), country);
+        }
+        return map;
+    }
+
+    private String pairKey(ExchangeRate rate) {
+        Long from = rate.getFromCurrency() != null ? rate.getFromCurrency().getId() : null;
+        Long to = rate.getToCurrency() != null ? rate.getToCurrency().getId() : null;
+        return from + "->" + to;
+    }
+
+    private String actorLabel(User user) {
+        if (user == null) return "Système";
+        String first = user.getFirstName() == null ? "" : user.getFirstName();
+        String last = user.getLastName() == null ? "" : user.getLastName();
+        String full = (first + " " + last).trim();
+        if (!full.isEmpty()) return full;
+        return user.getEmail() != null ? user.getEmail() : "Système";
+    }
+
+    private User currentUserOrNull(Authentication authentication) {
+        if (authentication == null) return null;
+        if (authentication.getPrincipal() instanceof OkaneUserPrincipal principal) {
+            User user = principal.getUser();
+            if (user == null || user.getId() == null) return null;
+            return userRepository.findById(user.getId()).orElse(null);
+        }
+        return null;
+    }
+
+    private BigDecimal scaleSafe(BigDecimal value) {
+        if (value == null) return null;
+        return value.setScale(6, RoundingMode.HALF_UP);
+    }
+}
