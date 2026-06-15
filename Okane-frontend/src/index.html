@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr" dir="ltr" class="dark">
+<head>
+  <meta charset="utf-8">
+  <title>Okane Transfer</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    (function () {
+      try {
+        var key = 'okane-theme';
+        var stored = localStorage.getItem(key);
+        var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+  <script>
+    (function () {
+      try {
+        var key = 'okane-language';
+        var locale = localStorage.getItem(key) || 'fr';
+        if (locale !== 'fr' && locale !== 'en' && locale !== 'ar') {
+          locale = 'fr';
+        }
+        document.documentElement.lang = locale;
+        document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+      } catch (e) {
+        document.documentElement.lang = 'fr';
+        document.documentElement.dir = 'ltr';
+      }
+    })();
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

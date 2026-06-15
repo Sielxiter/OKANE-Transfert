@@ -1,0 +1,60 @@
+﻿
+> okane-frontend@0.0.0 build C:\Users\My-PC\Desktop\OKANE-Transfert\Okane-frontend
+> ng build
+
+[33m>[39m Building...
+[32mΓêÜ[39m Building...
+[35mPrerendered 0 static routes.[39m
+Application bundle generation failed. [58.751 seconds] - 2026-05-31T18:34:55.916Z
+
+pnpm : [1m[33m[33mΓû▓ [43;33m[[43;30mWARNING[43;33m][0m [1mDuplicate member "onVerifyKyc" in class body[0m 
+[duplicate-class-member]
+Au caractère Ligne:1 : 1
++ pnpm run build 2>&1 | Out-File -FilePath "C:\Users\My-PC\Desktop\OKAN ...
++ ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([1m[33m[33mΓ...e-class-member]:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+    src/app/pages/agent/new-transfer-page.component.ts:84:14:
+[37m      84 Γöé     protected [32monVerifyKyc[37m(_client: ClientSearchResult): void {
+         Γò╡               [32m~~~~~~~~~~~[0m
+
+  The original member "onVerifyKyc" is here:
+
+    src/app/pages/agent/new-transfer-page.component.ts:80:14:
+[37m      80 Γöé     protected [32monVerifyKyc[37m(_client: ClientSearchResult): void {
+         Γò╡               [32m~~~~~~~~~~~[0m
+
+
+[33mΓû▓ [43;33m[[43;30mWARNING[43;33m][0m [1mDuplicate member "onVerifyKyc" in class body[0m 
+[duplicate-class-member]
+
+    src/app/pages/agent/new-transfer-page.component.ts:84:14:
+[37m      84 Γöé     protected [32monVerifyKyc[37m(_client: ClientSearchResult): void {
+         Γò╡               [32m~~~~~~~~~~~[0m
+
+  The original member "onVerifyKyc" is here:
+
+    src/app/pages/agent/new-transfer-page.component.ts:80:14:
+[37m      80 Γöé     protected [32monVerifyKyc[37m(_client: ClientSearchResult): void {
+         Γò╡               [32m~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2393: Duplicate function implementation.[0m 
+[1m[35m[plugin angular-compiler][0m
+
+    src/app/pages/agent/new-transfer-page.component.ts:181:11:
+[37m      181 Γöé   protected [32monVerifyKyc[37m(_client: ClientSearchResult): void {
+          Γò╡             [32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2393: Duplicate function implementation.[0m [1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/pages/agent/new-transfer-page.component.ts:186:11:
+[37m      186 Γöé   protected [32monVerifyKyc[37m(_client: ClientSearchResult): void {
+          Γò╡             [32m~~~~~~~~~~~[0m
+
+[39m[22m
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

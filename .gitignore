@@ -1,0 +1,8 @@
+Okane-frontend/node_modules/
+Okane-frontend/.angular/
+Okane-frontend/dist/
+backend/target/
+*.log
+
+.DS_Store
+Thumbs.db
