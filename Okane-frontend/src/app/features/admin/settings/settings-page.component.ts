@@ -27,6 +27,7 @@ import { HlmSeparatorImports } from '@spartan-ng/helm/separator';
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import { UsersPlaceholderDialogComponent } from '../users/shared/users-placeholder-dialog.component';
 import { SettingsToggleComponent } from './settings-toggle.component';
+import { I18nService } from '../../../shared/i18n/i18n.service';
 import {
 	ADMIN_PREFERENCES_MOCK,
 	ADMIN_PROFILE_MOCK,
@@ -503,6 +504,7 @@ import {
 })
 export class AdminSettingsPageComponent implements OnInit {
 	private readonly _api = inject(AdminSettingsApiService);
+	private readonly _i18n = inject(I18nService);
 
 	// ─── Profile (API-backed, falls back to mock) ────────────────────────────────
 	protected readonly profile = signal({ ...ADMIN_PROFILE_MOCK });
@@ -618,12 +620,14 @@ export class AdminSettingsPageComponent implements OnInit {
 	}
 
 	private applyPreferences(data: ApiPreferencesSettings): void {
+		const language = this.normalizeLocale(data.language ?? ADMIN_PREFERENCES_MOCK.language);
 		this.preferences.set({
-			language: (data.language as LanguageCode) ?? ADMIN_PREFERENCES_MOCK.language,
+			language,
 			theme: (data.theme as ThemeMode) ?? ADMIN_PREFERENCES_MOCK.theme,
 			currency: (data.defaultCurrency as DefaultCurrency) ?? ADMIN_PREFERENCES_MOCK.currency,
 			timezone: data.timezone ?? ADMIN_PREFERENCES_MOCK.timezone,
 		});
+		this._i18n.setLocale(language);
 	}
 
 	private applySystemSettings(data: ApiSystemSettings): void {
@@ -688,6 +692,7 @@ export class AdminSettingsPageComponent implements OnInit {
 
 	protected onLanguageChange(value: LanguageCode): void {
 		this.preferences.update((p) => ({ ...p, language: value }));
+		this._i18n.setLocale(value);
 		this.persistPreferences();
 	}
 
@@ -714,6 +719,14 @@ export class AdminSettingsPageComponent implements OnInit {
 			defaultCurrency: p.currency,
 			timezone: p.timezone,
 		}).subscribe({ error: () => {} });
+	}
+
+	private normalizeLocale(value: string): LanguageCode {
+		const normalized = value.toLowerCase();
+		if (normalized === 'en' || normalized === 'ar') {
+			return normalized;
+		}
+		return 'fr';
 	}
 
 	// ─── Helpers ────────────────────────────────────────────────────────────────

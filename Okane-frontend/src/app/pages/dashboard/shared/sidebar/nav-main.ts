@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -10,6 +10,7 @@ import {
 	lucideBot,
 	lucideBuilding2,
 	lucideChevronRight,
+	lucideChevronLeft,
 	lucideClipboardList,
 	lucideCoins,
 	lucideLayoutDashboard,
@@ -22,10 +23,12 @@ import {
 import { HlmCollapsibleImports } from '@spartan-ng/helm/collapsible';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 import { filter, map, startWith } from 'rxjs/operators';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
+import { I18nService } from '../../../../shared/i18n/i18n.service';
 
 @Component({
 	selector: 'spartan-nav-main',
-	imports: [HlmSidebarImports, NgIcon, HlmCollapsibleImports, RouterLink],
+	imports: [HlmSidebarImports, NgIcon, HlmCollapsibleImports, RouterLink, I18nPipe],
 	providers: [
 		provideIcons({
 			lucideSquareTerminal,
@@ -33,6 +36,7 @@ import { filter, map, startWith } from 'rxjs/operators';
 			lucideBookOpen,
 			lucideSettings2,
 			lucideChevronRight,
+			lucideChevronLeft,
 			lucideLayoutDashboard,
 			lucideUsers,
 			lucideBuilding2,
@@ -48,7 +52,7 @@ import { filter, map, startWith } from 'rxjs/operators';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<hlm-sidebar-group>
-			<div hlmSidebarGroupLabel>Plateforme</div>
+			<div hlmSidebarGroupLabel>{{ 'Plateforme' | okaneI18n }}</div>
 			<ul hlmSidebarMenu>
 				@for (item of items(); track item.title) {
 					<hlm-collapsible [expanded]="isItemExpanded(item)">
@@ -56,18 +60,18 @@ import { filter, map, startWith } from 'rxjs/operators';
 							@if (item.url) {
 								<a hlmSidebarMenuButton [routerLink]="item.url" [isActive]="isTopLevelItemActive(item)">
 									<ng-icon [name]="item.icon" />
-									{{ item.title }}
+									{{ item.title | okaneI18n }}
 								</a>
 							} @else {
 								<button hlmSidebarMenuButton type="button" [isActive]="isTopLevelItemActive(item)">
 									<ng-icon [name]="item.icon" />
-									{{ item.title }}
+									{{ item.title | okaneI18n }}
 								</button>
 							}
 
 							@if (item.items; as subItems) {
 								<button hlmCollapsibleTrigger hlmSidebarMenuAction class="data-[state=open]:rotate-90">
-									<ng-icon name="lucideChevronRight" />
+									<ng-icon [name]="chevronIcon()" />
 								</button>
 								<hlm-collapsible-content>
 									<ul hlmSidebarMenuSub>
@@ -75,10 +79,10 @@ import { filter, map, startWith } from 'rxjs/operators';
 											<li hlmSidebarMenuSubItem>
 												@if (subItem.url) {
 													<a hlmSidebarMenuSubButton [routerLink]="subItem.url" [isActive]="isRouteActive(subItem.url)">
-														{{ subItem.title }}
+														{{ subItem.title | okaneI18n }}
 													</a>
 												} @else {
-													<button hlmSidebarMenuSubButton type="button">{{ subItem.title }}</button>
+													<button hlmSidebarMenuSubButton type="button">{{ subItem.title | okaneI18n }}</button>
 												}
 											</li>
 										}
@@ -94,6 +98,7 @@ import { filter, map, startWith } from 'rxjs/operators';
 })
 export class NavMain {
 	private readonly _router = inject(Router);
+	private readonly _i18n = inject(I18nService);
 	private readonly _currentUrl = toSignal(
 		this._router.events.pipe(
 			filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -102,6 +107,7 @@ export class NavMain {
 		),
 		{ initialValue: this._router.url },
 	);
+	protected readonly chevronIcon = computed(() => (this._i18n.isRtl() ? 'lucideChevronLeft' : 'lucideChevronRight'));
 
 	public readonly items = input.required<
 		{

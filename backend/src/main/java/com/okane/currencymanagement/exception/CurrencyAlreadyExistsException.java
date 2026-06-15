@@ -4,7 +4,7 @@ import com.okane.auth.exception.ApiException;
 import org.springframework.http.HttpStatus;
 
 public class CurrencyAlreadyExistsException extends ApiException {
-    public CurrencyAlreadyExistsException(String code) {
-        super(HttpStatus.CONFLICT, "Currency code already in use: " + code);
+    public CurrencyAlreadyExistsException(String identifier) {
+        super(HttpStatus.CONFLICT, "Currency identifier already in use: " + identifier);
     }
 }

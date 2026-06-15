@@ -34,7 +34,7 @@ import {
 		<form [formGroup]="form" (ngSubmit)="submit()" novalidate class="flex flex-col gap-4">
 			<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 				Nom de la grille
-				<input hlmInput type="text" formControlName="name" placeholder="Standard MA → SN" />
+				<input hlmInput type="text" formControlName="name" placeholder="Standard MAR → SEN" />
 				@if (showError('name')) {
 					<span class="text-xs text-destructive">{{ fieldError('name') }}</span>
 				}
@@ -43,14 +43,14 @@ import {
 			<div class="grid gap-3 sm:grid-cols-2">
 				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 					Pays source
-					<input hlmInput type="text" formControlName="sourceCountry" maxlength="10" placeholder="MA" class="uppercase" />
+					<input hlmInput type="text" formControlName="sourceCountry" maxlength="10" placeholder="MAR" class="uppercase" />
 					@if (showError('sourceCountry')) {
 						<span class="text-xs text-destructive">{{ fieldError('sourceCountry') }}</span>
 					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 					Pays destination
-					<input hlmInput type="text" formControlName="destinationCountry" maxlength="10" placeholder="SN" class="uppercase" />
+					<input hlmInput type="text" formControlName="destinationCountry" maxlength="10" placeholder="SEN" class="uppercase" />
 					@if (showError('destinationCountry')) {
 						<span class="text-xs text-destructive">{{ fieldError('destinationCountry') }}</span>
 					}
@@ -96,14 +96,14 @@ import {
 
 			<div class="grid gap-3 sm:grid-cols-2">
 				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-					Frais fixes
+					Frais de transfert fixes
 					<input hlmInput type="number" formControlName="fixedFee" min="0" step="0.01" />
 					@if (showError('fixedFee')) {
 						<span class="text-xs text-destructive">{{ fieldError('fixedFee') }}</span>
 					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-					Pourcentage frais (%)
+					Frais de transfert (%)
 					<input hlmInput type="number" formControlName="percentageFee" min="0" max="100" step="0.01" />
 					@if (showError('percentageFee')) {
 						<span class="text-xs text-destructive">{{ fieldError('percentageFee') }}</span>
@@ -127,8 +127,10 @@ import {
 					}
 				</label>
 			</div>
-			@if (commissionsExceed()) {
-				<span class="text-xs text-destructive">La somme des commissions ne peut pas dépasser 100%.</span>
+			@if (commissionSplitInvalid()) {
+				<span class="text-xs text-destructive">
+					La somme Commission agence + Commission centrale doit être exactement égale à 100%.
+				</span>
 			}
 
 			<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
@@ -158,7 +160,7 @@ import {
 					hlmBtn
 					type="submit"
 					size="sm"
-					[disabled]="submitting() || form.invalid || rangeError() || sameCountryError() || commissionsExceed()"
+					[disabled]="submitting() || form.invalid || rangeError() || sameCountryError() || commissionSplitInvalid()"
 				>
 					@if (submitting()) {
 						<ng-icon name="lucideLoaderCircle" class="animate-spin" />
@@ -229,16 +231,16 @@ export class FeeGridCreateFormComponent {
 		return touched && src.length > 0 && src === dst;
 	}
 
-	protected commissionsExceed(): boolean {
+	protected commissionSplitInvalid(): boolean {
 		const a = Number(this.form.controls.agencyCommissionRate.value ?? 0);
 		const c = Number(this.form.controls.centralCommissionRate.value ?? 0);
-		return Number.isFinite(a) && Number.isFinite(c) && a + c > 100;
+		return Number.isFinite(a) && Number.isFinite(c) && Math.abs(a + c - 100) > 0.0001;
 	}
 
 	protected submit(): void {
 		this.serverError.set(null);
 		this.form.markAllAsTouched();
-		if (this.form.invalid || this.rangeError() || this.sameCountryError() || this.commissionsExceed()) {
+		if (this.form.invalid || this.rangeError() || this.sameCountryError() || this.commissionSplitInvalid()) {
 			return;
 		}
 

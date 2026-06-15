@@ -4,6 +4,8 @@ import com.okane.agency.entity.Agency;
 import com.okane.agency.entity.AgencyUser;
 import com.okane.agency.repository.AgencyRepository;
 import com.okane.agency.repository.AgencyUserRepository;
+import com.okane.centralagency.entity.CentralAgency;
+import com.okane.centralagency.repository.CentralAgencyRepository;
 import com.okane.auth.entity.Role;
 import com.okane.auth.entity.User;
 import com.okane.auth.exception.ApiException;
@@ -63,6 +65,7 @@ public class UserManagementService {
     private final RoleRepository roleRepository;
     private final AgencyRepository agencyRepository;
     private final AgencyUserRepository agencyUserRepository;
+    private final CentralAgencyRepository centralAgencyRepository;
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserManagementAuditService auditService;
@@ -75,6 +78,7 @@ public class UserManagementService {
             RoleRepository roleRepository,
             AgencyRepository agencyRepository,
             AgencyUserRepository agencyUserRepository,
+            CentralAgencyRepository centralAgencyRepository,
             CustomerRepository customerRepository,
             PasswordEncoder passwordEncoder,
             UserManagementAuditService auditService
@@ -83,6 +87,7 @@ public class UserManagementService {
         this.roleRepository = roleRepository;
         this.agencyRepository = agencyRepository;
         this.agencyUserRepository = agencyUserRepository;
+        this.centralAgencyRepository = centralAgencyRepository;
         this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditService = auditService;
@@ -108,17 +113,11 @@ public class UserManagementService {
         List<User> allManagers = userRepository.findByRole_NameOrderByCreatedAtDesc("ROLE_MANAGER");
         return allManagers.stream()
                 .filter(manager -> {
-                    // A manager is available if they have no active agency assignment,
-                    // OR if their active assignment is to the agency being edited.
-                    Optional<AgencyUser> assignment = agencyUserRepository.findFirstByUser_IdAndActiveTrue(manager.getId());
+                    Optional<CentralAgency> assignment = centralAgencyRepository.findByManager_Id(manager.getId());
                     if (assignment.isEmpty()) {
-                        return true; // not assigned anywhere
+                        return true;
                     }
-                    if (agencyId != null && assignment.get().getAgency() != null
-                            && assignment.get().getAgency().getId().equals(agencyId)) {
-                        return true; // assigned to the agency being edited — keep selectable
-                    }
-                    return false; // assigned to a different agency
+                    return agencyId != null && assignment.get().getId().equals(agencyId);
                 })
                 .map(this::toResponse)
                 .toList();
@@ -242,10 +241,16 @@ public class UserManagementService {
         Customer customer = isClient(user)
                 ? customerRepository.findByUser_Id(user.getId()).orElse(null)
                 : null;
-        AgencyUser agencyUser = !isClient(user)
-                ? agencyUserRepository.findFirstByUser_IdAndActiveTrue(user.getId()).orElse(null)
-                : null;
-        Agency agency = agencyUser != null ? agencyUser.getAgency() : null;
+        Agency agency = null;
+        CentralAgency centralAgency = null;
+        if (!isClient(user)) {
+            if (isManager(user)) {
+                centralAgency = centralAgencyRepository.findByManager_Id(user.getId()).orElse(null);
+            } else {
+                AgencyUser agencyUser = agencyUserRepository.findFirstByUser_IdAndActiveTrue(user.getId()).orElse(null);
+                agency = agencyUser != null ? agencyUser.getAgency() : null;
+            }
+        }
 
         String fullName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
                 + (user.getLastName() == null ? "" : user.getLastName())).trim();
@@ -261,9 +266,9 @@ public class UserManagementService {
                 resolveAccountStatus(user),
                 customer != null ? customer.getCountry() : null,
                 isClient(user) ? resolveKycStatus(customer) : null,
-                agency != null ? agency.getId() : null,
-                agency != null ? agency.getName() : null,
-                agency != null ? agency.getCode() : null,
+                centralAgency != null ? centralAgency.getId() : agency != null ? agency.getId() : null,
+                centralAgency != null ? centralAgency.getName() : agency != null ? agency.getName() : null,
+                centralAgency != null ? centralAgency.getCode() : agency != null ? agency.getCode() : null,
                 user.getCreatedAt(),
                 user.getLastLoginAt()
         );
@@ -367,6 +372,11 @@ public class UserManagementService {
     }
 
     private void assignAgency(User user, Long agencyId) {
+        if (isManager(user)) {
+            assignCentralAgency(user, agencyId);
+            return;
+        }
+
         Agency agency = agencyRepository.findById(agencyId)
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Agency not found: " + agencyId));
 
@@ -388,6 +398,26 @@ public class UserManagementService {
         agencyUserRepository.save(membership);
     }
 
+    private void assignCentralAgency(User user, Long centralAgencyId) {
+        CentralAgency centralAgency = centralAgencyRepository.findById(centralAgencyId)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Central agency not found: " + centralAgencyId));
+
+        Optional<CentralAgency> existing = centralAgencyRepository.findByManager_Id(user.getId());
+        if (existing.isPresent()) {
+            CentralAgency current = existing.get();
+            if (current.getId().equals(centralAgency.getId())) {
+                return;
+            }
+            current.setManager(null);
+            current.setUpdatedAt(LocalDateTime.now());
+            centralAgencyRepository.save(current);
+        }
+
+        centralAgency.setManager(user);
+        centralAgency.setUpdatedAt(LocalDateTime.now());
+        centralAgencyRepository.save(centralAgency);
+    }
+
     private void ensureCanModify(User target, User actor, AccountStatus newStatus) {
         if (actor != null && actor.getId().equals(target.getId())
                 && newStatus != AccountStatus.ACTIVE) {
@@ -397,6 +427,10 @@ public class UserManagementService {
 
     private boolean isClient(User user) {
         return user.getRole() != null && "ROLE_CLIENT".equals(user.getRole().getName());
+    }
+
+    private boolean isManager(User user) {
+        return user.getRole() != null && "ROLE_MANAGER".equals(user.getRole().getName());
     }
 
     private String normalizeEmail(String email) {

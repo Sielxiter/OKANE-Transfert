@@ -3,11 +3,12 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideEllipsis } from '@ng-icons/lucide';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import type { UserActionItem } from './user-status.types';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
 
 @Component({
 	selector: 'okane-user-actions-dropdown',
 	standalone: true,
-	imports: [NgIcon, HlmDropdownMenuImports],
+	imports: [NgIcon, HlmDropdownMenuImports, I18nPipe],
 	providers: [provideIcons({ lucideEllipsis })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -17,7 +18,7 @@ import type { UserActionItem } from './user-status.types';
 			[hlmDropdownMenuTrigger]="menu"
 			align="end"
 			side="bottom"
-			aria-label="Ouvrir le menu d'actions"
+			[attr.aria-label]="menuAriaLabel | okaneI18n"
 		>
 			<ng-icon name="lucideEllipsis" class="text-base" />
 		</button>
@@ -33,7 +34,7 @@ import type { UserActionItem } from './user-status.types';
 						[class.focus:text-destructive]="action.variant === 'destructive'"
 					>
 						<ng-icon [name]="action.icon" />
-						{{ action.label }}
+						{{ action.label | okaneI18n }}
 					</button>
 				}
 			</hlm-dropdown-menu>
@@ -42,4 +43,5 @@ import type { UserActionItem } from './user-status.types';
 })
 export class UserActionsDropdownComponent {
 	public readonly actions = input.required<UserActionItem[]>();
+	protected readonly menuAriaLabel = "Ouvrir le menu d'actions";
 }

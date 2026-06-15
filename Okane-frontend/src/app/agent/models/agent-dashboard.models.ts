@@ -9,6 +9,8 @@ export interface StatistiquesTableauDeBord {
 	transfertsJour: number;
 	paiementsJour: number;
 	transfertsEnAttente: number;
+	paiementsEnAttente: number;
+	revenus: number;
 	devise: string;
 }
 
@@ -21,6 +23,7 @@ export interface Transfert {
 	telephoneBeneficiaire: string;
 	montant: number;
 	montantFrais: number;
+	commissionAgence: number;
 	statut: StatutTransfert;
 	creeLe: string;
 	devise: string;

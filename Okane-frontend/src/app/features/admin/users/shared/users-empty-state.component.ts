@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSearchX, lucideUsers } from '@ng-icons/lucide';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
 
 @Component({
 	selector: 'okane-users-empty-state',
 	standalone: true,
-	imports: [NgIcon],
+	imports: [NgIcon, I18nPipe],
 	providers: [provideIcons({ lucideSearchX, lucideUsers })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -14,8 +15,8 @@ import { lucideSearchX, lucideUsers } from '@ng-icons/lucide';
 				<ng-icon [name]="icon()" class="text-xl" />
 			</div>
 			<div class="max-w-sm space-y-1">
-				<p class="text-sm font-medium text-foreground">{{ title() }}</p>
-				<p class="text-xs text-muted-foreground">{{ description() }}</p>
+				<p class="text-sm font-medium text-foreground">{{ title() | okaneI18n }}</p>
+				<p class="text-xs text-muted-foreground">{{ description() | okaneI18n }}</p>
 			</div>
 		</div>
 	`,

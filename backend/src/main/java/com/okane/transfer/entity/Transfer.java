@@ -5,6 +5,7 @@ import com.okane.auth.entity.User;
 import com.okane.cash.entity.AgentCashSession;
 import com.okane.currencyfx.entity.Currency;
 import com.okane.customer.entity.Customer;
+import com.okane.transfer.entity.TransferBeneficiary;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -38,6 +39,10 @@ public class Transfer {
     @JoinColumn(name = "beneficiaire_id", nullable = false)
     private Customer beneficiary;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "beneficiaire_snapshot_id")
+    private TransferBeneficiary beneficiarySnapshot;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "agence_source_id", nullable = false)
     private Agency sourceAgency;
@@ -59,6 +64,21 @@ public class Transfer {
 
     @Column(name = "montant_frais", nullable = false, precision = 15, scale = 2)
     private BigDecimal feeAmount;
+
+    @Column(name = "montant_frais_base", precision = 15, scale = 2)
+    private BigDecimal baseFeeAmount;
+
+    @Column(name = "montant_frais_corridor", precision = 15, scale = 2)
+    private BigDecimal corridorFeeAmount;
+
+    @Column(name = "pourcentage_corridor", precision = 15, scale = 2)
+    private BigDecimal corridorPercent;
+
+    @Column(name = "commission_agence", precision = 15, scale = 2)
+    private BigDecimal agencyCommissionAmount;
+
+    @Column(name = "commission_centrale", precision = 15, scale = 2)
+    private BigDecimal centralCommissionAmount;
 
     @Column(name = "taux_change", nullable = false, precision = 15, scale = 6)
     private BigDecimal exchangeRate;
@@ -124,6 +144,14 @@ public class Transfer {
         this.beneficiary = beneficiary;
     }
 
+    public TransferBeneficiary getBeneficiarySnapshot() {
+        return beneficiarySnapshot;
+    }
+
+    public void setBeneficiarySnapshot(TransferBeneficiary beneficiarySnapshot) {
+        this.beneficiarySnapshot = beneficiarySnapshot;
+    }
+
     public Agency getSourceAgency() {
         return sourceAgency;
     }
@@ -170,6 +198,46 @@ public class Transfer {
 
     public void setFeeAmount(BigDecimal feeAmount) {
         this.feeAmount = feeAmount;
+    }
+
+    public BigDecimal getBaseFeeAmount() {
+        return baseFeeAmount;
+    }
+
+    public void setBaseFeeAmount(BigDecimal baseFeeAmount) {
+        this.baseFeeAmount = baseFeeAmount;
+    }
+
+    public BigDecimal getCorridorFeeAmount() {
+        return corridorFeeAmount;
+    }
+
+    public void setCorridorFeeAmount(BigDecimal corridorFeeAmount) {
+        this.corridorFeeAmount = corridorFeeAmount;
+    }
+
+    public BigDecimal getCorridorPercent() {
+        return corridorPercent;
+    }
+
+    public void setCorridorPercent(BigDecimal corridorPercent) {
+        this.corridorPercent = corridorPercent;
+    }
+
+    public BigDecimal getAgencyCommissionAmount() {
+        return agencyCommissionAmount;
+    }
+
+    public void setAgencyCommissionAmount(BigDecimal agencyCommissionAmount) {
+        this.agencyCommissionAmount = agencyCommissionAmount;
+    }
+
+    public BigDecimal getCentralCommissionAmount() {
+        return centralCommissionAmount;
+    }
+
+    public void setCentralCommissionAmount(BigDecimal centralCommissionAmount) {
+        this.centralCommissionAmount = centralCommissionAmount;
     }
 
     public BigDecimal getExchangeRate() {

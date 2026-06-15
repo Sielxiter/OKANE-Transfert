@@ -130,7 +130,7 @@ public class AdminTransferService {
             }
             if (filter.currency() != null && !filter.currency().isBlank()) {
                 Join<Transfer, ?> currencyJoin = root.join("currency");
-                predicates.add(cb.equal(cb.upper(currencyJoin.get("code")),
+                predicates.add(cb.equal(cb.upper(currencyJoin.get("symbol")),
                         filter.currency().trim().toUpperCase(Locale.ROOT)));
             }
             if (filter.sourceCountry() != null && !filter.sourceCountry().isBlank()) {
@@ -199,7 +199,7 @@ public class AdminTransferService {
                 beneficiaryUser != null ? beneficiaryUser.getPhone() : null,
                 beneficiary != null ? beneficiary.getCountry() : null,
                 transfer.getAmount(),
-                transfer.getCurrency() != null ? transfer.getCurrency().getCode() : null,
+                transfer.getCurrency() != null ? transfer.getCurrency().getSymbol() : null,
                 transfer.getFeeAmount(),
                 transfer.getNetAmount(),
                 sourceAgency != null ? sourceAgency.getCountry() : null,

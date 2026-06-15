@@ -25,6 +25,11 @@ public class TransferAuditService {
     }
 
     @Transactional
+    public void logTransferCreated(User actor, Transfer transfer) {
+        log(actor, "TRANSFER_CREATED", transfer, "Created transfer " + safeReference(transfer));
+    }
+
+    @Transactional
     public void logTransferViewed(User actor, Transfer transfer) {
         log(actor, "TRANSFER_VIEWED", transfer, "Viewed transfer " + safeReference(transfer));
     }

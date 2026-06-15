@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideHourglass, lucideX } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
 
 @Component({
 	selector: 'okane-users-placeholder-dialog',
 	standalone: true,
-	imports: [NgIcon, HlmButtonImports],
+	imports: [NgIcon, HlmButtonImports, I18nPipe],
 	providers: [provideIcons({ lucideHourglass, lucideX })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -24,7 +25,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 					<button
 						type="button"
 						class="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						aria-label="Fermer"
+						[attr.aria-label]="'Fermer' | okaneI18n"
 						(click)="close.emit()"
 					>
 						<ng-icon name="lucideX" />
@@ -34,14 +35,14 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 						<ng-icon name="lucideHourglass" class="text-lg" />
 					</div>
 
-					<h2 class="mt-4 text-lg font-semibold text-foreground">{{ title() }}</h2>
+					<h2 class="mt-4 text-lg font-semibold text-foreground">{{ title() | okaneI18n }}</h2>
 					<p class="mt-1 text-sm text-muted-foreground">
-						Formulaire à implémenter dans une prochaine phase.
+						{{ 'Formulaire à implémenter dans une prochaine phase.' | okaneI18n }}
 					</p>
 
 					<div class="mt-6 flex justify-end gap-2">
 						<button hlmBtn type="button" variant="outline" size="sm" (click)="close.emit()">
-							Fermer
+							{{ 'Fermer' | okaneI18n }}
 						</button>
 					</div>
 				</div>

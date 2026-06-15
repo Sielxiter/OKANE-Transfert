@@ -71,6 +71,12 @@ public class CurrencyAuditService {
     }
 
     private String safeCode(Currency currency) {
-        return currency != null && currency.getCode() != null ? currency.getCode() : "<unknown>";
+        if (currency == null) {
+            return "<unknown>";
+        }
+        if (currency.getSymbol() != null && !currency.getSymbol().isBlank()) {
+            return currency.getSymbol();
+        }
+        return currency.getName() != null ? currency.getName() : "<unknown>";
     }
 }

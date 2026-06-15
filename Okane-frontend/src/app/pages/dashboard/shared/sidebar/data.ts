@@ -70,6 +70,10 @@ const adminItems: SidebarItem[] = [
 		title: 'Agences',
 		icon: 'lucideBuilding2',
 		url: '/admin/agencies',
+		items: [
+			{ title: 'Agences centrales', url: '/admin/agencies/central' },
+			{ title: 'Sous-agences', url: '/admin/agencies/sub' },
+		],
 	},
 	{
 		title: 'Transferts',
@@ -85,6 +89,11 @@ const adminItems: SidebarItem[] = [
 		title: 'Devises et change',
 		icon: 'lucideCoins',
 		url: '/admin/currency',
+	},
+	{
+		title: 'Corridors de transfert',
+		icon: 'lucideArrowRightLeft',
+		url: '/admin/corridors',
 	},
 	{
 		title: 'Frais et commissions',

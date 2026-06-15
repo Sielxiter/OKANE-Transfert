@@ -6,11 +6,11 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CurrencyRepository extends JpaRepository<Currency, Long> {
-    Optional<Currency> findByCode(String code);
+    Optional<Currency> findBySymbolIgnoreCase(String symbol);
 
-    boolean existsByCodeIgnoreCase(String code);
+    boolean existsBySymbolIgnoreCase(String symbol);
 
     long countByActive(boolean active);
 
-    List<Currency> findAllByOrderByCodeAsc();
+    List<Currency> findAllByOrderByNameAsc();
 }

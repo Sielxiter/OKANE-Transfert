@@ -7,4 +7,8 @@ public class FeeGridNotFoundException extends ApiException {
     public FeeGridNotFoundException(Long id) {
         super(HttpStatus.NOT_FOUND, "Fee grid not found: " + id);
     }
+
+    public FeeGridNotFoundException(String message) {
+        super(HttpStatus.NOT_FOUND, message);
+    }
 }

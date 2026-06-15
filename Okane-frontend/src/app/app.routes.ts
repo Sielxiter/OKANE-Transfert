@@ -21,6 +21,7 @@ import { AdminAgenciesPageComponent } from './features/admin/agencies/agencies-p
 import { AdminTransfersPageComponent } from './features/admin/transfers/transfers-page.component';
 import { AdminPaymentsPageComponent } from './features/admin/payments/payments-page.component';
 import { AdminCurrencyPageComponent } from './features/admin/currency/currency-page.component';
+import { AdminCorridorsPageComponent } from './features/admin/corridors/corridors-page.component';
 import { AdminFeesPageComponent } from './features/admin/fees/fees-page.component';
 import { AdminCompliancePageComponent } from './features/admin/compliance/compliance-page.component';
 import { AdminReportsPageComponent } from './features/admin/reports/reports-page.component';
@@ -44,9 +45,12 @@ export const routes: Routes = [
       { path: 'users/managers', component: AdminUsersManagersPageComponent, data: { title: 'Utilisateurs - Managers' } },
       { path: 'users/agents', component: AdminUsersAgentsPageComponent, data: { title: 'Utilisateurs - Agents' } },
       { path: 'agencies', component: AdminAgenciesPageComponent, data: { title: 'Agences' } },
+      { path: 'agencies/central', component: AdminAgenciesPageComponent, data: { title: 'Agences centrales' } },
+      { path: 'agencies/sub', component: AdminAgenciesPageComponent, data: { title: 'Sous-agences' } },
       { path: 'transfers', component: AdminTransfersPageComponent, data: { title: 'Transferts' } },
       { path: 'payments', component: AdminPaymentsPageComponent, data: { title: 'Paiements' } },
       { path: 'currency', component: AdminCurrencyPageComponent, data: { title: 'Devises et change' } },
+      { path: 'corridors', component: AdminCorridorsPageComponent, data: { title: 'Corridors de transfert' } },
       { path: 'fees', component: AdminFeesPageComponent, data: { title: 'Frais et commissions' } },
       { path: 'compliance', component: AdminCompliancePageComponent, data: { title: 'Conformité / KYC' } },
       { path: 'reports', component: AdminReportsPageComponent, data: { title: 'Rapports' } },

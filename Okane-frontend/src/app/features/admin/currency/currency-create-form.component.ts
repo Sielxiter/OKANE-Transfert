@@ -24,7 +24,6 @@ import {
 } from './admin-currency.api';
 
 interface CreateCurrencyPayload {
-	code: string;
 	name: string;
 	symbol: string;
 	mainCountry: string;
@@ -40,33 +39,24 @@ interface CreateCurrencyPayload {
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<form [formGroup]="form" (ngSubmit)="submit()" novalidate class="flex flex-col gap-4">
-			<div class="grid gap-3 sm:grid-cols-2">
-				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-					Code devise
-					<input
-						hlmInput
-						type="text"
-						formControlName="code"
-						maxlength="10"
-						placeholder="MAD, EUR, USD…"
-						class="uppercase"
-					/>
-					@if (showError('code')) {
-						<span class="text-xs text-destructive">{{ fieldError('code') }}</span>
-					}
-				</label>
-				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-					Symbole
-					<input hlmInput type="text" formControlName="symbol" maxlength="10" placeholder="DH, €, $" />
-					@if (showError('symbol')) {
-						<span class="text-xs text-destructive">{{ fieldError('symbol') }}</span>
-					}
-				</label>
-			</div>
+			<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+				Symbole de devise
+				<input
+					hlmInput
+					type="text"
+					formControlName="symbol"
+					maxlength="10"
+					placeholder="MAD, EUR, USD, €"
+					class="uppercase"
+				/>
+				@if (showError('symbol')) {
+					<span class="text-xs text-destructive">{{ fieldError('symbol') }}</span>
+				}
+			</label>
 
 			<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 				Nom devise
-				<input hlmInput type="text" formControlName="name" placeholder="Dirham marocain, Euro…" />
+				<input hlmInput type="text" formControlName="name" placeholder="Dirham marocain, Euro..." />
 				@if (showError('name')) {
 					<span class="text-xs text-destructive">{{ fieldError('name') }}</span>
 				}
@@ -75,7 +65,7 @@ interface CreateCurrencyPayload {
 			<div class="grid gap-3 sm:grid-cols-2">
 				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 					Pays principal
-					<input hlmInput type="text" formControlName="mainCountry" placeholder="Maroc, Union européenne…" />
+					<input hlmInput type="text" formControlName="mainCountry" placeholder="Maroc, Union europeenne..." />
 					@if (showError('mainCountry')) {
 						<span class="text-xs text-destructive">{{ fieldError('mainCountry') }}</span>
 					}
@@ -122,7 +112,7 @@ interface CreateCurrencyPayload {
 					@if (submitting()) {
 						<ng-icon name="lucideLoaderCircle" class="animate-spin" />
 					}
-					Créer la devise
+					Creer la devise
 				</button>
 			</div>
 		</form>
@@ -140,7 +130,6 @@ export class CurrencyCreateFormComponent {
 	protected readonly serverError = signal<string | null>(null);
 
 	protected readonly form = this._fb.group({
-		code: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(10), Validators.pattern(/^[A-Za-z]+$/)]],
 		name: ['', [Validators.required, Validators.maxLength(100)]],
 		symbol: ['', [Validators.required, Validators.maxLength(10)]],
 		mainCountry: ['', [Validators.required, Validators.maxLength(100)]],
@@ -158,16 +147,15 @@ export class CurrencyCreateFormComponent {
 		if (!control || !control.errors) return '';
 		const errors: ValidationErrors = control.errors;
 		if (errors['required']) return 'Champ obligatoire.';
-		if (errors['min']) return 'La valeur doit être positive.';
+		if (errors['min']) return 'La valeur doit etre positive.';
 		if (errors['minlength']) {
 			const required = errors['minlength'].requiredLength as number;
-			return `Au moins ${required} caractères.`;
+			return `Au moins ${required} caracteres.`;
 		}
 		if (errors['maxlength']) {
 			const max = errors['maxlength'].requiredLength as number;
-			return `Maximum ${max} caractères.`;
+			return `Maximum ${max} caracteres.`;
 		}
-		if (errors['pattern']) return 'Lettres uniquement.';
 		return 'Valeur invalide.';
 	}
 
@@ -178,7 +166,6 @@ export class CurrencyCreateFormComponent {
 
 		const value = this.form.getRawValue();
 		const payload: CreateCurrencyPayload = {
-			code: (value.code ?? '').trim().toUpperCase(),
 			name: (value.name ?? '').trim(),
 			symbol: (value.symbol ?? '').trim(),
 			mainCountry: (value.mainCountry ?? '').trim(),
@@ -191,7 +178,6 @@ export class CurrencyCreateFormComponent {
 			next: (currency) => {
 				this.submitting.set(false);
 				this.form.reset({
-					code: '',
 					name: '',
 					symbol: '',
 					mainCountry: '',
@@ -209,7 +195,7 @@ export class CurrencyCreateFormComponent {
 	}
 
 	private extractMessage(err: unknown): string {
-		const fallback = "La création a échoué. Vérifiez les champs et réessayez.";
+		const fallback = 'La creation a echoue. Verifiez les champs et reessayez.';
 		if (typeof err === 'object' && err !== null) {
 			const error = err as { error?: { message?: string }; message?: string };
 			return error.error?.message ?? error.message ?? fallback;

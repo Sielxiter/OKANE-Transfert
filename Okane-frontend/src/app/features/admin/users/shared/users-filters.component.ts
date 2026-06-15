@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSearch } from '@ng-icons/lucide';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import type { SelectOption } from './user-status.types';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
+import { I18nService } from '../../../../shared/i18n/i18n.service';
 
 export interface FilterDefinition {
 	key: string;
@@ -15,7 +17,7 @@ export interface FilterDefinition {
 @Component({
 	selector: 'okane-users-filters',
 	standalone: true,
-	imports: [FormsModule, NgIcon, HlmInputImports],
+	imports: [FormsModule, NgIcon, HlmInputImports, I18nPipe],
 	providers: [provideIcons({ lucideSearch })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -25,22 +27,26 @@ export interface FilterDefinition {
 			<div class="relative w-full lg:max-w-sm">
 				<ng-icon
 					name="lucideSearch"
-					class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground"
+					class="pointer-events-none absolute top-1/2 -translate-y-1/2 text-base text-muted-foreground"
+					[class.left-3]="!i18n.isRtl()"
+					[class.right-3]="i18n.isRtl()"
 				/>
 				<input
 					hlmInput
 					type="search"
 					[ngModel]="searchValue()"
 					(ngModelChange)="searchChange.emit($event)"
-					[placeholder]="searchPlaceholder()"
+					[placeholder]="searchPlaceholder() | okaneI18n"
 					class="pl-9"
+					[class.pl-9]="!i18n.isRtl()"
+					[class.pr-9]="i18n.isRtl()"
 				/>
 			</div>
 
 			<div class="flex flex-wrap items-center gap-2">
 				@for (filter of filters(); track filter.key) {
 					<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-						<span class="hidden md:inline">{{ filter.label }}</span>
+						<span class="hidden md:inline">{{ filter.label | okaneI18n }}</span>
 						<select
 							class="h-9 min-w-[10rem] rounded-md border border-input bg-transparent px-2.5 text-sm text-foreground shadow-xs transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 							[ngModel]="filter.value"
@@ -57,6 +63,7 @@ export interface FilterDefinition {
 	`,
 })
 export class UsersFiltersComponent {
+	public readonly i18n = inject(I18nService);
 	public readonly searchPlaceholder = input<string>('Rechercher...');
 	public readonly searchValue = input<string>('');
 	public readonly filters = input<FilterDefinition[]>([]);

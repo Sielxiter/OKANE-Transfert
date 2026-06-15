@@ -24,6 +24,7 @@ export class AgentDashboardService {
 			telephoneBeneficiaire: '+221771234567',
 			montant: 1500,
 			montantFrais: 35,
+			commissionAgence: 14,
 			statut: 'PENDING',
 			creeLe: '2026-05-22T09:12:00Z',
 			devise: this._currency,
@@ -37,6 +38,7 @@ export class AgentDashboardService {
 			telephoneBeneficiaire: '+221781234999',
 			montant: 3200,
 			montantFrais: 60,
+			commissionAgence: 25,
 			statut: 'PAID',
 			creeLe: '2026-05-22T08:45:00Z',
 			devise: this._currency,
@@ -50,6 +52,7 @@ export class AgentDashboardService {
 			telephoneBeneficiaire: '+221701112233',
 			montant: 500,
 			montantFrais: 15,
+			commissionAgence: 5,
 			statut: 'EXPIRED',
 			creeLe: '2026-05-21T15:35:00Z',
 			devise: this._currency,
@@ -63,6 +66,7 @@ export class AgentDashboardService {
 			telephoneBeneficiaire: '+221762223333',
 			montant: 4200,
 			montantFrais: 75,
+			commissionAgence: 30,
 			statut: 'CANCELLED',
 			creeLe: '2026-05-21T12:20:00Z',
 			devise: this._currency,
@@ -76,6 +80,7 @@ export class AgentDashboardService {
 			telephoneBeneficiaire: '+221775550001',
 			montant: 980,
 			montantFrais: 25,
+			commissionAgence: 10,
 			statut: 'PENDING',
 			creeLe: '2026-05-22T10:05:00Z',
 			devise: this._currency,
@@ -181,6 +186,10 @@ export class AgentDashboardService {
 			transfertsJour: 18,
 			paiementsJour: 11,
 			transfertsEnAttente: this._transfers.filter((transfer) => transfer.statut === 'PENDING').length,
+			paiementsEnAttente: this._transfers.filter((transfer) => transfer.statut === 'PENDING').length,
+			revenus: this._transfers
+				.filter((transfer) => transfer.statut === 'PAID')
+				.reduce((total, transfer) => total + (transfer.commissionAgence ?? 0), 0),
 			devise: this._currency,
 		});
 	}

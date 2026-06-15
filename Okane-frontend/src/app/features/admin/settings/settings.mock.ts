@@ -1,3 +1,4 @@
+import type { LocaleCode } from '../../../shared/i18n/i18n.translations';
 export interface AdminProfile {
 	fullName: string;
 	email: string;
@@ -74,26 +75,26 @@ export const NOTIFICATION_TOGGLES_MOCK: SettingToggle[] = [
 	},
 	{
 		key: 'system',
-		label: 'Notifications système',
-		description: 'Notifications dans l\u2019interface pour les événements système.',
+		label: 'Notifications systÃ¨me',
+		description: 'Notifications dans l\u2019interface pour les Ã©vÃ©nements systÃ¨me.',
 		value: true,
 	},
 	{
 		key: 'compliance',
-		label: 'Alertes conformité',
-		description: 'Alertes KYC, AML et déclenchements blacklist.',
+		label: 'Alertes conformitÃ©',
+		description: 'Alertes KYC, AML et dÃ©clenchements blacklist.',
 		value: true,
 	},
 	{
 		key: 'payments',
 		label: 'Alertes paiements',
-		description: 'Notifications des paiements bloqués ou échoués.',
+		description: 'Notifications des paiements bloquÃ©s ou Ã©chouÃ©s.',
 		value: false,
 	},
 	{
 		key: 'suspicious',
 		label: 'Alertes transferts suspects',
-		description: 'Notifications immédiates sur transferts à risque élevé/critique.',
+		description: 'Notifications immÃ©diates sur transferts Ã  risque Ã©levÃ©/critique.',
 		value: true,
 	},
 ];
@@ -101,19 +102,19 @@ export const NOTIFICATION_TOGGLES_MOCK: SettingToggle[] = [
 export const SECURITY_TOGGLES_MOCK: SettingToggle[] = [
 	{
 		key: 'twoFa',
-		label: 'Authentification à deux facteurs',
-		description: 'Code OTP à la connexion sur appareil non reconnu.',
+		label: 'Authentification Ã  deux facteurs',
+		description: 'Code OTP Ã  la connexion sur appareil non reconnu.',
 		value: true,
 	},
 	{
 		key: 'securityAlerts',
-		label: 'Alertes sécurité',
-		description: 'Recevoir une alerte à chaque connexion ou tentative suspecte.',
+		label: 'Alertes sÃ©curitÃ©',
+		description: 'Recevoir une alerte Ã  chaque connexion ou tentative suspecte.',
 		value: true,
 	},
 ];
 
-export type LanguageCode = 'FR' | 'EN' | 'AR';
+export type LanguageCode = LocaleCode;
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type DefaultCurrency = 'MAD' | 'EUR' | 'USD';
 
@@ -125,28 +126,28 @@ export interface AdminPreferences {
 }
 
 export const ADMIN_PREFERENCES_MOCK: AdminPreferences = {
-	language: 'FR',
+	language: 'fr',
 	theme: 'system',
 	currency: 'MAD',
 	timezone: 'Africa/Casablanca',
 };
 
 export const SUPPORTED_LANGUAGES: { value: LanguageCode; label: string }[] = [
-	{ value: 'FR', label: 'Français' },
-	{ value: 'EN', label: 'English' },
-	{ value: 'AR', label: 'العربية' },
+	{ value: 'fr', label: 'Français' },
+	{ value: 'en', label: 'English' },
+	{ value: 'ar', label: 'العربية' },
 ];
 
 export const SUPPORTED_THEMES: { value: ThemeMode; label: string }[] = [
-	{ value: 'system', label: 'Système' },
+	{ value: 'system', label: 'SystÃ¨me' },
 	{ value: 'light', label: 'Clair' },
 	{ value: 'dark', label: 'Sombre' },
 ];
 
 export const SUPPORTED_CURRENCIES: { value: DefaultCurrency; label: string }[] = [
-	{ value: 'MAD', label: 'MAD — Dirham marocain' },
-	{ value: 'EUR', label: 'EUR — Euro' },
-	{ value: 'USD', label: 'USD — Dollar américain' },
+	{ value: 'MAD', label: 'MAD â€” Dirham marocain' },
+	{ value: 'EUR', label: 'EUR â€” Euro' },
+	{ value: 'USD', label: 'USD â€” Dollar amÃ©ricain' },
 ];
 
 export const SUPPORTED_TIMEZONES: string[] = [
@@ -170,16 +171,16 @@ export interface SystemSetting {
 export const SYSTEM_SETTINGS_MOCK: SystemSetting[] = [
 	{
 		key: 'access_token_ttl',
-		label: 'Durée du jeton d\u2019accès',
-		description: 'Validité d\u2019un access token JWT.',
+		label: 'DurÃ©e du jeton d\u2019accÃ¨s',
+		description: 'ValiditÃ© d\u2019un access token JWT.',
 		value: '1 heure',
 		icon: 'lucideClock',
 		editable: false,
 	},
 	{
 		key: 'refresh_token_ttl',
-		label: 'Durée du refresh token',
-		description: 'Validité d\u2019un refresh token JWT.',
+		label: 'DurÃ©e du refresh token',
+		description: 'ValiditÃ© d\u2019un refresh token JWT.',
 		value: '7 jours',
 		icon: 'lucideClock',
 		editable: false,
@@ -187,7 +188,7 @@ export const SYSTEM_SETTINGS_MOCK: SystemSetting[] = [
 	{
 		key: 'login_attempts',
 		label: 'Tentatives de connexion max',
-		description: 'Nombre max d\u2019échecs avant verrouillage temporaire.',
+		description: 'Nombre max d\u2019Ã©checs avant verrouillage temporaire.',
 		value: '5 / 10 min',
 		icon: 'lucideShieldAlert',
 		editable: false,
@@ -195,7 +196,7 @@ export const SYSTEM_SETTINGS_MOCK: SystemSetting[] = [
 	{
 		key: 'bcrypt_strength',
 		label: 'Force BCrypt',
-		description: 'Coût de hachage utilisé pour les mots de passe.',
+		description: 'CoÃ»t de hachage utilisÃ© pour les mots de passe.',
 		value: '12',
 		icon: 'lucideKeyRound',
 		editable: false,

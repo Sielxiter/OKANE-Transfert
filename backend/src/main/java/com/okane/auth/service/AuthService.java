@@ -2,6 +2,8 @@ package com.okane.auth.service;
 
 import com.okane.agency.entity.AgencyUser;
 import com.okane.agency.repository.AgencyUserRepository;
+import com.okane.centralagency.entity.CentralAgency;
+import com.okane.centralagency.repository.CentralAgencyRepository;
 import com.okane.auth.dto.AgencyResponse;
 import com.okane.auth.dto.AuthResponse;
 import com.okane.auth.dto.ChangePasswordRequest;
@@ -39,6 +41,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AgencyUserRepository agencyUserRepository;
+    private final CentralAgencyRepository centralAgencyRepository;
     private final LoginRateLimitService loginRateLimitService;
     private final AuthAuditService authAuditService;
 
@@ -49,6 +52,7 @@ public class AuthService {
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
             AgencyUserRepository agencyUserRepository,
+            CentralAgencyRepository centralAgencyRepository,
             LoginRateLimitService loginRateLimitService,
             AuthAuditService authAuditService
     ) {
@@ -58,6 +62,7 @@ public class AuthService {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.agencyUserRepository = agencyUserRepository;
+        this.centralAgencyRepository = centralAgencyRepository;
         this.loginRateLimitService = loginRateLimitService;
         this.authAuditService = authAuditService;
     }
@@ -204,13 +209,24 @@ public class AuthService {
 
     private UserResponse toUserResponse(User user) {
         AgencyResponse agencyResponse = null;
-        AgencyUser agencyUser = agencyUserRepository.findFirstByUser_IdAndActiveTrue(user.getId()).orElse(null);
-        if (agencyUser != null && agencyUser.getAgency() != null) {
-            agencyResponse = new AgencyResponse(
-                    agencyUser.getAgency().getId(),
-                    agencyUser.getAgency().getName(),
-                    agencyUser.getAgency().getCode()
-            );
+        if (user.getRole() != null && "ROLE_MANAGER".equals(user.getRole().getName())) {
+            CentralAgency centralAgency = centralAgencyRepository.findByManager_Id(user.getId()).orElse(null);
+            if (centralAgency != null) {
+                agencyResponse = new AgencyResponse(
+                        centralAgency.getId(),
+                        centralAgency.getName(),
+                        centralAgency.getCode()
+                );
+            }
+        } else {
+            AgencyUser agencyUser = agencyUserRepository.findFirstByUser_IdAndActiveTrue(user.getId()).orElse(null);
+            if (agencyUser != null && agencyUser.getAgency() != null) {
+                agencyResponse = new AgencyResponse(
+                        agencyUser.getAgency().getId(),
+                        agencyUser.getAgency().getName(),
+                        agencyUser.getAgency().getCode()
+                );
+            }
         }
 
         return new UserResponse(

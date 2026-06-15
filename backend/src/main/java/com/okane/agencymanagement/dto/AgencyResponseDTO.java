@@ -15,9 +15,12 @@ public record AgencyResponseDTO(
         String email,
         BigDecimal dailyLimit,
         AgencyStatus status,
+        String agencyType,
         Long managerId,
         String managerName,
-        long agentsCount,
+        Long centralAgencyId,
+        String centralAgencyName,
+        long relatedCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

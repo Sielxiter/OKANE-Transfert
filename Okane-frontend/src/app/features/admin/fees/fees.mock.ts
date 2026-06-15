@@ -28,11 +28,11 @@ export interface CountryRef {
 }
 
 export const FEE_SOURCE_COUNTRIES: CountryRef[] = [
-	{ code: 'MA', label: 'Maroc' },
-	{ code: 'FR', label: 'France' },
-	{ code: 'ES', label: 'Espagne' },
-	{ code: 'SN', label: 'Sénégal' },
-	{ code: 'CI', label: "Côte d'Ivoire" },
+	{ code: 'MAR', label: 'Maroc' },
+	{ code: 'FRA', label: 'France' },
+	{ code: 'ESP', label: 'Espagne' },
+	{ code: 'SEN', label: 'Sénégal' },
+	{ code: 'CIV', label: "Côte d'Ivoire" },
 ];
 
 export const FEE_DEST_COUNTRIES: CountryRef[] = FEE_SOURCE_COUNTRIES;

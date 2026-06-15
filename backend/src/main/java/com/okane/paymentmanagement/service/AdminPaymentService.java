@@ -170,7 +170,7 @@ public class AdminPaymentService {
             if (filter.currency() != null && !filter.currency().isBlank()) {
                 Join<Payout, Transfer> transferJoin = root.join("transfer");
                 Join<Transfer, Currency> currencyJoin = transferJoin.join("currency");
-                predicates.add(cb.equal(cb.upper(currencyJoin.get("code")),
+                predicates.add(cb.equal(cb.upper(currencyJoin.get("symbol")),
                         filter.currency().trim().toUpperCase(Locale.ROOT)));
             }
             if (filter.agencyId() != null) {
@@ -247,7 +247,7 @@ public class AdminPaymentService {
                 fullName(beneficiaryUser),
                 payout.getPaidAmount(),
                 transfer != null && transfer.getCurrency() != null
-                        ? transfer.getCurrency().getCode()
+                        ? transfer.getCurrency().getSymbol()
                         : null,
                 agency != null ? agency.getId() : null,
                 agency != null ? agency.getCode() : null,
@@ -274,7 +274,7 @@ public class AdminPaymentService {
                 fullName(beneficiaryUser),
                 payout.getPaidAmount(),
                 transfer != null && transfer.getCurrency() != null
-                        ? transfer.getCurrency().getCode()
+                        ? transfer.getCurrency().getSymbol()
                         : null,
                 agency != null ? agency.getName() : null,
                 fullName(agent),

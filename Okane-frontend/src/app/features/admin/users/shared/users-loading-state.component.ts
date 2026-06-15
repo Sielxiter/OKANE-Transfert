@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideLoaderCircle, lucideTriangleAlert } from '@ng-icons/lucide';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
 
 @Component({
 	selector: 'okane-users-loading-state',
 	standalone: true,
-	imports: [NgIcon],
+	imports: [NgIcon, I18nPipe],
 	providers: [provideIcons({ lucideLoaderCircle, lucideTriangleAlert })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -17,7 +18,7 @@ import { lucideLoaderCircle, lucideTriangleAlert } from '@ng-icons/lucide';
 					<ng-icon name="lucideTriangleAlert" class="text-xl" />
 				</div>
 				<div class="max-w-sm space-y-1">
-					<p class="text-sm font-medium text-foreground">Impossible de charger les données</p>
+					<p class="text-sm font-medium text-foreground">{{ 'Impossible de charger les données' | okaneI18n }}</p>
 					<p class="text-xs text-muted-foreground">{{ error() }}</p>
 				</div>
 			</div>
@@ -28,7 +29,7 @@ import { lucideLoaderCircle, lucideTriangleAlert } from '@ng-icons/lucide';
 				>
 					<ng-icon name="lucideLoaderCircle" class="animate-spin text-xl" />
 				</div>
-				<p class="text-xs text-muted-foreground">{{ message() }}</p>
+				<p class="text-xs text-muted-foreground">{{ message() | okaneI18n }}</p>
 			</div>
 		}
 	`,

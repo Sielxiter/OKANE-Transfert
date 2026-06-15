@@ -24,6 +24,9 @@ public class Country {
     @Column(name = "nom", nullable = false, length = 100)
     private String name;
 
+    @Column(name = "indicatif_telephone", length = 20)
+    private String phoneCode;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "devise_id", nullable = false)
     private Currency currency;
@@ -62,6 +65,14 @@ public class Country {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getPhoneCode() {
+        return phoneCode;
+    }
+
+    public void setPhoneCode(String phoneCode) {
+        this.phoneCode = phoneCode;
     }
 
     public Currency getCurrency() {

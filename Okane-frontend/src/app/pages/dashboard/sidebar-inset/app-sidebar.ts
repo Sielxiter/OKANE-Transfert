@@ -9,6 +9,7 @@ import { NavMain } from '../shared/sidebar/nav-main';
 import { NavProjects } from '../shared/sidebar/nav-projects';
 import { NavSecondary } from '../shared/sidebar/nav-secondary';
 import { NavUser } from '../shared/sidebar/nav-user';
+import { I18nService } from '../../../shared/i18n/i18n.service';
 
 @Component({
 	selector: 'spartan-app-sidebar-inset',
@@ -16,7 +17,7 @@ import { NavUser } from '../shared/sidebar/nav-user';
 	providers: [provideIcons({ lucideCommand })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<div hlmSidebarWrapper>
+		<div hlmSidebarWrapper class="flex min-h-svh w-full">
 			<hlm-sidebar variant="inset">
 				<hlm-sidebar-header>
 					<ul hlmSidebarMenu>
@@ -56,6 +57,7 @@ import { NavUser } from '../shared/sidebar/nav-user';
 export class AppSidebarInset {
 	private readonly _router = inject(Router);
 	private readonly _platformId = inject(PLATFORM_ID);
+	public readonly i18n = inject(I18nService);
 	public readonly data = this.buildSidebarData();
 
 	private buildSidebarData() {

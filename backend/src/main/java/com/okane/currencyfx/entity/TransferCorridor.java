@@ -33,6 +33,9 @@ public class TransferCorridor {
     @Column(name = "actif", nullable = false)
     private Boolean active;
 
+    @Column(name = "frais_estimes", nullable = false, precision = 5, scale = 2)
+    private BigDecimal estimatedFees;
+
     @Column(name = "plafond_journalier", precision = 15, scale = 2)
     private BigDecimal dailyLimit;
 
@@ -75,6 +78,14 @@ public class TransferCorridor {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public BigDecimal getEstimatedFees() {
+        return estimatedFees;
+    }
+
+    public void setEstimatedFees(BigDecimal estimatedFees) {
+        this.estimatedFees = estimatedFees;
     }
 
     public BigDecimal getDailyLimit() {

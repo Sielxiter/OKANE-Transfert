@@ -12,23 +12,25 @@ import {
 } from '@ng-icons/lucide';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
+import { I18nService } from '../../../../shared/i18n/i18n.service';
 
 @Component({
 	selector: 'spartan-nav-projects',
-	imports: [HlmSidebarImports, NgIcon, RouterLink, HlmDropdownMenuImports],
+	imports: [HlmSidebarImports, NgIcon, RouterLink, HlmDropdownMenuImports, I18nPipe],
 	providers: [
 		provideIcons({ lucideFrame, lucideChartPie, lucideMap, lucideEllipsis, lucideFolder, lucideShare, lucideTrash2 }),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<hlm-sidebar-group>
-			<div hlmSidebarGroupLabel>Projets</div>
+			<div hlmSidebarGroupLabel>{{ 'Projets' | okaneI18n }}</div>
 			<ul hlmSidebarMenu>
 				@for (project of projects(); track $index) {
 					<li hlmSidebarMenuItem>
 						<a hlmSidebarMenuButton [routerLink]="project.url">
 							<ng-icon [name]="project.icon" />
-							{{ project.name }}
+							{{ project.name | okaneI18n }}
 						</a>
 						<button
 							hlmSidebarMenuAction
@@ -39,14 +41,14 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 							[align]="_menuAlign()"
 						>
 							<ng-icon name="lucideEllipsis" />
-							<span class="sr-only">Plus</span>
+							<span class="sr-only">{{ 'Plus' | okaneI18n }}</span>
 						</button>
 					</li>
 				}
 				<li hlmSidebarMenuItem>
 					<button hlmSidebarMenuButton>
 						<ng-icon name="lucideEllipsis" />
-						Plus
+						{{ 'Plus' | okaneI18n }}
 					</button>
 				</li>
 			</ul>
@@ -55,21 +57,21 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 		<ng-template #menu let-ctx>
 			<hlm-dropdown-menu class="w-48">
 				<hlm-dropdown-menu-group>
-					<hlm-dropdown-menu-label>{{ ctx.project.name }}</hlm-dropdown-menu-label>
+					<hlm-dropdown-menu-label>{{ ctx.project.name | okaneI18n }}</hlm-dropdown-menu-label>
 				</hlm-dropdown-menu-group>
 				<hlm-dropdown-menu-separator />
 				<button hlmDropdownMenuItem>
 					<ng-icon name="lucideFolder" />
-					Voir le projet
+					{{ 'Voir le projet' | okaneI18n }}
 				</button>
 				<button hlmDropdownMenuItem>
 					<ng-icon name="lucideShare" />
-					Partager le projet
+					{{ 'Partager le projet' | okaneI18n }}
 				</button>
 				<hlm-dropdown-menu-separator />
 				<button hlmDropdownMenuItem>
 					<ng-icon name="lucideTrash2" />
-					Supprimer le projet
+					{{ 'Supprimer le projet' | okaneI18n }}
 				</button>
 			</hlm-dropdown-menu>
 		</ng-template>
@@ -77,7 +79,10 @@ import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
 })
 export class NavProjects {
 	private readonly _sidebarService = inject(HlmSidebarService);
-	protected readonly _menuSide = computed(() => (this._sidebarService.isMobile() ? 'bottom' : 'right'));
+	private readonly _i18n = inject(I18nService);
+	protected readonly _menuSide = computed(() =>
+		this._sidebarService.isMobile() ? 'bottom' : this._i18n.isRtl() ? 'left' : 'right',
+	);
 	protected readonly _menuAlign = computed(() => (this._sidebarService.isMobile() ? 'end' : 'start'));
 
 	public readonly projects = input.required<

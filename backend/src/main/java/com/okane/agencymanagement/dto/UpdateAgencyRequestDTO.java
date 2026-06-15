@@ -15,6 +15,8 @@ public record UpdateAgencyRequestDTO(
         @Size(max = 30) String phone,
         @Email @Size(max = 150) String email,
         @NotNull @Positive BigDecimal dailyLimit,
+        String agencyType,
+        Long centralAgencyId,
         Long managerId
 ) {
 }

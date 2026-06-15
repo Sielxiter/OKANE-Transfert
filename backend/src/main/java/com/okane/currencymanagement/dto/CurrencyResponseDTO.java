@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 
 public record CurrencyResponseDTO(
         Long id,
-        String code,
         String name,
         String symbol,
         String mainCountry,

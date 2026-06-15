@@ -4,12 +4,16 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.okane.centralagency.entity.CentralAgency;
 
 @Entity
 @Table(name = "agences")
@@ -48,6 +52,10 @@ public class Agency {
     @Enumerated(EnumType.STRING)
     @Column(name = "statut", length = 30)
     private com.okane.agencymanagement.domain.AgencyStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "agence_centrale_id", nullable = false)
+    private CentralAgency centralAgency;
 
     @Column(name = "cree_le")
     private LocalDateTime createdAt;
@@ -144,6 +152,14 @@ public class Agency {
 
     public void setStatus(com.okane.agencymanagement.domain.AgencyStatus status) {
         this.status = status;
+    }
+
+    public CentralAgency getCentralAgency() {
+        return centralAgency;
+    }
+
+    public void setCentralAgency(CentralAgency centralAgency) {
+        this.centralAgency = centralAgency;
     }
 
     public LocalDateTime getCreatedAt() {

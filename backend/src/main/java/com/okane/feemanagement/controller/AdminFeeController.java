@@ -1,12 +1,11 @@
 package com.okane.feemanagement.controller;
 
-import com.okane.feemanagement.dto.ChangeFeeGridStatusRequestDTO;
-import com.okane.feemanagement.dto.CommissionResponseDTO;
-import com.okane.feemanagement.dto.CreateFeeGridRequestDTO;
-import com.okane.feemanagement.dto.FeeGridResponseDTO;
-import com.okane.feemanagement.dto.FeeSimulationRequestDTO;
-import com.okane.feemanagement.dto.FeeSimulationResponseDTO;
-import com.okane.feemanagement.dto.FeeSummaryDTO;
+import com.okane.feemanagement.dto.CreateTariffLineRequestDTO;
+import com.okane.feemanagement.dto.TariffLineResponseDTO;
+import com.okane.feemanagement.dto.TariffSimulationRequestDTO;
+import com.okane.feemanagement.dto.TariffSimulationResponseDTO;
+import com.okane.feemanagement.dto.TariffSummaryDTO;
+import com.okane.feemanagement.dto.UpdateTariffLineRequestDTO;
 import com.okane.feemanagement.service.AdminFeeService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -14,8 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,66 +34,49 @@ public class AdminFeeController {
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<FeeSummaryDTO> summary() {
+    public ResponseEntity<TariffSummaryDTO> summary() {
         return ResponseEntity.ok(adminFeeService.getSummary());
     }
 
-    @GetMapping("/grids")
-    public ResponseEntity<List<FeeGridResponseDTO>> grids() {
-        return ResponseEntity.ok(adminFeeService.findAllGrids());
+    @GetMapping({"/tariffs", "/grids"})
+    public ResponseEntity<List<TariffLineResponseDTO>> list() {
+        return ResponseEntity.ok(adminFeeService.findAllLines());
     }
 
-    @GetMapping("/grids/{id}")
-    public ResponseEntity<FeeGridResponseDTO> gridById(@PathVariable Long id) {
-        return ResponseEntity.ok(adminFeeService.findGridById(id));
+    @GetMapping({"/tariffs/{id}", "/grids/{id}"})
+    public ResponseEntity<TariffLineResponseDTO> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(adminFeeService.findLineById(id));
     }
 
-    @PostMapping("/grids")
-    public ResponseEntity<FeeGridResponseDTO> createGrid(
-            @Valid @RequestBody CreateFeeGridRequestDTO request,
+    @PostMapping({"/tariffs", "/grids"})
+    public ResponseEntity<TariffLineResponseDTO> create(
+            @Valid @RequestBody CreateTariffLineRequestDTO request,
             Authentication authentication
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(adminFeeService.createGrid(request, authentication));
+                .body(adminFeeService.createLine(request, authentication));
     }
 
-    @PutMapping("/grids/{id}")
-    public ResponseEntity<FeeGridResponseDTO> updateGrid(
+    @PutMapping({"/tariffs/{id}", "/grids/{id}"})
+    public ResponseEntity<TariffLineResponseDTO> update(
             @PathVariable Long id,
-            @Valid @RequestBody CreateFeeGridRequestDTO request,
+            @Valid @RequestBody UpdateTariffLineRequestDTO request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(adminFeeService.updateGrid(id, request, authentication));
+        return ResponseEntity.ok(adminFeeService.updateLine(id, request, authentication));
     }
 
-    @PatchMapping("/grids/{id}/status")
-    public ResponseEntity<FeeGridResponseDTO> changeStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody ChangeFeeGridStatusRequestDTO request,
-            Authentication authentication
-    ) {
-        return ResponseEntity.ok(adminFeeService.changeStatus(id, request, authentication));
-    }
-
-    @PostMapping("/grids/{id}/duplicate")
-    public ResponseEntity<FeeGridResponseDTO> duplicateGrid(
-            @PathVariable Long id,
-            Authentication authentication
-    ) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(adminFeeService.duplicateGrid(id, authentication));
+    @DeleteMapping({"/tariffs/{id}", "/grids/{id}"})
+    public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
+        adminFeeService.deleteLine(id, authentication);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/simulate")
-    public ResponseEntity<FeeSimulationResponseDTO> simulate(
-            @Valid @RequestBody FeeSimulationRequestDTO request,
+    public ResponseEntity<TariffSimulationResponseDTO> simulate(
+            @Valid @RequestBody TariffSimulationRequestDTO request,
             Authentication authentication
     ) {
         return ResponseEntity.ok(adminFeeService.simulate(request, authentication));
-    }
-
-    @GetMapping("/commissions")
-    public ResponseEntity<List<CommissionResponseDTO>> commissions() {
-        return ResponseEntity.ok(adminFeeService.findCommissionsBreakdown());
     }
 }

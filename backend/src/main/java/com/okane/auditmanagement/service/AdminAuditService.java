@@ -26,7 +26,7 @@ public class AdminAuditService {
     /** Entity names that map to sensitive modules. */
     private static final List<String> SENSITIVE_ENTITY_NAMES = Arrays.asList(
             "User", "Agency", "Currency", "ExchangeRate", "FeeGrid", "FeeBracket",
-            "CommissionRule", "GeneratedReport", "AuditLog"
+            "CommissionRule", "TariffLine", "GeneratedReport", "AuditLog"
     );
 
     private final AuditLogRepository auditLogRepository;

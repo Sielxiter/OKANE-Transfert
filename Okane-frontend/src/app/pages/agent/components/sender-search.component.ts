@@ -154,9 +154,11 @@ export class SenderSearchComponent {
 		this.senderSelected.emit(client);
 	}
 
-	protected clearSelection(): void {
+	public clearSelection(): void {
 		this.selected.set(null);
 		this.query.set('');
+		this.results.set([]);
+		this.showDropdown.set(false);
 		this.senderCleared.emit();
 	}
 

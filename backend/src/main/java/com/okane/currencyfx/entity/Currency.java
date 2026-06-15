@@ -15,13 +15,10 @@ public class Currency {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "code", nullable = false, unique = true, length = 10)
-    private String code;
-
     @Column(name = "nom", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "symbole", length = 10)
+    @Column(name = "symbole", nullable = false, unique = true, length = 20)
     private String symbol;
 
     @Column(name = "actif", nullable = false)
@@ -42,14 +39,6 @@ public class Currency {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
     }
 
     public String getName() {

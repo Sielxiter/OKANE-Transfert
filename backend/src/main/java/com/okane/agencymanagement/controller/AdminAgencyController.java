@@ -2,7 +2,6 @@ package com.okane.agencymanagement.controller;
 
 import com.okane.agencymanagement.dto.AgencyResponseDTO;
 import com.okane.agencymanagement.dto.AssignAgentRequestDTO;
-import com.okane.agencymanagement.dto.AssignManagerRequestDTO;
 import com.okane.agencymanagement.dto.ChangeAgencyStatusRequestDTO;
 import com.okane.agencymanagement.dto.CreateAgencyRequestDTO;
 import com.okane.agencymanagement.dto.UpdateAgencyRequestDTO;
@@ -78,15 +77,6 @@ public class AdminAgencyController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(agencyService.changeAgencyStatus(id, request, authentication));
-    }
-
-    @PatchMapping("/{id}/manager")
-    public ResponseEntity<AgencyResponseDTO> assignManager(
-            @PathVariable Long id,
-            @Valid @RequestBody AssignManagerRequestDTO request,
-            Authentication authentication
-    ) {
-        return ResponseEntity.ok(agencyService.assignManager(id, request, authentication));
     }
 
     @PostMapping("/{id}/agents")

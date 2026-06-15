@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" class="dark">
+<html lang="fr" dir="ltr" class="dark">
 <head>
   <meta charset="utf-8">
   <title>Okane Transfer</title>
@@ -15,6 +15,22 @@
         document.documentElement.classList.toggle('dark', dark);
       } catch (e) {
         document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+  <script>
+    (function () {
+      try {
+        var key = 'okane-language';
+        var locale = localStorage.getItem(key) || 'fr';
+        if (locale !== 'fr' && locale !== 'en' && locale !== 'ar') {
+          locale = 'fr';
+        }
+        document.documentElement.lang = locale;
+        document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+      } catch (e) {
+        document.documentElement.lang = 'fr';
+        document.documentElement.dir = 'ltr';
       }
     })();
   </script>

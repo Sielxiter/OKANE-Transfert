@@ -4,11 +4,12 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideGalleryVerticalEnd } from '@ng-icons/lucide';
 import { LoginFormComponent } from './login-form.component';
 import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component';
+import { LocaleSwitcherComponent } from '../../shared/i18n/locale-switcher.component';
 
 @Component({
   selector: 'spartan-login-two-column-reactive-form',
   standalone: true,
-  imports: [RouterLink, LoginFormComponent, ThemeToggleComponent, NgIcon],
+  imports: [RouterLink, LoginFormComponent, ThemeToggleComponent, LocaleSwitcherComponent, NgIcon],
   providers: [provideIcons({ lucideGalleryVerticalEnd })],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,7 +26,10 @@ import { ThemeToggleComponent } from '../../shared/theme/theme-toggle.component'
             </div>
             Okane Transfer
           </a>
-          <okane-theme-toggle />
+          <div class="flex items-center gap-2">
+            <okane-locale-switcher />
+            <okane-theme-toggle />
+          </div>
         </div>
         <div class="flex flex-1 items-center justify-center">
           <div class="w-full max-w-xs">

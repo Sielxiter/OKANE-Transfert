@@ -16,7 +16,6 @@ export interface ApiCurrencySummary {
 
 export interface ApiCurrency {
 	id: number;
-	code: string;
 	name: string;
 	symbol: string | null;
 	mainCountry: string | null;
@@ -62,7 +61,6 @@ export class AdminCurrencyApiService {
 	}
 
 	public createCurrency(payload: {
-		code: string;
 		name: string;
 		symbol: string;
 		mainCountry: string;

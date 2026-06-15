@@ -1,6 +1,7 @@
 import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import type { StatusVariant } from './user-status.types';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
 
 const VARIANT_CLASSES: Record<StatusVariant, string> = {
 	success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
@@ -13,7 +14,7 @@ const VARIANT_CLASSES: Record<StatusVariant, string> = {
 @Component({
 	selector: 'okane-user-status-badge',
 	standalone: true,
-	imports: [NgClass],
+	imports: [NgClass, I18nPipe],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
 		<span
@@ -21,7 +22,7 @@ const VARIANT_CLASSES: Record<StatusVariant, string> = {
 			[ngClass]="classes()"
 		>
 			<span class="h-1.5 w-1.5 rounded-full bg-current opacity-80"></span>
-			{{ label() }}
+			{{ label() | okaneI18n }}
 		</span>
 	`,
 })

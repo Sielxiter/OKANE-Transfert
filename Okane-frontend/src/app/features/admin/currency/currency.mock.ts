@@ -42,7 +42,6 @@ export interface CurrencyKpi {
 
 export const CURRENCY_KPIS: CurrencyKpi[] = [
 	{ key: 'ACTIVE_CCY', label: 'Devises actives', icon: 'lucideCoins', accent: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' },
-	{ key: 'ACTIVE_COR', label: 'Corridors actifs', icon: 'lucideArrowRightLeft', accent: 'bg-primary/10 text-primary' },
 	{ key: 'TODAY_RATES', label: 'Taux MAJ aujourd\u2019hui', icon: 'lucideTrendingUp', accent: 'bg-sky-500/10 text-sky-600 dark:text-sky-300' },
 	{ key: 'SUSPENDED_CCY', label: 'Devises suspendues', icon: 'lucideBan', accent: 'bg-destructive/10 text-destructive' },
 	{ key: 'LAST_SYNC', label: 'Dernière synchro', icon: 'lucideClock', accent: 'bg-secondary/50 text-secondary-foreground' },

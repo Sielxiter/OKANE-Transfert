@@ -1,12 +1,14 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideDownload, lucidePlus } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
+import { I18nService } from '../../../../shared/i18n/i18n.service';
 
 @Component({
 	selector: 'okane-users-page-header',
 	standalone: true,
-	imports: [NgIcon, HlmButtonImports],
+	imports: [NgIcon, HlmButtonImports, I18nPipe],
 	providers: [provideIcons({ lucidePlus, lucideDownload })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -14,15 +16,15 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 			class="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-sm transition-colors md:flex-row md:items-end md:justify-between"
 		>
 			<div class="space-y-1">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{{ eyebrow() }}</p>
-				<h1 class="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{{ title() }}</h1>
-				<p class="text-sm text-muted-foreground">{{ description() }}</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-primary">{{ eyebrow() | okaneI18n }}</p>
+				<h1 class="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{{ title() | okaneI18n }}</h1>
+				<p class="text-sm text-muted-foreground">{{ description() | okaneI18n }}</p>
 			</div>
 
 			<div class="flex flex-wrap items-center gap-2">
 				<button hlmBtn [variant]="actionVariant()" size="sm" type="button" (click)="addClicked.emit()">
 					<ng-icon [name]="actionIcon()" />
-					{{ addLabel() }}
+					{{ addLabel() | okaneI18n }}
 				</button>
 				<ng-content select="[okaneHeaderActions]" />
 			</div>
@@ -30,6 +32,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 	`,
 })
 export class UsersPageHeaderComponent {
+	public readonly i18n = inject(I18nService);
 	public readonly eyebrow = input<string>('Okane Transfer');
 	public readonly title = input.required<string>();
 	public readonly description = input<string>('');

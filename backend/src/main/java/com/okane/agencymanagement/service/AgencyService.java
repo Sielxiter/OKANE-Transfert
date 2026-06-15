@@ -4,10 +4,11 @@ import com.okane.agency.entity.Agency;
 import com.okane.agency.entity.AgencyUser;
 import com.okane.agency.repository.AgencyRepository;
 import com.okane.agency.repository.AgencyUserRepository;
+import com.okane.centralagency.repository.CentralAgencyRepository;
 import com.okane.agencymanagement.domain.AgencyStatus;
+import com.okane.agencymanagement.domain.AgencyType;
 import com.okane.agencymanagement.dto.AgencyResponseDTO;
 import com.okane.agencymanagement.dto.AssignAgentRequestDTO;
-import com.okane.agencymanagement.dto.AssignManagerRequestDTO;
 import com.okane.agencymanagement.dto.ChangeAgencyStatusRequestDTO;
 import com.okane.agencymanagement.dto.CreateAgencyRequestDTO;
 import com.okane.agencymanagement.dto.UpdateAgencyRequestDTO;
@@ -15,13 +16,13 @@ import com.okane.agencymanagement.exception.AgencyCodeAlreadyExistsException;
 import com.okane.agencymanagement.exception.AgencyEmailAlreadyExistsException;
 import com.okane.agencymanagement.exception.AgencyNotFoundException;
 import com.okane.agencymanagement.exception.InvalidAgentException;
-import com.okane.agencymanagement.exception.InvalidManagerException;
 import com.okane.auth.entity.User;
 import com.okane.auth.repository.UserRepository;
 import com.okane.auth.security.OkaneUserPrincipal;
+import com.okane.centralagency.entity.CentralAgency;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Locale;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,22 +30,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AgencyService {
 
-    private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_AGENT = "ROLE_AGENT";
 
     private final AgencyRepository agencyRepository;
     private final AgencyUserRepository agencyUserRepository;
+    private final CentralAgencyRepository centralAgencyRepository;
     private final UserRepository userRepository;
     private final AgencyAuditService auditService;
 
     public AgencyService(
             AgencyRepository agencyRepository,
             AgencyUserRepository agencyUserRepository,
+            CentralAgencyRepository centralAgencyRepository,
             UserRepository userRepository,
             AgencyAuditService auditService
     ) {
         this.agencyRepository = agencyRepository;
         this.agencyUserRepository = agencyUserRepository;
+        this.centralAgencyRepository = centralAgencyRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
     }
@@ -64,15 +67,22 @@ public class AgencyService {
 
     @Transactional
     public AgencyResponseDTO createAgency(CreateAgencyRequestDTO request, Authentication authentication) {
-        String code = request.code().trim();
-        if (agencyRepository.existsByCode(code)) {
+        String code = normalizeCode(request.code());
+        if (existsCode(code)) {
             throw new AgencyCodeAlreadyExistsException(code);
         }
 
-        String email = request.email() == null ? null : request.email().trim();
-        if (email != null && !email.isBlank() && agencyRepository.existsByEmailIgnoreCase(email)) {
+        String email = normalizeEmail(request.email());
+        if (email != null && existsEmail(email)) {
             throw new AgencyEmailAlreadyExistsException(email);
         }
+
+        Long centralAgencyId = request.centralAgencyId();
+        if (centralAgencyId == null) {
+            throw new InvalidAgentException("A central agency is required for a sub-agency");
+        }
+        CentralAgency centralAgency = centralAgencyRepository.findById(centralAgencyId)
+                .orElseThrow(() -> new AgencyNotFoundException(centralAgencyId));
 
         LocalDateTime now = LocalDateTime.now();
         Agency agency = new Agency();
@@ -84,15 +94,12 @@ public class AgencyService {
         agency.setPhone(request.phone());
         agency.setEmail(email);
         agency.setDailyLimit(request.dailyLimit());
+        agency.setCentralAgency(centralAgency);
         agency.setStatus(AgencyStatus.PENDING);
         agency.setActive(false);
         agency.setCreatedAt(now);
         agency.setUpdatedAt(now);
         Agency saved = agencyRepository.save(agency);
-
-        if (request.managerId() != null) {
-            assignManagerInternal(saved, request.managerId());
-        }
 
         auditService.logAgencyCreated(currentUserOrNull(authentication), saved);
         return toResponse(saved);
@@ -102,11 +109,17 @@ public class AgencyService {
     public AgencyResponseDTO updateAgency(Long id, UpdateAgencyRequestDTO request, Authentication authentication) {
         Agency agency = agencyRepository.findById(id).orElseThrow(() -> new AgencyNotFoundException(id));
 
-        String email = request.email() == null ? null : request.email().trim();
-        if (email != null && !email.isBlank()
+        String email = normalizeEmail(request.email());
+        if (email != null
                 && (agency.getEmail() == null || !email.equalsIgnoreCase(agency.getEmail()))
-                && agencyRepository.existsByEmailIgnoreCase(email)) {
+                && existsEmail(email)) {
             throw new AgencyEmailAlreadyExistsException(email);
+        }
+
+        if (request.centralAgencyId() != null) {
+            CentralAgency centralAgency = centralAgencyRepository.findById(request.centralAgencyId())
+                    .orElseThrow(() -> new AgencyNotFoundException(request.centralAgencyId()));
+            agency.setCentralAgency(centralAgency);
         }
 
         agency.setName(request.name().trim());
@@ -118,10 +131,6 @@ public class AgencyService {
         agency.setDailyLimit(request.dailyLimit());
         agency.setUpdatedAt(LocalDateTime.now());
         Agency saved = agencyRepository.save(agency);
-
-        if (request.managerId() != null) {
-            assignManagerInternal(saved, request.managerId());
-        }
 
         auditService.logAgencyUpdated(currentUserOrNull(authentication), saved);
         return toResponse(saved);
@@ -143,21 +152,6 @@ public class AgencyService {
     }
 
     @Transactional
-    public AgencyResponseDTO assignManager(
-            Long id,
-            AssignManagerRequestDTO request,
-            Authentication authentication
-    ) {
-        Agency agency = agencyRepository.findById(id).orElseThrow(() -> new AgencyNotFoundException(id));
-        assignManagerInternal(agency, request.managerId());
-        agency.setUpdatedAt(LocalDateTime.now());
-        agencyRepository.save(agency);
-
-        auditService.logManagerAssigned(currentUserOrNull(authentication), agency, request.managerId());
-        return toResponse(agency);
-    }
-
-    @Transactional
     public AgencyResponseDTO assignAgent(
             Long id,
             AssignAgentRequestDTO request,
@@ -171,11 +165,10 @@ public class AgencyService {
             throw new InvalidAgentException("User " + agent.getId() + " is not an agent");
         }
 
-        Optional<AgencyUser> existing = agencyUserRepository.findFirstByUser_IdAndActiveTrue(agent.getId());
+        var existing = agencyUserRepository.findFirstByUser_IdAndActiveTrue(agent.getId());
         if (existing.isPresent()) {
             AgencyUser current = existing.get();
             if (current.getAgency() != null && current.getAgency().getId().equals(agency.getId())) {
-                // Already assigned: idempotent.
                 return toResponse(agency);
             }
             throw new InvalidAgentException(
@@ -222,12 +215,6 @@ public class AgencyService {
         return toResponse(agency);
     }
 
-    /**
-     * Soft delete: switches the agency to {@link AgencyStatus#SUSPENDED} and
-     * flips the legacy {@code active} flag to false. We never hard-delete an
-     * agency in order to preserve referential integrity with audit logs,
-     * transfers, cash sessions, etc.
-     */
     @Transactional
     public AgencyResponseDTO disableAgency(Long id, Authentication authentication) {
         Agency agency = agencyRepository.findById(id).orElseThrow(() -> new AgencyNotFoundException(id));
@@ -237,46 +224,6 @@ public class AgencyService {
 
         auditService.logAgencyDisabled(currentUserOrNull(authentication), saved);
         return toResponse(saved);
-    }
-
-    private void assignManagerInternal(Agency agency, Long managerId) {
-        User manager = userRepository.findById(managerId)
-                .orElseThrow(() -> new InvalidManagerException("Manager not found: " + managerId));
-
-        if (manager.getRole() == null || !ROLE_MANAGER.equals(manager.getRole().getName())) {
-            throw new InvalidManagerException("User " + managerId + " is not a manager");
-        }
-
-        // Deactivate any other active manager already attached to this agency.
-        agencyUserRepository
-                .findFirstByAgency_IdAndUser_Role_NameAndActiveTrue(agency.getId(), ROLE_MANAGER)
-                .ifPresent(existing -> {
-                    if (!existing.getUser().getId().equals(manager.getId())) {
-                        existing.setActive(false);
-                        agencyUserRepository.save(existing);
-                    }
-                });
-
-        // Move the manager away from any other agency they may currently manage.
-        agencyUserRepository.findFirstByUser_IdAndActiveTrue(manager.getId()).ifPresent(existing -> {
-            if (existing.getAgency() != null && !existing.getAgency().getId().equals(agency.getId())) {
-                existing.setActive(false);
-                agencyUserRepository.save(existing);
-            }
-        });
-
-        Optional<AgencyUser> alreadyHere = agencyUserRepository
-                .findFirstByAgency_IdAndUser_IdAndActiveTrue(agency.getId(), manager.getId());
-        if (alreadyHere.isPresent()) {
-            return;
-        }
-
-        AgencyUser membership = new AgencyUser();
-        membership.setAgency(agency);
-        membership.setUser(manager);
-        membership.setActive(true);
-        membership.setAssignedAt(LocalDateTime.now());
-        agencyUserRepository.save(membership);
     }
 
     private void applyStatus(Agency agency, AgencyStatus status) {
@@ -290,18 +237,9 @@ public class AgencyService {
             status = Boolean.TRUE.equals(agency.getActive()) ? AgencyStatus.ACTIVE : AgencyStatus.PENDING;
         }
 
-        AgencyUser managerLink = agencyUserRepository
-                .findFirstByAgency_IdAndUser_Role_NameAndActiveTrue(agency.getId(), ROLE_MANAGER)
-                .orElse(null);
+        CentralAgency centralAgency = agency.getCentralAgency();
         long agentsCount = agencyUserRepository
                 .countByAgency_IdAndUser_Role_NameAndActiveTrue(agency.getId(), ROLE_AGENT);
-
-        Long managerId = managerLink != null && managerLink.getUser() != null
-                ? managerLink.getUser().getId()
-                : null;
-        String managerName = managerLink != null && managerLink.getUser() != null
-                ? buildFullName(managerLink.getUser())
-                : null;
 
         return new AgencyResponseDTO(
                 agency.getId(),
@@ -314,18 +252,35 @@ public class AgencyService {
                 agency.getEmail(),
                 agency.getDailyLimit(),
                 status,
-                managerId,
-                managerName,
+                AgencyType.SUB.name(),
+                null,
+                null,
+                centralAgency != null ? centralAgency.getId() : null,
+                centralAgency != null ? centralAgency.getName() : null,
                 agentsCount,
                 agency.getCreatedAt(),
                 agency.getUpdatedAt()
         );
     }
 
-    private String buildFullName(User user) {
-        String first = user.getFirstName() == null ? "" : user.getFirstName();
-        String last = user.getLastName() == null ? "" : user.getLastName();
-        return (first + " " + last).trim();
+    private boolean existsCode(String code) {
+        return agencyRepository.existsByCode(code) || centralAgencyRepository.existsByCode(code);
+    }
+
+    private boolean existsEmail(String email) {
+        return agencyRepository.existsByEmailIgnoreCase(email) || centralAgencyRepository.existsByEmailIgnoreCase(email);
+    }
+
+    private String normalizeCode(String value) {
+        return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeEmail(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isBlank() ? null : normalized;
     }
 
     private User currentUserOrNull(Authentication authentication) {
@@ -338,7 +293,6 @@ public class AgencyService {
                 return null;
             }
             User managed = userRepository.findById(user.getId()).orElse(null);
-            // Eagerly initialize Role to avoid LazyInitializationException in audit
             if (managed != null && managed.getRole() != null) {
                 managed.getRole().getName();
             }

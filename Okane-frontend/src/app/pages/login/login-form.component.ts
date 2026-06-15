@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+﻿import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { finalize } from 'rxjs';
+import { I18nPipe } from '../../shared/i18n/i18n.pipe';
 
 type LoginResponse = {
   accessToken: string;
@@ -33,36 +34,36 @@ type LoginResponse = {
 @Component({
   selector: 'spartan-two-column-login-form',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, HlmFieldImports, HlmInputImports, HlmButtonImports, NgIcon],
+  imports: [ReactiveFormsModule, RouterLink, HlmFieldImports, HlmInputImports, HlmButtonImports, NgIcon, I18nPipe],
   providers: [provideIcons({ remixGithubFill, remixLoader4Line })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form [formGroup]="form" (ngSubmit)="login()">
       <hlm-field-group>
         <div class="flex flex-col items-center gap-1 text-center">
-          <h1 class="text-2xl font-bold">Connexion à votre compte</h1>
+          <h1 class="text-2xl font-bold">{{ 'Connexion à votre compte' | okaneI18n }}</h1>
           <p class="text-muted-foreground text-sm text-balance">
-            Entrez votre courriel pour accéder à Okane Transfer
+            {{ 'Entrez votre courriel pour accéder à Okane Transfer' | okaneI18n }}
           </p>
         </div>
 
         <hlm-field>
-          <label hlmFieldLabel for="email">Courriel</label>
+          <label hlmFieldLabel for="email">{{ 'Courriel' | okaneI18n }}</label>
           <input hlmInput type="email" id="email" placeholder="m@example.com" formControlName="email" />
-          <hlm-field-error validator="required">Le courriel est obligatoire.</hlm-field-error>
-          <hlm-field-error validator="email">Entrez une adresse courriel valide.</hlm-field-error>
+          <hlm-field-error validator="required">{{ 'Le courriel est obligatoire.' | okaneI18n }}</hlm-field-error>
+          <hlm-field-error validator="email">{{ 'Entrez une adresse courriel valide.' | okaneI18n }}</hlm-field-error>
         </hlm-field>
 
         <hlm-field>
           <div class="flex items-center">
-            <label hlmFieldLabel for="password">Mot de passe</label>
+            <label hlmFieldLabel for="password">{{ 'Mot de passe' | okaneI18n }}</label>
             <a hlmFieldDescription class="ml-auto text-sm underline-offset-4 hover:underline" routerLink=".">
-              Mot de passe oublié ?
+              {{ 'Mot de passe oublié ?' | okaneI18n }}
             </a>
           </div>
           <input hlmInput type="password" id="password" formControlName="password" />
-          <hlm-field-error validator="required">Le mot de passe est obligatoire.</hlm-field-error>
-          <hlm-field-error validator="minlength">Le mot de passe doit contenir au moins 8 caractères.</hlm-field-error>
+          <hlm-field-error validator="required">{{ 'Le mot de passe est obligatoire.' | okaneI18n }}</hlm-field-error>
+          <hlm-field-error validator="minlength">{{ 'Le mot de passe doit contenir au moins 8 caractères.' | okaneI18n }}</hlm-field-error>
         </hlm-field>
 
         <hlm-field>
@@ -70,23 +71,23 @@ type LoginResponse = {
             @if (isSubmitting) {
               <ng-icon name="remixLoader4Line" class="mr-2 text-xl animate-spin" />
             }
-            {{ isSubmitting ? 'Connexion...' : 'Se connecter' }}
+            {{ isSubmitting ? ('Connexion...' | okaneI18n) : ('Se connecter' | okaneI18n) }}
           </button>
           @if (loginError) {
             <p class="text-destructive text-center text-sm">{{ loginError }}</p>
           }
         </hlm-field>
 
-        <hlm-field-separator>Ou continuer avec</hlm-field-separator>
+        <hlm-field-separator>{{ 'Ou continuer avec' | okaneI18n }}</hlm-field-separator>
 
         <hlm-field>
           <button hlmBtn variant="outline" type="button">
             <ng-icon name="remixGithubFill" class="text-xl" />
-            Connexion avec GitHub
+            {{ 'Connexion avec GitHub' | okaneI18n }}
           </button>
           <p hlmFieldDescription class="text-center">
-            Pas encore de compte ?
-            <a routerLink=".">Créer un compte</a>
+            {{ 'Pas encore de compte ?' | okaneI18n }}
+            <a routerLink=".">{{ 'Créer un compte' | okaneI18n }}</a>
           </p>
         </hlm-field>
       </hlm-field-group>
@@ -126,11 +127,13 @@ export class LoginFormComponent {
 
     this._http
       .post<LoginResponse>(`${this._apiBaseUrl}/login`, payload)
-      .pipe(finalize(() => {
-        this.isSubmitting = false;
-        this.form.enable({ emitEvent: false });
-        this._cdr.markForCheck();
-      }))
+      .pipe(
+        finalize(() => {
+          this.isSubmitting = false;
+          this.form.enable({ emitEvent: false });
+          this._cdr.markForCheck();
+        }),
+      )
       .subscribe({
         next: (response) => {
           localStorage.setItem('okane_access_token', response.accessToken);
@@ -140,7 +143,9 @@ export class LoginFormComponent {
           this._router.navigateByUrl(response.redirectTo || '/dashboard');
         },
         error: (error) => {
-          this.loginError = error?.error?.message ?? 'Connexion échouée. Vérifiez vos identifiants puis réessayez.';
+          this.loginError =
+            error?.error?.message ??
+            'Connexion échouée. Vérifiez vos identifiants puis réessayez.';
           this._cdr.markForCheck();
         },
       });

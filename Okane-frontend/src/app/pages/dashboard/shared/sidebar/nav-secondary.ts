@@ -3,10 +3,11 @@ import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideLifeBuoy, lucideSend } from '@ng-icons/lucide';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
+import { I18nPipe } from '../../../../shared/i18n/i18n.pipe';
 
 @Component({
 	selector: 'spartan-nav-secondary',
-	imports: [HlmSidebarImports, NgIcon, RouterLink],
+	imports: [HlmSidebarImports, NgIcon, RouterLink, I18nPipe],
 	providers: [provideIcons({ lucideLifeBuoy, lucideSend })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -17,7 +18,7 @@ import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 						<li hlmSidebarMenuItem>
 							<a hlmSidebarMenuButton size="sm" [routerLink]="item.url">
 								<ng-icon [name]="item.icon" />
-								{{ item.title }}
+								{{ item.title | okaneI18n }}
 							</a>
 						</li>
 					}
