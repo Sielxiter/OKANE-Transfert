@@ -3,6 +3,7 @@ package com.okane.feescommission.repository;
 import com.okane.feescommission.entity.FeeBracket;
 import java.math.BigDecimal;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
 
 public interface FeeBracketRepository extends JpaRepository<FeeBracket, Long> {
 	boolean existsByFeeGrid_IdAndMinAmountAndMaxAmountAndFeeTypeAndFeeValue(
@@ -12,4 +13,6 @@ public interface FeeBracketRepository extends JpaRepository<FeeBracket, Long> {
 			String feeType,
 			BigDecimal feeValue
 	);
+
+	List<FeeBracket> findByFeeGrid_IdOrderByMinAmountAsc(Long feeGridId);
 }

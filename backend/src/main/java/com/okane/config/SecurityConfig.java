@@ -70,7 +70,8 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/api/auth/login", "POST"),
                                 new AntPathRequestMatcher("/api/auth/refresh", "POST"),
                                 new AntPathRequestMatcher("/api/auth/logout", "POST"),
-                                new AntPathRequestMatcher("/error")
+                                new AntPathRequestMatcher("/error"),
+                                new AntPathRequestMatcher("/webhook", "POST")
                         ).permitAll()
                         .requestMatchers(
                                 new AntPathRequestMatcher("/swagger-ui/**"),

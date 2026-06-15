@@ -53,4 +53,6 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
             LocalDateTime start,
             LocalDateTime end
     );
+
+    Optional<Transfer> findByReferenceCodeIgnoreCase(String referenceCode);
 }
