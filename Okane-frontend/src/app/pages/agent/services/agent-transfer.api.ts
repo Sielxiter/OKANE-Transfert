@@ -10,6 +10,8 @@ export interface AgentTransferQuoteRequest {
 	amount: number;
 	senderCountryCode: string;
 	beneficiaryCountryCode: string;
+	sourceCurrencyCode: string;
+	destinationCurrencyCode: string;
 }
 
 export interface AgentTransferQuoteResponse {
@@ -20,6 +22,7 @@ export interface AgentTransferQuoteResponse {
 	finalTransferFee: number;
 	agencyCommission: number;
 	centralCommission: number;
+	exchangeRate: number;
 	matchedLineId: number | null;
 	corridorId: number | null;
 }
@@ -36,7 +39,6 @@ export interface CreateAgentTransferRequest {
 	sourceCurrencyCode: string;
 	destinationCurrencyCode: string;
 	amount: number;
-	exchangeRate?: number | null;
 	paymentMethod?: string | null;
 }
 

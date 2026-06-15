@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmInputImports } from '@spartan-ng/helm/input';
@@ -164,23 +164,26 @@ type DocType = 'CIN' | 'PASSEPORT';
 										Nationalité
 										<input hlmInput type="text" [(ngModel)]="formNationality" />
 									</label>
-									<okane-country-search-select
-										label="Pays"
-										placeholder="Rechercher par nom ou code"
-										[countries]="countries()"
-										[value]="formCountryCode"
-										(valueChange)="onCountrySelected($event)"
-									/>
+										<okane-country-search-select
+											label="Pays"
+											placeholder="Rechercher par nom ou code"
+											[countries]="countries()"
+											[value]="formCountryCode()"
+											(valueChange)="onCountrySelected($event)"
+										/>
 									<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 										Téléphone
 										<div class="flex h-9 overflow-hidden rounded-md border border-input bg-background">
 											<div class="flex min-w-24 items-center border-r border-input px-3 text-sm text-muted-foreground">
-												{{ phonePrefix() || 'Indicatif' }}
+											{{ phonePrefixLabel() || 'Indicatif' }}
 											</div>
 											<input
 												hlmInput
-												type="tel"
-												[(ngModel)]="formPhone"
+												type="text"
+												inputmode="numeric"
+												maxlength="12"
+												[ngModel]="formPhone"
+												(ngModelChange)="onPhoneInput($event)"
 												placeholder="612345678"
 												class="h-full flex-1 border-0 bg-transparent px-3 shadow-none focus-visible:ring-0"
 											/>
@@ -292,12 +295,13 @@ export class AddSenderModalComponent {
 	protected readonly amlDone = signal<boolean>(false);
 	protected readonly formError = signal<string | null>(null);
 	protected readonly creating = signal<boolean>(false);
+	protected readonly formCountryCode = signal<string>('');
+	protected readonly phonePrefixLabel = computed(() => this.getPhonePrefix(this.formCountryCode()));
 
 	protected formNom = '';
 	protected formPrenom = '';
 	protected formIdentityNumber = '';
 	protected formNationality = '';
-	protected formCountryCode = '';
 	protected formPhone = '';
 
 	protected canRunOcr(): boolean {
@@ -386,12 +390,17 @@ export class AddSenderModalComponent {
 			this.formError.set('Le numéro de pièce est obligatoire.');
 			return;
 		}
-		if (!this.formPhone.trim() && !this.existingClientId()) {
+		const sanitizedPhone = this.sanitizePhone(this.formPhone);
+		if (!sanitizedPhone && !this.existingClientId()) {
 			this.formError.set('Le téléphone est obligatoire.');
 			return;
 		}
-		if (this.formPhone.trim() && !this.formCountryCode.trim()) {
+		if (sanitizedPhone && !this.formCountryCode()) {
 			this.formError.set('Le pays est obligatoire pour composer le téléphone.');
+			return;
+		}
+		if (sanitizedPhone.length > 12) {
+			this.formError.set('Le numéro de téléphone ne peut pas dépasser 12 chiffres.');
 			return;
 		}
 
@@ -409,7 +418,7 @@ export class AddSenderModalComponent {
 					this.amlResult.set(aml);
 					this.amlDone.set(true);
 
-					let kycStatus = 'VERIFIE';
+			let kycStatus = 'VERIFIE';
 					if (aml.riskLevel === 'MEDIUM') {
 						kycStatus = 'A_REVOIR';
 					}
@@ -450,10 +459,11 @@ export class AddSenderModalComponent {
 
 	private performClientSave(kycStatus: string, amlRiskLevel: string): void {
 		const clientId = this.existingClientId();
+		const countryCode = this.formCountryCode();
 		const payload = {
 			firstName: this.formPrenom.trim(),
 			lastName: this.formNom.trim(),
-			phone: this.composePhoneNumber(this.formCountryCode, this.formPhone.trim()),
+			phone: this.composePhoneNumber(countryCode, this.formPhone),
 			identityType: this.docType(),
 			identityNumber: this.formIdentityNumber.trim().toUpperCase(),
 			nationality: this.formNationality.trim(),
@@ -497,27 +507,32 @@ export class AddSenderModalComponent {
 	}
 
 	protected onCountrySelected(countryCode: string): void {
-		this.formCountryCode = countryCode;
+		this.formCountryCode.set(countryCode.trim().toUpperCase());
 	}
 
-	protected phonePrefix(): string {
-		const normalized = this.formCountryCode.trim().toUpperCase();
+	protected onPhoneInput(value: string): void {
+		this.formPhone = this.sanitizePhone(value);
+	}
+
+	private composePhoneNumber(countryCode: string, localNumber: string): string {
+		const local = this.sanitizePhone(localNumber);
+		if (!local) {
+			return '';
+		}
+		const prefix = this.getPhonePrefix(countryCode);
+		return prefix ? `${prefix}${local}` : local;
+	}
+
+	private getPhonePrefix(countryCode: string | null | undefined): string {
+		const normalized = (countryCode ?? '').trim().toUpperCase();
 		if (!normalized) {
 			return '';
 		}
 		return this.countries().find((country) => country.code === normalized)?.phoneCode?.trim() ?? '';
 	}
 
-	private composePhoneNumber(countryCode: string, localNumber: string): string {
-		const local = localNumber.replace(/\s+/g, '').trim();
-		if (!local) {
-			return '';
-		}
-		if (local.startsWith('+') || local.startsWith('00')) {
-			return local;
-		}
-		const prefix = this.countries().find((country) => country.code === countryCode.trim().toUpperCase())?.phoneCode?.trim() ?? '';
-		return prefix ? `${prefix}${local}` : local;
+	private sanitizePhone(value: string): string {
+		return (value ?? '').replace(/\D+/g, '').slice(0, 12);
 	}
 
 	private resetModal(): void {
@@ -536,7 +551,7 @@ export class AddSenderModalComponent {
 		this.formPrenom = '';
 		this.formIdentityNumber = '';
 		this.formNationality = '';
-		this.formCountryCode = '';
+		this.formCountryCode.set('');
 		this.formPhone = '';
 	}
 }

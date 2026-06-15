@@ -1,19 +1,18 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, PLATFORM_ID, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCommand } from '@ng-icons/lucide';
 import { Router } from '@angular/router';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 import { getSidebarData, resolveRoleFromPath, DashboardRole } from '../shared/sidebar/data';
 import { NavMain } from '../shared/sidebar/nav-main';
-import { NavProjects } from '../shared/sidebar/nav-projects';
-import { NavSecondary } from '../shared/sidebar/nav-secondary';
 import { NavUser } from '../shared/sidebar/nav-user';
 import { I18nService } from '../../../shared/i18n/i18n.service';
+import { ClientNotificationBadgeService } from '../../client/services/client-notification-badge.service';
 
 @Component({
 	selector: 'spartan-app-sidebar-inset',
-	imports: [HlmSidebarImports, NgIcon, NavMain, NavProjects, NavUser, NavSecondary],
+	imports: [HlmSidebarImports, NgIcon, NavMain, NavUser],
 	providers: [provideIcons({ lucideCommand })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
@@ -38,16 +37,10 @@ import { I18nService } from '../../../shared/i18n/i18n.service';
 				</hlm-sidebar-header>
 
 				<hlm-sidebar-content>
-					<spartan-nav-main [items]="data.navMain" />
-					@if (data.projects.length) {
-						<spartan-nav-projects [projects]="data.projects" />
-					}
-					@if (data.navSecondary.length) {
-						<spartan-nav-secondary class="mt-auto" [items]="data.navSecondary" />
-					}
+					<spartan-nav-main [items]="data().navMain" />
 				</hlm-sidebar-content>
 				<hlm-sidebar-footer>
-					<spartan-nav-user [user]="data.user" />
+					<spartan-nav-user [user]="data().user" />
 				</hlm-sidebar-footer>
 			</hlm-sidebar>
 			<ng-content />
@@ -57,8 +50,27 @@ import { I18nService } from '../../../shared/i18n/i18n.service';
 export class AppSidebarInset {
 	private readonly _router = inject(Router);
 	private readonly _platformId = inject(PLATFORM_ID);
+	private readonly _notificationBadge = inject(ClientNotificationBadgeService);
 	public readonly i18n = inject(I18nService);
-	public readonly data = this.buildSidebarData();
+	public readonly data = signal(this.buildSidebarData());
+
+	constructor() {
+		if (this.resolveRole() === 'ROLE_CLIENT' && isPlatformBrowser(this._platformId)) {
+			this._notificationBadge.refresh();
+		}
+
+		effect(() => {
+			const unreadCount = this.resolveRole() === 'ROLE_CLIENT' ? this._notificationBadge.unreadCount() : null;
+			this.data.update((current) => ({
+				...current,
+				navMain: current.navMain.map((item) =>
+					item.url === '/client/notifications'
+						? { ...item, badge: unreadCount && unreadCount > 0 ? unreadCount : undefined }
+						: item,
+				),
+			}));
+		});
+	}
 
 	private buildSidebarData() {
 		const role = this.resolveRole();

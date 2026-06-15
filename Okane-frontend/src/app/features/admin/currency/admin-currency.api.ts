@@ -47,6 +47,16 @@ export interface ApiExchangeRateHistory {
 	changedByName: string | null;
 }
 
+export interface ApiFxSyncResult {
+	success: boolean;
+	source: string;
+	syncedAt: string;
+	updatedCurrencies: number;
+	skippedCurrencies: number;
+	skippedCurrencyCodes: string[];
+	message: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminCurrencyApiService {
 	private readonly _http = inject(HttpClient);
@@ -113,5 +123,9 @@ export class AdminCurrencyApiService {
 
 	public getRateHistory(): Observable<ApiExchangeRateHistory[]> {
 		return this._http.get<ApiExchangeRateHistory[]>(`${this._base}/rate-history`);
+	}
+
+	public syncExchangeRates(): Observable<ApiFxSyncResult> {
+		return this._http.post<ApiFxSyncResult>(`${this._base}/sync`, {});
 	}
 }

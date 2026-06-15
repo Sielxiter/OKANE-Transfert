@@ -253,7 +253,7 @@ export class ManagerDashboardPageComponent implements OnInit {
 
 	protected readonly quickActions: QuickAction[] = [
 		{ label: 'Creer un agent', link: '/manager/agents', icon: 'lucideUserPlus', accent: 'bg-primary/10 text-primary' },
-		{ label: 'Voir les sous-agences', link: '/manager/agencies', icon: 'lucideBuilding2', accent: 'bg-blue-500/10 text-blue-600' },
+		{ label: 'Voir les sous-agences', link: '/manager/sub-agencies', icon: 'lucideBuilding2', accent: 'bg-blue-500/10 text-blue-600' },
 		{ label: 'Consulter les transferts', link: '/manager/transfers', icon: 'lucideArrowRightLeft', accent: 'bg-emerald-500/10 text-emerald-600' },
 		{ label: 'Rapport journalier', link: '/manager/reports', icon: 'lucideFileText', accent: 'bg-amber-500/10 text-amber-600' },
 	];

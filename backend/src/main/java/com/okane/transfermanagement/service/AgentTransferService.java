@@ -11,9 +11,11 @@ import com.okane.cash.entity.AgentCashSession;
 import com.okane.cash.repository.AgentCashSessionRepository;
 import com.okane.currencyfx.entity.Country;
 import com.okane.currencyfx.entity.Currency;
+import com.okane.currencyfx.entity.ExchangeRate;
 import com.okane.currencyfx.entity.TransferCorridor;
 import com.okane.currencyfx.repository.CountryRepository;
 import com.okane.currencyfx.repository.CurrencyRepository;
+import com.okane.currencyfx.repository.ExchangeRateRepository;
 import com.okane.currencyfx.repository.TransferCorridorRepository;
 import com.okane.customer.entity.Customer;
 import com.okane.customer.repository.CustomerRepository;
@@ -53,9 +55,11 @@ public class AgentTransferService {
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
     private static final int SCALE = 2;
+    private static final int RATE_SCALE = 6;
 
     private final CountryRepository countryRepository;
     private final CurrencyRepository currencyRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
     private final TransferCorridorRepository transferCorridorRepository;
     private final TariffLineRepository tariffLineRepository;
     private final CustomerRepository customerRepository;
@@ -70,6 +74,7 @@ public class AgentTransferService {
     public AgentTransferService(
             CountryRepository countryRepository,
             CurrencyRepository currencyRepository,
+            ExchangeRateRepository exchangeRateRepository,
             TransferCorridorRepository transferCorridorRepository,
             TariffLineRepository tariffLineRepository,
             CustomerRepository customerRepository,
@@ -83,6 +88,7 @@ public class AgentTransferService {
     ) {
         this.countryRepository = countryRepository;
         this.currencyRepository = currencyRepository;
+        this.exchangeRateRepository = exchangeRateRepository;
         this.transferCorridorRepository = transferCorridorRepository;
         this.tariffLineRepository = tariffLineRepository;
         this.customerRepository = customerRepository;
@@ -132,6 +138,7 @@ public class AgentTransferService {
                 quote.finalTransferFee(),
                 quote.agencyCommission(),
                 quote.centralCommission(),
+                quote.exchangeRate(),
                 quote.matchedLineId(),
                 quote.corridorId()
         );
@@ -142,7 +149,9 @@ public class AgentTransferService {
         QuoteComputation quote = buildQuote(new AgentTransferQuoteRequestDTO(
                 request.amount(),
                 request.senderCountryCode(),
-                request.beneficiaryCountryCode()
+                request.beneficiaryCountryCode(),
+                request.sourceCurrencyCode(),
+                request.destinationCurrencyCode()
         ));
         if (request.amount().compareTo(quote.finalTransferFee()) < 0) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
@@ -153,9 +162,7 @@ public class AgentTransferService {
         AgentCashSession cashSession = resolveActiveCashSession(agent);
         Agency sourceAgency = cashSession.getAgency();
         Currency currency = resolveCurrency(request.sourceCurrencyCode());
-        BigDecimal exchangeRate = request.exchangeRate() == null || request.exchangeRate().signum() <= 0
-                ? BigDecimal.ONE
-                : scaleMoney(request.exchangeRate());
+        BigDecimal exchangeRate = quote.exchangeRate();
 
         Customer sender = customerRepository.findById(request.senderClientId())
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Expediteur introuvable."));
@@ -214,6 +221,8 @@ public class AgentTransferService {
         }
         Country senderCountry = resolveCountry(request.senderCountryCode());
         Country beneficiaryCountry = resolveCountry(request.beneficiaryCountryCode());
+        Currency sourceCurrency = resolveCurrency(request.sourceCurrencyCode());
+        Currency destinationCurrency = resolveCurrency(request.destinationCurrencyCode());
         TariffLine tariffLine = resolveTariffLine(request.amount());
 
         BigDecimal amount = scaleMoney(request.amount());
@@ -251,6 +260,8 @@ public class AgentTransferService {
                     "La grille tarifaire est incoherente : commission agence + commission centrale doit etre egale au frais final.");
         }
 
+        BigDecimal exchangeRate = resolveExchangeRate(sourceCurrency, destinationCurrency);
+
         return new QuoteComputation(
                 amount,
                 baseTransferFee,
@@ -259,6 +270,7 @@ public class AgentTransferService {
                 finalTransferFee,
                 agencyCommission,
                 centralCommission,
+                exchangeRate,
                 tariffLine.getId(),
                 corridorId
         );
@@ -289,6 +301,39 @@ public class AgentTransferService {
         }
         return currencyRepository.findBySymbolIgnoreCase(symbol.trim())
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Devise introuvable : " + symbol));
+    }
+
+    private BigDecimal resolveExchangeRate(Currency sourceCurrency, Currency destinationCurrency) {
+        if (sourceCurrency == null || destinationCurrency == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Les devises source et destination sont obligatoires.");
+        }
+        String sourceSymbol = sourceCurrency.getSymbol() == null ? "" : sourceCurrency.getSymbol().trim();
+        String destinationSymbol = destinationCurrency.getSymbol() == null ? "" : destinationCurrency.getSymbol().trim();
+        if (!sourceSymbol.isBlank() && sourceSymbol.equalsIgnoreCase(destinationSymbol)) {
+            return BigDecimal.ONE.setScale(RATE_SCALE, RoundingMode.HALF_UP);
+        }
+
+        Currency mad = currencyRepository.findBySymbolIgnoreCase("MAD")
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "La devise MAD est introuvable."));
+        BigDecimal sourceToMad = resolveRateToMad(sourceCurrency, mad);
+        BigDecimal destinationToMad = resolveRateToMad(destinationCurrency, mad);
+        if (destinationToMad.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Le taux de conversion vers MAD est indisponible pour la devise destination.");
+        }
+        return sourceToMad.divide(destinationToMad, RATE_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal resolveRateToMad(Currency currency, Currency mad) {
+        if (currency.getId().equals(mad.getId())) {
+            return BigDecimal.ONE.setScale(RATE_SCALE, RoundingMode.HALF_UP);
+        }
+        return exchangeRateRepository
+                .findFirstByFromCurrency_IdAndToCurrency_IdOrderByEffectiveAtDescIdDesc(currency.getId(), mad.getId())
+                .map(ExchangeRate::getRate)
+                .map(this::scaleRate)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST,
+                        "Taux MAD introuvable pour la devise " + currency.getSymbol() + "."));
     }
 
     private AgentCashSession resolveActiveCashSession(User agent) {
@@ -430,6 +475,13 @@ public class AgentTransferService {
         return value.setScale(SCALE, RoundingMode.HALF_UP);
     }
 
+    private BigDecimal scaleRate(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        return value.setScale(RATE_SCALE, RoundingMode.HALF_UP);
+    }
+
     private BigDecimal scalePct(BigDecimal value) {
         if (value == null) {
             return BigDecimal.ZERO;
@@ -475,6 +527,7 @@ public class AgentTransferService {
             BigDecimal finalTransferFee,
             BigDecimal agencyCommission,
             BigDecimal centralCommission,
+            BigDecimal exchangeRate,
             Long matchedLineId,
             Long corridorId
     ) {

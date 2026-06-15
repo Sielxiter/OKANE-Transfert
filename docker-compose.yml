@@ -1,0 +1,81 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: okane-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: okane_password
+      MYSQL_DATABASE: okane_transfer
+      MYSQL_USER: okane_user
+      MYSQL_PASSWORD: okane_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - okane-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pokane_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: okane-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/okane_transfer?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: okane_password
+      JWT_SECRET: ${JWT_SECRET:-OkaneTransferJwtSecretKeyChangeThisBeforeProduction-1234567890}
+      JWT_ISSUER: Okane Transfer
+      JWT_ACCESS_TOKEN_MINUTES: 60
+      JWT_REFRESH_TOKEN_DAYS: 7
+      FRONTEND_ALLOWED_ORIGINS: http://localhost,http://nginx
+      AUTH_LOGIN_MAX_ATTEMPTS: 5
+      AUTH_LOGIN_WINDOW_MINUTES: 10
+      UPLOAD_DIR: /app/uploads
+      UPLOAD_MAX_SIZE_MB: 5
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - okane-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nginx:
+    build:
+      context: ./Okane-frontend
+      dockerfile: Dockerfile
+    container_name: okane-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - okane-network
+
+volumes:
+  mysql_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  okane-network:
+    driver: bridge

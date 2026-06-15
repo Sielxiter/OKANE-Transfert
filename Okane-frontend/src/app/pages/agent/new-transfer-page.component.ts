@@ -1,5 +1,5 @@
 ﻿import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ViewChild, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowLeft, lucideArrowRight, lucideBanknote, lucideSend } from '@ng-icons/lucide';
@@ -94,10 +94,6 @@ import type { ClientSearchResult } from './services/kyc-client.api';
 										(valueChange)="transferForm.patchValue({ destinationCurrencyCode: $event })"
 									/>
 									<label class="text-sm md:col-span-2">
-										<span class="text-muted-foreground">Taux de change</span>
-										<input hlmInput class="mt-1 w-full" type="number" min="0" step="0.000001" formControlName="exchangeRate" />
-									</label>
-									<label class="text-sm md:col-span-2">
 										<span class="text-muted-foreground">Mode de paiement</span>
 										<select
 											class="mt-1 h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground"
@@ -131,7 +127,7 @@ import type { ClientSearchResult } from './services/kyc-client.api';
 											placeholder="Rechercher par nom ou code"
 											[countries]="countries()"
 											[value]="beneficiaryForm.controls.countryCode.value"
-											(valueChange)="beneficiaryForm.patchValue({ countryCode: $event })"
+											(valueChange)="onBeneficiaryCountrySelected($event)"
 										/>
 									</div>
 									<label class="text-sm md:col-span-2">
@@ -143,9 +139,11 @@ import type { ClientSearchResult } from './services/kyc-client.api';
 											<input
 												hlmInput
 												class="h-full flex-1 border-0 bg-transparent px-3 shadow-none focus-visible:ring-0"
-												inputmode="tel"
+												inputmode="numeric"
+												maxlength="12"
 												formControlName="phoneNumber"
 												placeholder="612345678"
+												(input)="onBeneficiaryPhoneInput($any($event.target).value)"
 											/>
 										</div>
 									</label>
@@ -220,11 +218,15 @@ import type { ClientSearchResult } from './services/kyc-client.api';
 						} @else if (quoteError()) {
 							<okane-agent-empty-state [title]="'Erreur de simulation'" [description]="quoteError()" />
 						} @else if (quote(); as currentQuote) {
-							<div class="space-y-3 text-sm">
-								<div class="flex items-center justify-between gap-4 rounded-xl border border-border bg-background/80 px-3 py-2">
-									<span class="text-muted-foreground">Frais de base</span>
-									<span class="font-medium text-foreground">{{ formatMoney(currentQuote.baseTransferFee) }}</span>
-								</div>
+								<div class="space-y-3 text-sm">
+									<div class="flex items-center justify-between gap-4 rounded-xl border border-border bg-background/80 px-3 py-2">
+										<span class="text-muted-foreground">Taux de change</span>
+										<span class="font-medium text-foreground">{{ formatRate(currentQuote.exchangeRate) }}</span>
+									</div>
+									<div class="flex items-center justify-between gap-4 rounded-xl border border-border bg-background/80 px-3 py-2">
+										<span class="text-muted-foreground">Frais de base</span>
+										<span class="font-medium text-foreground">{{ formatMoney(currentQuote.baseTransferFee) }}</span>
+									</div>
 								<div class="flex items-center justify-between gap-4 rounded-xl border border-border bg-background/80 px-3 py-2">
 									<span class="text-muted-foreground">Supplément corridor</span>
 									<span class="font-medium text-foreground">{{ formatMoney(currentQuote.corridorFee) }}</span>
@@ -282,6 +284,8 @@ export class AgentNewTransferPageComponent {
 	protected readonly quoteLoading = signal(false);
 	protected readonly quoteError = signal('');
 	protected readonly isSubmitting = signal(false);
+	protected readonly beneficiaryCountryCode = signal('');
+	protected readonly beneficiaryPhonePrefix = computed(() => this.getPhonePrefix(this.beneficiaryCountryCode()));
 
 	@ViewChild(SenderSearchComponent) senderSearch!: SenderSearchComponent;
 
@@ -298,14 +302,13 @@ export class AgentNewTransferPageComponent {
 		amount: [1000, [Validators.required, Validators.min(0.01)]],
 		sourceCurrencyCode: ['MAD', [Validators.required, Validators.minLength(3)]],
 		destinationCurrencyCode: ['XOF', [Validators.required, Validators.minLength(3)]],
-		exchangeRate: [65, [Validators.required, Validators.min(0.000001)]],
 		paymentMethod: ['Espèces', [Validators.required]],
 	});
 
 	public readonly beneficiaryForm = this._fb.nonNullable.group({
 		firstName: ['', [Validators.required]],
 		lastName: ['', [Validators.required]],
-		phoneNumber: ['', [Validators.required]],
+		phoneNumber: ['', [Validators.required, Validators.pattern(/^\d+$/), Validators.maxLength(12)]],
 		identityNumber: ['', [Validators.required]],
 		countryCode: ['', [Validators.required]],
 	});
@@ -429,6 +432,7 @@ export class AgentNewTransferPageComponent {
 					identityNumber: '',
 					countryCode: '',
 				});
+				this.beneficiaryCountryCode.set('');
 				this.refreshQuote();
 			});
 	}
@@ -439,6 +443,16 @@ export class AgentNewTransferPageComponent {
 			style: 'currency',
 			currency: this.transferForm.controls.sourceCurrencyCode.value || 'MAD',
 		}).format(value);
+	}
+
+	public formatRate(rate: number | null | undefined): string {
+		if (rate == null || Number.isNaN(rate)) {
+			return '—';
+		}
+		return new Intl.NumberFormat('fr-FR', {
+			minimumFractionDigits: 4,
+			maximumFractionDigits: 6,
+		}).format(rate);
 	}
 
 	private refreshQuote(): void {
@@ -468,16 +482,24 @@ export class AgentNewTransferPageComponent {
 			});
 	}
 
-	private buildQuoteRequest(): { amount: number; senderCountryCode: string; beneficiaryCountryCode: string } | null {
+	private buildQuoteRequest(): {
+		amount: number;
+		senderCountryCode: string;
+		beneficiaryCountryCode: string;
+		sourceCurrencyCode: string;
+		destinationCurrencyCode: string;
+	} | null {
 		const amount = Number(this.transferForm.controls.amount.value ?? 0);
 		const senderCountryCode = this.senderForm.controls.countryCode.value.trim();
 		const beneficiaryCountryCode = this.beneficiaryForm.controls.countryCode.value.trim();
+		const sourceCurrencyCode = this.transferForm.controls.sourceCurrencyCode.value.trim();
+		const destinationCurrencyCode = this.transferForm.controls.destinationCurrencyCode.value.trim();
 
-		if (!amount || amount <= 0 || !senderCountryCode || !beneficiaryCountryCode) {
+		if (!amount || amount <= 0 || !senderCountryCode || !beneficiaryCountryCode || !sourceCurrencyCode || !destinationCurrencyCode) {
 			return null;
 		}
 
-		return { amount, senderCountryCode, beneficiaryCountryCode };
+		return { amount, senderCountryCode, beneficiaryCountryCode, sourceCurrencyCode, destinationCurrencyCode };
 	}
 
 	private buildCreateRequest(): CreateAgentTransferRequest | null {
@@ -503,7 +525,6 @@ export class AgentNewTransferPageComponent {
 			sourceCurrencyCode: this.transferForm.controls.sourceCurrencyCode.value.trim(),
 			destinationCurrencyCode: this.transferForm.controls.destinationCurrencyCode.value.trim(),
 			amount: Number(this.transferForm.controls.amount.value ?? 0),
-			exchangeRate: Number(this.transferForm.controls.exchangeRate.value ?? 1),
 			paymentMethod: this.transferForm.controls.paymentMethod.value.trim(),
 		};
 	}
@@ -517,12 +538,18 @@ export class AgentNewTransferPageComponent {
 		return match?.code ?? '';
 	}
 
-	protected beneficiaryPhonePrefix(): string {
-		const countryCode = this.beneficiaryForm.controls.countryCode.value.trim();
-		return this.phonePrefixForCountry(countryCode);
+	protected onBeneficiaryCountrySelected(countryCode: string): void {
+		const normalized = countryCode.trim().toUpperCase();
+		this.beneficiaryCountryCode.set(normalized);
+		this.beneficiaryForm.patchValue({ countryCode: normalized });
 	}
 
-	private phonePrefixForCountry(countryCode: string | null | undefined): string {
+	protected onBeneficiaryPhoneInput(value: string): void {
+		const digits = value.replace(/\D+/g, '').slice(0, 12);
+		this.beneficiaryForm.patchValue({ phoneNumber: digits }, { emitEvent: false });
+	}
+
+	private getPhonePrefix(countryCode: string | null | undefined): string {
 		const normalized = (countryCode ?? '').trim().toUpperCase();
 		if (!normalized) {
 			return '';
@@ -532,14 +559,11 @@ export class AgentNewTransferPageComponent {
 	}
 
 	private composePhoneNumber(countryCode: string, localNumber: string): string {
-		const local = localNumber.replace(/\s+/g, '').trim();
+		const local = localNumber.replace(/\D+/g, '').trim().slice(0, 12);
 		if (!local) {
 			return '';
 		}
-		if (local.startsWith('+') || local.startsWith('00')) {
-			return local;
-		}
-		const prefix = this.phonePrefixForCountry(countryCode);
+		const prefix = this.getPhonePrefix(countryCode);
 		if (!prefix) {
 			return local;
 		}

@@ -10,6 +10,7 @@ public record AgentTransferQuoteResponseDTO(
         BigDecimal finalTransferFee,
         BigDecimal agencyCommission,
         BigDecimal centralCommission,
+        BigDecimal exchangeRate,
         Long matchedLineId,
         Long corridorId
 ) {

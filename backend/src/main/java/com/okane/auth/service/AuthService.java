@@ -300,6 +300,10 @@ public class AuthService {
             return "/dashboard";
         }
         String normalizedRole = roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
-        return "/" + normalizedRole.toLowerCase(Locale.ROOT) + "/dashboard";
+        String roleLower = normalizedRole.toLowerCase(Locale.ROOT);
+        if ("manager".equals(roleLower)) {
+            return "/manager/overview";
+        }
+        return "/" + roleLower + "/dashboard";
     }
 }

@@ -80,7 +80,7 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/api/admin/**")).hasRole("ADMIN")
                         .requestMatchers(new AntPathRequestMatcher("/api/manager/**")).hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(new AntPathRequestMatcher("/api/agent/**")).hasAnyRole("ADMIN", "MANAGER", "AGENT")
-                        .requestMatchers(new AntPathRequestMatcher("/api/client/**")).hasAnyRole("ADMIN", "MANAGER", "AGENT", "CLIENT")
+                        .requestMatchers(new AntPathRequestMatcher("/api/client/**")).hasRole("CLIENT")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

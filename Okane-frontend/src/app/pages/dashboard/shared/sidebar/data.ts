@@ -10,6 +10,7 @@ export interface SidebarItem {
 	icon: string;
 	url?: string;
 	isActive?: boolean;
+	badge?: number;
 	items?: SidebarSubItem[];
 }
 
@@ -23,32 +24,7 @@ export interface SidebarUser {
 export interface SidebarData {
 	user: SidebarUser;
 	navMain: SidebarItem[];
-	navSecondary: {
-		title: string;
-		url: string;
-		icon: string;
-	}[];
-	projects: {
-		name: string;
-		url: string;
-		icon: string;
-	}[];
 }
-
-const sharedSettings: SidebarItem = {
-	title: 'Paramètres',
-	icon: 'lucideSettings2',
-	items: [
-		{ title: 'Profil' },
-		{ title: 'Changer le mot de passe' },
-		{ title: '2FA' },
-		{ title: 'Préférences de notification' },
-		{ title: 'Journaux de sécurité' },
-		{ title: 'Langue' },
-		{ title: 'Thème' },
-		{ title: 'Déconnexion' },
-	],
-};
 
 const adminItems: SidebarItem[] = [
 	{
@@ -125,30 +101,66 @@ const adminItems: SidebarItem[] = [
 const managerItems: SidebarItem[] = [
 	{
 		title: 'Tableau de bord',
-		icon: 'lucideSquareTerminal',
-		url: '/manager/dashboard',
-		isActive: true,
-		items: [
-			{ title: 'Solde agence' },
-			{ title: 'Transferts du jour' },
-			{ title: 'Paiements en attente' },
-			{ title: 'Agents actifs' },
-			{ title: 'Transferts suspects' },
-		],
+		icon: 'lucideLayoutDashboard',
+		url: '/manager/overview',
 	},
-	{ title: 'Agents', icon: 'lucideBot', items: [{ title: 'Créer un agent' }, { title: 'Activer / désactiver' }, { title: 'Affecter les horaires' }] },
-	{ title: 'Clients', icon: 'lucideBookOpen', items: [{ title: "Clients de l'agence" }, { title: 'Validation KYC' }] },
+	{
+		title: 'Sous-Agences',
+		icon: 'lucideBuilding2',
+		url: '/manager/sub-agencies',
+	},
+	{
+		title: 'Agents',
+		icon: 'lucideUsers',
+		url: '/manager/agents',
+	},
 	{
 		title: 'Transferts',
-		icon: 'lucideBookOpen',
-		items: [{ title: 'Valider les transferts sensibles' }, { title: 'Approuver les plafonds' }, { title: 'Transferts en attente' }],
+		icon: 'lucideArrowRightLeft',
+		url: '/manager/transfers',
+		items: [
+			{ title: 'En attente', url: '/manager/transfers/pending' },
+			{ title: 'Payés', url: '/manager/transfers/paid' },
+			{ title: 'Annulés', url: '/manager/transfers/cancelled' },
+			{ title: 'Tous', url: '/manager/transfers/all' },
+		],
 	},
-	{ title: 'Paiements', icon: 'lucideSettings2', items: [{ title: 'Historique des paiements' }, { title: 'Paiements en attente' }, { title: 'Annulation' }] },
-	{ title: 'Gestion de caisse', icon: 'lucideSettings2', items: [{ title: 'Sessions de caisse' }, { title: 'Réconciliation fin de journée' }, { title: 'Écarts' }] },
-	{ title: 'Conformité', icon: 'lucideSettings2', items: [{ title: 'Transferts suspects' }, { title: 'Liste de surveillance' }, { title: 'Revues KYC' }] },
-	{ title: 'Rapports', icon: 'lucideBookOpen', items: [{ title: 'Performance agence' }, { title: 'Commissions' }] },
-	{ title: 'Notifications', icon: 'lucideSettings2', items: [{ title: 'Modèles' }, { title: 'Canaux' }] },
-	sharedSettings,
+	{
+		title: 'Validations en attente',
+		icon: 'lucideClipboardCheck',
+		url: '/manager/validations',
+	},
+	{
+		title: 'Supervision Caisse',
+		icon: 'lucideBanknote',
+		url: '/manager/cash',
+	},
+	{
+		title: 'Rapports',
+		icon: 'lucideBarChart3',
+		url: '/manager/reports',
+		items: [
+			{ title: 'Performance', url: '/manager/reports/performance' },
+			{ title: 'Commissions', url: '/manager/reports/commissions' },
+			{ title: 'Volume', url: '/manager/reports/volume' },
+			{ title: 'Conformité', url: '/manager/reports/compliance' },
+		],
+	},
+	{
+		title: 'Alertes',
+		icon: 'lucideBell',
+		url: '/manager/alerts',
+	},
+	{
+		title: "Journal d'audit",
+		icon: 'lucideHistory',
+		url: '/manager/audit-log',
+	},
+	{
+		title: 'Profil',
+		icon: 'lucideUser',
+		url: '/manager/profile',
+	},
 ];
 
 const agentItems: SidebarItem[] = [
@@ -171,30 +183,29 @@ const agentItems: SidebarItem[] = [
 const clientItems: SidebarItem[] = [
 	{
 		title: 'Tableau de bord',
-		icon: 'lucideSquareTerminal',
+		icon: 'lucideLayoutDashboard',
 		url: '/client/dashboard',
-		isActive: true,
-		items: [
-			{ title: 'Transferts récents' },
-			{ title: 'En attente' },
-			{ title: 'Terminés' },
-			{ title: 'Solde wallet' },
-			{ title: 'Alertes' },
-		],
 	},
-	{ title: "Envoyer de l'argent", icon: 'lucideBookOpen', items: [{ title: 'Simulation de transfert en ligne' }] },
 	{
-		title: 'Suivi du transfert',
-		icon: 'lucideSettings2',
-		items: [{ title: 'Recherche par OTP' }, { title: 'Recherche par référence' }],
+		title: 'Mes transferts',
+		icon: 'lucideArrowRightLeft',
+		url: '/client/transfers',
 	},
-	{ title: 'Historique', icon: 'lucideBookOpen', items: [{ title: 'Date' }, { title: 'Statut' }, { title: 'Montant' }, { title: 'Corridor' }] },
-	{ title: 'Bénéficiaires', icon: 'lucideBot', items: [{ title: 'Ajouter un bénéficiaire' }, { title: 'Modifier' }, { title: 'Favoris' }] },
-	{ title: 'Wallet / Mobile Money', icon: 'lucideSettings2', items: [{ title: 'Orange Money' }, { title: 'Wave' }, { title: 'M-Pesa' }] },
-	{ title: 'Notifications', icon: 'lucideSettings2', items: [{ title: 'Alertes' }, { title: "Historique d'envoi" }] },
-	{ title: 'Chatbot', icon: 'lucideBot', items: [{ title: 'Frais' }, { title: 'Statut du transfert' }, { title: 'Délais' }, { title: 'FAQ' }] },
-	{ title: 'Profil', icon: 'lucideBookOpen', items: [{ title: 'Compte' }, { title: 'Sécurité' }] },
-	sharedSettings,
+	{
+		title: 'Suivi transfert',
+		icon: 'lucideSearch',
+		url: '/client/track',
+	},
+	{
+		title: 'Notifications',
+		icon: 'lucideBell',
+		url: '/client/notifications',
+	},
+	{
+		title: 'Profil',
+		icon: 'lucideUser',
+		url: '/client/profile',
+	},
 ];
 
 export const roleNavMap: Record<DashboardRole, SidebarItem[]> = {
@@ -213,9 +224,6 @@ export function resolveRoleFromPath(pathname: string): DashboardRole {
 }
 
 export function getSidebarData(role: DashboardRole, user?: Partial<SidebarUser>): SidebarData {
-	const isAgent = role === 'ROLE_AGENT';
-	const isAdmin = role === 'ROLE_ADMIN';
-
 	return {
 		user: {
 			name: user?.name ?? 'Okane Transfer',
@@ -224,19 +232,6 @@ export function getSidebarData(role: DashboardRole, user?: Partial<SidebarUser>)
 			roleLabel: user?.roleLabel ?? role.replace('ROLE_', ''),
 		},
 		navMain: roleNavMap[role] ?? clientItems,
-		navSecondary: isAgent || isAdmin
-			? []
-			: [
-				{ title: 'Assistance', url: '.', icon: 'lucideLifeBuoy' },
-				{ title: 'Retour utilisateur', url: '.', icon: 'lucideSend' },
-			],
-		projects: isAgent || isAdmin
-			? []
-			: [
-				{ name: 'Conception produit', url: '.', icon: 'lucideFrame' },
-				{ name: 'Ventes et marketing', url: '.', icon: 'lucideChartPie' },
-				{ name: 'Voyage', url: '.', icon: 'lucideMap' },
-			],
 	};
 }
 

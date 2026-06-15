@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 public record AgentTransferQuoteRequestDTO(
         @NotNull @Positive BigDecimal amount,
         @NotBlank String senderCountryCode,
-        @NotBlank String beneficiaryCountryCode
+        @NotBlank String beneficiaryCountryCode,
+        @NotBlank String sourceCurrencyCode,
+        @NotBlank String destinationCurrencyCode
 ) {
 }

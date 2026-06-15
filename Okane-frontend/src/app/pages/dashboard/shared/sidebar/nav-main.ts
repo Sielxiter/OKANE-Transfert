@@ -4,19 +4,25 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
 	lucideArrowRightLeft,
+	lucideBadgeCheck,
 	lucideBadgePercent,
 	lucideBarChart3,
+	lucideBanknote,
+	lucideBell,
 	lucideBookOpen,
 	lucideBot,
 	lucideBuilding2,
 	lucideChevronRight,
 	lucideChevronLeft,
+	lucideClipboardCheck,
 	lucideClipboardList,
 	lucideCoins,
+	lucideHistory,
 	lucideLayoutDashboard,
 	lucideSettings2,
 	lucideShieldCheck,
 	lucideSquareTerminal,
+	lucideUser,
 	lucideUsers,
 	lucideWallet,
 } from '@ng-icons/lucide';
@@ -47,6 +53,12 @@ import { I18nService } from '../../../../shared/i18n/i18n.service';
 			lucideShieldCheck,
 			lucideBarChart3,
 			lucideClipboardList,
+			lucideClipboardCheck,
+			lucideBanknote,
+			lucideBell,
+			lucideHistory,
+			lucideUser,
+			lucideBadgeCheck,
 		}),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
@@ -61,11 +73,17 @@ import { I18nService } from '../../../../shared/i18n/i18n.service';
 								<a hlmSidebarMenuButton [routerLink]="item.url" [isActive]="isTopLevelItemActive(item)">
 									<ng-icon [name]="item.icon" />
 									{{ item.title | okaneI18n }}
+									@if (item.badge != null && item.badge > 0) {
+										<span class="ms-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">{{ item.badge }}</span>
+									}
 								</a>
 							} @else {
 								<button hlmSidebarMenuButton type="button" [isActive]="isTopLevelItemActive(item)">
 									<ng-icon [name]="item.icon" />
 									{{ item.title | okaneI18n }}
+									@if (item.badge != null && item.badge > 0) {
+										<span class="ms-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">{{ item.badge }}</span>
+									}
 								</button>
 							}
 
@@ -115,6 +133,7 @@ export class NavMain {
 			url?: string;
 			icon: string;
 			isActive?: boolean;
+			badge?: number;
 			items?: {
 				title: string;
 				url?: string;
@@ -123,7 +142,9 @@ export class NavMain {
 	>();
 
 	protected isRouteActive(url: string): boolean {
-		return this.normalizeUrl(this._currentUrl()) === this.normalizeUrl(url);
+		const currentUrl = this._currentUrl();
+		return this.normalizeUrl(currentUrl) === this.normalizeUrl(url) ||
+			this.normalizeUrl(currentUrl).startsWith(this.normalizeUrl(url) + '/');
 	}
 
 	protected isTopLevelItemActive(item: { url?: string; isActive?: boolean; items?: { url?: string }[] }): boolean {

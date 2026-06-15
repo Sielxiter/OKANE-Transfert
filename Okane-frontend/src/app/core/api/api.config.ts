@@ -3,5 +3,6 @@
  * by default. Update this when deploying behind a reverse proxy.
  */
 export const API_BASE_URL = 'http://localhost:8080/api';
-
 export const ADMIN_API_BASE = `${API_BASE_URL}/admin`;
+export const MANAGER_API_BASE = `${API_BASE_URL}/manager`;
+export const CLIENT_API_BASE = `${API_BASE_URL}/client`;

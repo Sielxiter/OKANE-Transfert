@@ -36,4 +36,8 @@ public interface AuditLogRepository
     /** Count logs whose entityName is in a given list. */
     @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.entityName IN :names")
     long countByEntityNameIn(@Param("names") List<String> names);
+
+    List<AuditLog> findByUserRoleAndCreatedAtAfterOrderByCreatedAtDesc(String userRole, LocalDateTime after, Pageable pageable);
+
+    List<AuditLog> findByUserRoleOrderByCreatedAtDesc(String userRole, Pageable pageable);
 }

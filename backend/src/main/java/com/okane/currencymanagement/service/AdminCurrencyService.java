@@ -21,6 +21,7 @@ import com.okane.currencymanagement.dto.CreateCurrencyRequestDTO;
 import com.okane.currencymanagement.dto.CurrencyResponseDTO;
 import com.okane.currencymanagement.dto.CurrencySummaryDTO;
 import com.okane.currencymanagement.dto.ExchangeRateHistoryDTO;
+import com.okane.currencymanagement.dto.FxSyncResultDTO;
 import com.okane.currencymanagement.dto.UpdateCorridorRequestDTO;
 import com.okane.currencymanagement.exception.CorridorAlreadyExistsException;
 import com.okane.currencymanagement.exception.CorridorNotFoundException;
@@ -53,6 +54,7 @@ public class AdminCurrencyService {
     private final CountryRepository countryRepository;
     private final TransferCorridorRepository transferCorridorRepository;
     private final ExchangeRateRepository exchangeRateRepository;
+    private final ExchangeRateSyncService exchangeRateSyncService;
     private final UserRepository userRepository;
     private final CurrencyAuditService auditService;
 
@@ -61,6 +63,7 @@ public class AdminCurrencyService {
             CountryRepository countryRepository,
             TransferCorridorRepository transferCorridorRepository,
             ExchangeRateRepository exchangeRateRepository,
+            ExchangeRateSyncService exchangeRateSyncService,
             UserRepository userRepository,
             CurrencyAuditService auditService
     ) {
@@ -68,6 +71,7 @@ public class AdminCurrencyService {
         this.countryRepository = countryRepository;
         this.transferCorridorRepository = transferCorridorRepository;
         this.exchangeRateRepository = exchangeRateRepository;
+        this.exchangeRateSyncService = exchangeRateSyncService;
         this.userRepository = userRepository;
         this.auditService = auditService;
     }
@@ -212,6 +216,10 @@ public class AdminCurrencyService {
         List<ExchangeRate> rates = exchangeRateRepository
                 .findAllByOrderByEffectiveAtDescIdDesc(PageRequest.of(0, FX_HISTORY_LIMIT));
         return projectHistory(rates);
+    }
+
+    public FxSyncResultDTO synchronizeExchangeRates() {
+        return exchangeRateSyncService.synchronizeNow();
     }
 
     @Transactional(readOnly = true)
@@ -386,7 +394,7 @@ public class AdminCurrencyService {
             return SCALE_RATE;
         }
         return exchangeRateRepository
-                .findByFromCurrency_IdAndToCurrency_Id(currency.getId(), mad.getId())
+                .findFirstByFromCurrency_IdAndToCurrency_IdOrderByEffectiveAtDescIdDesc(currency.getId(), mad.getId())
                 .map(ExchangeRate::getRate)
                 .orElse(null);
     }
@@ -397,7 +405,7 @@ public class AdminCurrencyService {
         }
         if (mad != null && !mad.getId().equals(currency.getId())) {
             LocalDateTime fxUpdate = exchangeRateRepository
-                    .findByFromCurrency_IdAndToCurrency_Id(currency.getId(), mad.getId())
+                    .findFirstByFromCurrency_IdAndToCurrency_IdOrderByEffectiveAtDescIdDesc(currency.getId(), mad.getId())
                     .map(ExchangeRate::getEffectiveAt)
                     .orElse(null);
             if (fxUpdate != null) {

@@ -8,6 +8,7 @@ import com.okane.currencymanagement.dto.CreateCurrencyRequestDTO;
 import com.okane.currencymanagement.dto.CurrencyResponseDTO;
 import com.okane.currencymanagement.dto.CurrencySummaryDTO;
 import com.okane.currencymanagement.dto.ExchangeRateHistoryDTO;
+import com.okane.currencymanagement.dto.FxSyncResultDTO;
 import com.okane.currencymanagement.dto.UpdateCorridorRequestDTO;
 import com.okane.currencymanagement.service.AdminCurrencyService;
 import jakarta.validation.Valid;
@@ -137,5 +138,10 @@ public class AdminCurrencyController {
     @GetMapping("/rate-history")
     public ResponseEntity<List<ExchangeRateHistoryDTO>> rateHistory(Authentication authentication) {
         return ResponseEntity.ok(adminCurrencyService.findRateHistory(authentication));
+    }
+
+    @PostMapping("/sync")
+    public ResponseEntity<FxSyncResultDTO> syncFxRates() {
+        return ResponseEntity.ok(adminCurrencyService.synchronizeExchangeRates());
     }
 }

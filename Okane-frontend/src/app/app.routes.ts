@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { ManagerLayoutComponent } from './pages/manager/manager-layout.component';
+import { MANAGER_ROUTES } from './pages/manager/manager-routes';
 import { DashboardPageComponent } from './pages/dashboard/dashboard-page.component';
 import { LoginPageComponent } from './pages/login/login-page.component';
 import { AgentDashboardPageComponent } from './pages/agent/agent-dashboard-page.component';
@@ -28,6 +30,14 @@ import { AdminReportsPageComponent } from './features/admin/reports/reports-page
 import { AdminAuditPageComponent } from './features/admin/audit/audit-page.component';
 import { AdminSettingsPageComponent } from './features/admin/settings/settings-page.component';
 import { authGuard } from './core/auth/auth.guard';
+import { roleGuard } from './core/auth/role.guard';
+import { ClientLayoutComponent } from './pages/client/client-layout.component';
+import { ClientDashboardPageComponent } from './pages/client/dashboard-page.component';
+import { ClientTransfersPageComponent } from './pages/client/transfers-page.component';
+import { ClientTransferDetailsPageComponent } from './pages/client/transfer-details-page.component';
+import { ClientTrackTransferPageComponent } from './pages/client/track-transfer-page.component';
+import { ClientNotificationsPageComponent } from './pages/client/notifications-page.component';
+import { ClientProfilePageComponent } from './pages/client/profile-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -58,7 +68,7 @@ export const routes: Routes = [
       { path: 'settings', component: AdminSettingsPageComponent, data: { title: 'Paramètres' } },
     ],
   },
-  { path: 'manager/dashboard', component: DashboardPageComponent, canActivate: [authGuard] },
+  { path: 'manager', component: ManagerLayoutComponent, canActivate: [authGuard], children: MANAGER_ROUTES[0].children },
   { path: 'agent/dashboard', component: AgentDashboardPageComponent, canActivate: [authGuard] },
   { path: 'agent/new-transfer', component: AgentNewTransferPageComponent, canActivate: [authGuard] },
   { path: 'agent/payout-transfer', component: AgentPayoutTransferPageComponent, canActivate: [authGuard] },
@@ -68,6 +78,20 @@ export const routes: Routes = [
   { path: 'agent/kyc-verification', component: AgentKycVerificationPageComponent, canActivate: [authGuard] },
   { path: 'agent/notifications', component: AgentNotificationsPageComponent, canActivate: [authGuard] },
   { path: 'agent/settings', component: AgentSettingsPageComponent, canActivate: [authGuard] },
-  { path: 'client/dashboard', component: DashboardPageComponent, canActivate: [authGuard] },
+  {
+    path: 'client',
+    component: ClientLayoutComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_CLIENT'] },
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: ClientDashboardPageComponent, data: { title: 'Tableau de bord' } },
+      { path: 'transfers', component: ClientTransfersPageComponent, data: { title: 'Mes transferts' } },
+      { path: 'transfers/:reference', component: ClientTransferDetailsPageComponent, data: { title: 'Détails transfert' } },
+      { path: 'track', component: ClientTrackTransferPageComponent, data: { title: 'Suivi transfert' } },
+      { path: 'notifications', component: ClientNotificationsPageComponent, data: { title: 'Notifications' } },
+      { path: 'profile', component: ClientProfilePageComponent, data: { title: 'Profil' } },
+    ],
+  },
   { path: '**', redirectTo: 'login' },
 ];

@@ -44,6 +44,16 @@ public class CashClosure {
     @Column(name = "notes", length = 255)
     private String note;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "validee_par")
+    private User validatedBy;
+
+    @Column(name = "validee_le")
+    private LocalDateTime validatedAt;
+
+    @Column(name = "statut", nullable = false, length = 50)
+    private String status = "PENDING";
+
     public CashClosure() {
     }
 
@@ -101,6 +111,30 @@ public class CashClosure {
 
     public void setClosedAt(LocalDateTime closedAt) {
         this.closedAt = closedAt;
+    }
+
+    public User getValidatedBy() {
+        return validatedBy;
+    }
+
+    public void setValidatedBy(User validatedBy) {
+        this.validatedBy = validatedBy;
+    }
+
+    public LocalDateTime getValidatedAt() {
+        return validatedAt;
+    }
+
+    public void setValidatedAt(LocalDateTime validatedAt) {
+        this.validatedAt = validatedAt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getNote() {

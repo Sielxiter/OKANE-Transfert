@@ -40,6 +40,12 @@ public class Notification {
     @Column(name = "statut", nullable = false, length = 50)
     private String status;
 
+    @Column(name = "lue_le")
+    private LocalDateTime readAt;
+
+    @Column(name = "reference_transfert", length = 50)
+    private String transferReference;
+
     @Lob
     @Column(name = "reponse_fournisseur")
     private String providerResponse;
@@ -107,6 +113,22 @@ public class Notification {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getReadAt() {
+        return readAt;
+    }
+
+    public void setReadAt(LocalDateTime readAt) {
+        this.readAt = readAt;
+    }
+
+    public String getTransferReference() {
+        return transferReference;
+    }
+
+    public void setTransferReference(String transferReference) {
+        this.transferReference = transferReference;
     }
 
     public String getProviderResponse() {

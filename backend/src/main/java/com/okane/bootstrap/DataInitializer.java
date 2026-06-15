@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -199,8 +200,13 @@ public class DataInitializer implements ApplicationListener<ContextRefreshedEven
 
     private ImportedCatalog seedCurrencyCatalog() {
         List<CountryCurrencyRow> rows = loadCountryCurrencyRows();
-        Map<String, String> phoneCodesByCountryCode = loadCountryCodeRows().stream()
+        Map<String, String> phoneCodesByCountryKey = loadCountryCodeRows().stream()
                 .collect(LinkedHashMap::new, (map, row) -> {
+                    String countryName = normalizeLabel(row.name()).toUpperCase(Locale.ROOT);
+                    if (!isPlaceholderCode(countryName)) {
+                        map.putIfAbsent(countryName, normalizePhoneCode(row.dialCode()));
+                    }
+
                     String code = normalizeCode(row.code());
                     if (!isPlaceholderCode(code)) {
                         map.putIfAbsent(code, normalizePhoneCode(row.dialCode()));
@@ -236,7 +242,7 @@ public class DataInitializer implements ApplicationListener<ContextRefreshedEven
                     storedCountryCode,
                     normalizeLabel(row.country()),
                     currency,
-                    phoneCodesByCountryCode.get(normalizeCode(row.countryCode())),
+                    lookupPhoneCode(phoneCodesByCountryKey, row.country(), row.countryCode()),
                     existingCountriesByCode
             );
             countriesByImportCode.putIfAbsent(normalizeCode(row.countryCode()), country);
@@ -440,6 +446,23 @@ public class DataInitializer implements ApplicationListener<ContextRefreshedEven
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private String lookupPhoneCode(Map<String, String> phoneCodesByCountryKey, String countryName, String countryCode) {
+        String normalizedName = normalizeLabel(countryName).toUpperCase(Locale.ROOT);
+        if (!isPlaceholderCode(normalizedName)) {
+            String byName = phoneCodesByCountryKey.get(normalizedName);
+            if (byName != null) {
+                return byName;
+            }
+        }
+
+        String normalizedCode = normalizeCode(countryCode);
+        if (!isPlaceholderCode(normalizedCode)) {
+            return phoneCodesByCountryKey.get(normalizedCode);
+        }
+
+        return null;
+    }
+
     private String deriveSymbol(String currencyCode) {
         return normalizeCode(currencyCode);
     }
@@ -586,7 +609,7 @@ public class DataInitializer implements ApplicationListener<ContextRefreshedEven
 
     private ExchangeRate ensureExchangeRate(Currency from, Currency to, BigDecimal rate, String source, User createdBy) {
         return exchangeRateRepository
-                .findByFromCurrency_IdAndToCurrency_Id(from.getId(), to.getId())
+                .findFirstByFromCurrency_IdAndToCurrency_IdOrderByEffectiveAtDescIdDesc(from.getId(), to.getId())
                 .orElseGet(() -> {
                     ExchangeRate exchangeRate = new ExchangeRate();
                     exchangeRate.setFromCurrency(from);

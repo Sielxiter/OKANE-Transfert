@@ -8,6 +8,7 @@ import {
 	lucideCoins,
 	lucideEye,
 	lucidePencil,
+	lucideRefreshCw,
 	lucidePower,
 	lucidePowerOff,
 	lucideTriangleAlert,
@@ -76,6 +77,7 @@ interface CurrencyRow {
 			lucideCoins,
 			lucideEye,
 			lucidePencil,
+			lucideRefreshCw,
 			lucidePower,
 			lucidePowerOff,
 			lucideTriangleAlert,
@@ -97,6 +99,18 @@ interface CurrencyRow {
 					size="sm"
 					variant="outline"
 					type="button"
+					[disabled]="syncLoading()"
+					(click)="runSync()"
+				>
+					<ng-icon name="lucideRefreshCw" [class.animate-spin]="syncLoading()" />
+					{{ syncLoading() ? 'Synchronisation...' : 'Mettre à jour maintenant' }}
+				</button>
+				<button
+					okaneHeaderActions
+					hlmBtn
+					size="sm"
+					variant="outline"
+					type="button"
 					(click)="openExport()"
 				>
 					<ng-icon name="lucideClipboardList" />
@@ -110,6 +124,26 @@ interface CurrencyRow {
 					<div class="leading-tight">
 						<p class="text-xs font-semibold">Donnees partielles</p>
 						<p class="mt-0.5 text-xs opacity-80">{{ error() }} - affichage avec valeurs par defaut.</p>
+					</div>
+				</div>
+			}
+
+			@if (syncSuccess()) {
+				<div class="flex items-start gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-emerald-700 dark:text-emerald-300">
+					<ng-icon name="lucideCoins" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Synchronisation terminee</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ syncSuccess() }}</p>
+					</div>
+				</div>
+			}
+
+			@if (syncError()) {
+				<div class="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">
+					<ng-icon name="lucideTriangleAlert" class="text-base" />
+					<div class="leading-tight">
+						<p class="text-xs font-semibold">Synchronisation echouee</p>
+						<p class="mt-0.5 text-xs opacity-80">{{ syncError() }}</p>
 					</div>
 				</div>
 			}
@@ -287,6 +321,9 @@ export class AdminCurrencyPageComponent implements OnInit {
 	protected readonly currencies = signal<CurrencyRow[]>([]);
 	protected readonly summary = signal<ApiCurrencySummary | null>(null);
 	protected readonly error = signal<string | null>(null);
+	protected readonly syncLoading = signal<boolean>(false);
+	protected readonly syncSuccess = signal<string | null>(null);
+	protected readonly syncError = signal<string | null>(null);
 
 	protected readonly ccySearch = signal<string>('');
 	protected readonly ccyStatus = signal<string>('all');
@@ -422,6 +459,26 @@ export class AdminCurrencyPageComponent implements OnInit {
 		this._api.getSummary().subscribe({
 			next: (data) => this.summary.set(data),
 			error: () => this.summary.set(null),
+		});
+	}
+
+	protected runSync(): void {
+		if (this.syncLoading()) {
+			return;
+		}
+		this.syncLoading.set(true);
+		this.syncSuccess.set(null);
+		this.syncError.set(null);
+		this._api.syncExchangeRates().subscribe({
+			next: (result) => {
+				this.syncSuccess.set(result.message || 'Synchronisation effectuee.');
+				this.refresh();
+				this.syncLoading.set(false);
+			},
+			error: (err) => {
+				this.syncError.set(this.extractMessage(err));
+				this.syncLoading.set(false);
+			},
 		});
 	}
 

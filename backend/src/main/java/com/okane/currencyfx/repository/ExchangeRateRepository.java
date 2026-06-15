@@ -10,6 +10,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, Long> {
     Optional<ExchangeRate> findByFromCurrency_IdAndToCurrency_Id(Long fromCurrencyId, Long toCurrencyId);
 
+    Optional<ExchangeRate> findFirstByFromCurrency_IdAndToCurrency_IdOrderByEffectiveAtDescIdDesc(
+            Long fromCurrencyId,
+            Long toCurrencyId
+    );
+
     /**
      * Returns every recorded rate for the given currency pair, newest first.
      * Used by {@code getExchangeRateHistory()} to derive the rate history (each
