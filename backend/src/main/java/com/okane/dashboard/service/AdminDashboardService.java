@@ -6,6 +6,8 @@ import com.okane.audit.entity.AuditLog;
 import com.okane.auth.entity.User;
 import com.okane.auth.repository.AuditLogRepository;
 import com.okane.auth.repository.UserRepository;
+import com.okane.centralagency.entity.CentralAgency;
+import com.okane.centralagency.repository.CentralAgencyRepository;
 import com.okane.dashboard.dto.AdminDashboardResponseDTO;
 import com.okane.dashboard.dto.DashboardAnalyticsDTO;
 import com.okane.dashboard.dto.DashboardKpiDTO;
@@ -51,6 +53,7 @@ public class AdminDashboardService {
 
     private final UserRepository userRepository;
     private final AgencyRepository agencyRepository;
+    private final CentralAgencyRepository centralAgencyRepository;
     private final AuditLogRepository auditLogRepository;
     private final TransferRepository transferRepository;
     private final PayoutRepository payoutRepository;
@@ -58,12 +61,14 @@ public class AdminDashboardService {
     public AdminDashboardService(
             UserRepository userRepository,
             AgencyRepository agencyRepository,
+            CentralAgencyRepository centralAgencyRepository,
             AuditLogRepository auditLogRepository,
             TransferRepository transferRepository,
             PayoutRepository payoutRepository
     ) {
         this.userRepository = userRepository;
         this.agencyRepository = agencyRepository;
+        this.centralAgencyRepository = centralAgencyRepository;
         this.auditLogRepository = auditLogRepository;
         this.transferRepository = transferRepository;
         this.payoutRepository = payoutRepository;
@@ -94,6 +99,7 @@ public class AdminDashboardService {
         long transfersToday = countTransfersToday();
         long suspiciousTransactions = countTransfersByStatus(TransferStatus.SUSPECT.name());
         BigDecimal monthlyVolume = sumTransfersForCurrentMonth();
+        BigDecimal fullSystemBalance = resolveFullSystemBalance();
 
         // TODO: wire to PaymentRepository when the Payments module ships.
         long pendingPayments = countPendingPaymentsSafely();
@@ -101,6 +107,7 @@ public class AdminDashboardService {
         BigDecimal totalRevenue = BigDecimal.ZERO;
 
         return new DashboardKpiDTO(
+                fullSystemBalance,
                 totalUsers,
                 activeAgencies,
                 transfersToday,
@@ -116,6 +123,20 @@ public class AdminDashboardService {
                 suspendedAgencies,
                 pendingAgencies
         );
+    }
+
+    private BigDecimal resolveFullSystemBalance() {
+        try {
+            return centralAgencyRepository.findByCode("OKANE-HQ")
+                    .map(CentralAgency::getCurrentBalance)
+                    .map(balance -> balance == null ? BigDecimal.ZERO : balance)
+                    .orElseGet(() -> centralAgencyRepository.findAll().stream()
+                            .map(CentralAgency::getCurrentBalance)
+                            .filter(balance -> balance != null)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+        } catch (RuntimeException ex) {
+            return BigDecimal.ZERO;
+        }
     }
 
     private long countActiveAccountsSafely() {

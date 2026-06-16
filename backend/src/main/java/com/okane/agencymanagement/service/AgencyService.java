@@ -16,6 +16,7 @@ import com.okane.agencymanagement.exception.AgencyCodeAlreadyExistsException;
 import com.okane.agencymanagement.exception.AgencyEmailAlreadyExistsException;
 import com.okane.agencymanagement.exception.AgencyNotFoundException;
 import com.okane.agencymanagement.exception.InvalidAgentException;
+import com.okane.agencybalance.exception.InsufficientBalanceException;
 import com.okane.auth.entity.User;
 import com.okane.auth.repository.UserRepository;
 import com.okane.auth.security.OkaneUserPrincipal;
@@ -97,8 +98,22 @@ public class AgencyService {
         agency.setCentralAgency(centralAgency);
         agency.setStatus(AgencyStatus.PENDING);
         agency.setActive(false);
+        agency.setCurrentBalance(request.baseBalance());
         agency.setCreatedAt(now);
         agency.setUpdatedAt(now);
+
+        if (centralAgency.getCurrentBalance() == null) {
+            centralAgency.setCurrentBalance(java.math.BigDecimal.ZERO);
+        }
+        if (centralAgency.getCurrentBalance().compareTo(request.baseBalance()) < 0) {
+            throw new InsufficientBalanceException(
+                    "Solde central insuffisant pour creer l'agence. Solde central : "
+                            + centralAgency.getCurrentBalance() + ", Base balance : " + request.baseBalance());
+        }
+        centralAgency.setCurrentBalance(centralAgency.getCurrentBalance().subtract(request.baseBalance()));
+        centralAgency.setUpdatedAt(now);
+        centralAgencyRepository.save(centralAgency);
+
         Agency saved = agencyRepository.save(agency);
 
         auditService.logAgencyCreated(currentUserOrNull(authentication), saved);
@@ -129,6 +144,9 @@ public class AgencyService {
         agency.setPhone(request.phone());
         agency.setEmail(email);
         agency.setDailyLimit(request.dailyLimit());
+        if (agency.getCurrentBalance() == null) {
+            agency.setCurrentBalance(java.math.BigDecimal.ZERO);
+        }
         agency.setUpdatedAt(LocalDateTime.now());
         Agency saved = agencyRepository.save(agency);
 

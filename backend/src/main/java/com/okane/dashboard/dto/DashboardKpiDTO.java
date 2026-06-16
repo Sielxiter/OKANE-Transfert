@@ -8,6 +8,7 @@ import java.math.BigDecimal;
  * extras used by the card subtitles (e.g. "1 clients • 1 managers • 1 agents").
  */
 public record DashboardKpiDTO(
+        java.math.BigDecimal fullSystemBalance,
         long totalUsers,
         long activeAgencies,
         long transfersToday,

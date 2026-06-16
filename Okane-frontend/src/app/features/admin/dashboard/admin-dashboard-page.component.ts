@@ -351,11 +351,11 @@ export class AdminDashboardPageComponent implements OnInit {
 
 		return [
 			{
-				title: 'Total Utilisateurs',
-				value: numberFr(k?.totalUsers),
-				icon: 'lucideUsers',
+				title: 'Full System Balance',
+				value: moneyFr(k?.fullSystemBalance),
+				icon: 'lucideWallet',
 				accent: 'bg-primary/10 text-primary',
-				note: 'Depuis le mois dernier',
+				note: 'Liquidité centrale disponible',
 			},
 			{
 				title: 'Agences Actives',

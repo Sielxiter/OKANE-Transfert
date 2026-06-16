@@ -1,8 +1,10 @@
 package com.okane.managermodule.service;
 
 import com.okane.cash.entity.CashClosure;
+import com.okane.cash.entity.FundDiscrepancy;
 import com.okane.cash.repository.AgentCashSessionRepository;
 import com.okane.cash.repository.CashClosureRepository;
+import com.okane.cash.repository.FundDiscrepancyRepository;
 import com.okane.managermodule.dto.CashClosureListDto;
 import com.okane.managermodule.exception.ManagerAccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -19,13 +21,16 @@ public class ManagerCashService {
     private final ManagerScopeResolver scopeResolver;
     private final AgentCashSessionRepository agentCashSessionRepository;
     private final CashClosureRepository cashClosureRepository;
+    private final FundDiscrepancyRepository discrepancyRepository;
 
     public ManagerCashService(ManagerScopeResolver scopeResolver,
                                AgentCashSessionRepository agentCashSessionRepository,
-                               CashClosureRepository cashClosureRepository) {
+                               CashClosureRepository cashClosureRepository,
+                               FundDiscrepancyRepository discrepancyRepository) {
         this.scopeResolver = scopeResolver;
         this.agentCashSessionRepository = agentCashSessionRepository;
         this.cashClosureRepository = cashClosureRepository;
+        this.discrepancyRepository = discrepancyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -34,6 +39,17 @@ public class ManagerCashService {
         if (scope.getSubAgencyIds().isEmpty()) return List.of();
 
         return cashClosureRepository.findByCashSession_Agency_IdInOrderByClosedAtDesc(scope.getSubAgencyIds())
+                .stream()
+                .map(this::toCashClosureListDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CashClosureListDto> getCashDiscrepancies(Authentication authentication) {
+        ManagerScope scope = scopeResolver.resolve(authentication.getName());
+        if (scope.getSubAgencyIds().isEmpty()) return List.of();
+
+        return discrepancyRepository.findByCashSession_Agency_IdInOrderByReportedAtDesc(scope.getSubAgencyIds())
                 .stream()
                 .map(this::toCashClosureListDto)
                 .collect(Collectors.toList());
@@ -59,6 +75,9 @@ public class ManagerCashService {
     }
 
     private CashClosureListDto toCashClosureListDto(CashClosure closure) {
+        if (closure == null) {
+            return new CashClosureListDto(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        }
         return new CashClosureListDto(
                 closure.getId(),
                 closure.getCashSession() != null ? closure.getCashSession().getId() : null,
@@ -74,7 +93,9 @@ public class ManagerCashService {
                 closure.getCashSession() != null && closure.getCashSession().getAgency() != null
                         ? closure.getCashSession().getAgency().getCode()
                         : null,
-                closure.getCashSession() != null ? closure.getCashSession().getSessionDate().toString() : null,
+                closure.getCashSession() != null && closure.getCashSession().getSessionDate() != null
+                        ? closure.getCashSession().getSessionDate().toString()
+                        : null,
                 closure.getCashSession() != null ? closure.getCashSession().getOpeningBalance() : null,
                 closure.getExpectedBalance(),
                 closure.getActualBalance(),
@@ -83,6 +104,28 @@ public class ManagerCashService {
                 closure.getNote(),
                 closure.getClosedAt(),
                 closure.getValidatedAt()
+        );
+    }
+
+    private CashClosureListDto toCashClosureListDto(FundDiscrepancy discrepancy) {
+        CashClosure closure = discrepancy.getCashClosure();
+        CashClosureListDto base = toCashClosureListDto(closure);
+        return new CashClosureListDto(
+                base.id(),
+                base.sessionId(),
+                base.agentName(),
+                base.agentEmail(),
+                base.agencyName(),
+                base.agencyCode(),
+                base.sessionDate(),
+                base.openingBalance(),
+                discrepancy.getExpectedBalance(),
+                discrepancy.getActualBalance(),
+                discrepancy.getDifferenceAmount(),
+                discrepancy.getStatus(),
+                discrepancy.getDescription(),
+                closure != null ? closure.getClosedAt() : discrepancy.getReportedAt(),
+                closure != null ? closure.getValidatedAt() : null
         );
     }
 }

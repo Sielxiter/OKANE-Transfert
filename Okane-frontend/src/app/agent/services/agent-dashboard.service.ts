@@ -1,5 +1,10 @@
-import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { catchError, map, Observable, of } from 'rxjs';
+import {
+	AgentCashSessionApiService,
+	type ApiAgentDashboardStats,
+	type ApiAgentSessionStatus,
+} from './agent-cash-session.api';
 import {
 	Client,
 	MouvementCaisse,
@@ -13,6 +18,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class AgentDashboardService {
+	private readonly _sessionApi = inject(AgentCashSessionApiService);
 	private readonly _currency = 'MAD';
 	private readonly _transfers: Transfert[] = [
 		{
@@ -181,17 +187,22 @@ export class AgentDashboardService {
 	];
 
 	getDashboardStats(): Observable<StatistiquesTableauDeBord> {
-		return of({
-			soldeCaisse: this._cashSession.soldeActuel,
-			transfertsJour: 18,
-			paiementsJour: 11,
-			transfertsEnAttente: this._transfers.filter((transfer) => transfer.statut === 'PENDING').length,
-			paiementsEnAttente: this._transfers.filter((transfer) => transfer.statut === 'PENDING').length,
-			revenus: this._transfers
-				.filter((transfer) => transfer.statut === 'PAID')
-				.reduce((total, transfer) => total + (transfer.commissionAgence ?? 0), 0),
-			devise: this._currency,
-		});
+		return this._sessionApi.getDashboardStats().pipe(
+			map((stats) => this.mapDashboardStats(stats)),
+			catchError(() =>
+				of({
+					soldeCaisse: this._cashSession.soldeActuel,
+					transfertsJour: 18,
+					paiementsJour: 11,
+					transfertsEnAttente: this._transfers.filter((transfer) => transfer.statut === 'PENDING').length,
+					paiementsEnAttente: this._transfers.filter((transfer) => transfer.statut === 'PENDING').length,
+					revenus: this._transfers
+						.filter((transfer) => transfer.statut === 'PAID')
+						.reduce((total, transfer) => total + (transfer.commissionAgence ?? 0), 0),
+					devise: this._currency,
+				}),
+			),
+		);
 	}
 
 	getRecentTransfers(): Observable<Transfert[]> {
@@ -203,7 +214,10 @@ export class AgentDashboardService {
 	}
 
 	getCashSession(): Observable<SessionCaisse> {
-		return of(this._cashSession);
+		return this._sessionApi.getStatus().pipe(
+			map((status) => this.mapCashSession(status)),
+			catchError(() => of(this._cashSession)),
+		);
 	}
 
 	getCashMovements(): Observable<MouvementCaisse[]> {
@@ -247,5 +261,31 @@ export class AgentDashboardService {
 			transfer.statut = status;
 		}
 		return of(transfer);
+	}
+
+	private mapDashboardStats(stats: ApiAgentDashboardStats): StatistiquesTableauDeBord {
+		return {
+			soldeCaisse: stats.soldeCaisse,
+			transfertsJour: stats.transfertsJour,
+			paiementsJour: stats.paiementsJour,
+			transfertsEnAttente: stats.transfertsEnAttente,
+			paiementsEnAttente: stats.paiementsEnAttente,
+			revenus: stats.revenus,
+			devise: stats.devise || this._currency,
+		};
+	}
+
+	private mapCashSession(status: ApiAgentSessionStatus): SessionCaisse {
+		return {
+			id: status.sessionId ? String(status.sessionId) : 'session-live',
+			soldeOuverture: status.openingBalance,
+			soldeActuel: status.currentBalance,
+			totalEntrees: Math.max(status.currentBalance - status.openingBalance, 0),
+			totalSorties: Math.max(status.openingBalance - status.currentBalance, 0),
+			ecart: 0,
+			statut: status.hasActiveSession ? 'OPEN' : 'CLOSED',
+			ouverteLe: status.openedAt ?? new Date().toISOString(),
+			devise: this._currency,
+		};
 	}
 }

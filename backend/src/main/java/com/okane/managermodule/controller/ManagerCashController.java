@@ -31,6 +31,11 @@ public class ManagerCashController {
         return ResponseEntity.ok(managerCashService.getCashClosures(authentication));
     }
 
+    @GetMapping("/discrepancies")
+    public ResponseEntity<List<CashClosureListDto>> getCashDiscrepancies(Authentication authentication) {
+        return ResponseEntity.ok(managerCashService.getCashDiscrepancies(authentication));
+    }
+
     @GetMapping("/closures/{id}")
     public ResponseEntity<CashClosureListDto> getCashClosureDetails(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(managerCashService.getCashClosureDetails(id, authentication));

@@ -7,6 +7,7 @@ export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AlertStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
 
 export interface ApiDashboardKpis {
+	fullSystemBalance: number;
 	totalUsers: number;
 	activeAgencies: number;
 	transfersToday: number;

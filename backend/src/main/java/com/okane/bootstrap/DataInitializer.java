@@ -476,44 +476,73 @@ public class DataInitializer implements ApplicationListener<ContextRefreshedEven
     }
 
     private CentralAgency ensureCentralAgency() {
-        return centralAgencyRepository.findByCode("OKANE-HQ").orElseGet(() -> {
+        CentralAgency agency = centralAgencyRepository.findByCode("OKANE-HQ").orElseGet(() -> {
             LocalDateTime now = LocalDateTime.now();
-            CentralAgency agency = new CentralAgency();
-            agency.setName("Agence Centrale Okane");
-            agency.setCode("OKANE-HQ");
-            agency.setAddress("12 Rue Principale");
-            agency.setCity("Casablanca");
-            agency.setCountry("Maroc");
-            agency.setPhone("+212600000010");
-            agency.setEmail("hq@okane.local");
-            agency.setDailyLimit(new BigDecimal("50000.00"));
-            agency.setActive(true);
-            agency.setStatus(com.okane.agencymanagement.domain.AgencyStatus.ACTIVE);
-            agency.setCreatedAt(now);
-            agency.setUpdatedAt(now);
-            return centralAgencyRepository.save(agency);
+            CentralAgency created = new CentralAgency();
+            created.setName("Agence Centrale Okane");
+            created.setCode("OKANE-HQ");
+            created.setAddress("12 Rue Principale");
+            created.setCity("Casablanca");
+            created.setCountry("Maroc");
+            created.setPhone("+212600000010");
+            created.setEmail("hq@okane.local");
+            created.setDailyLimit(new BigDecimal("50000.00"));
+            created.setCurrentBalance(new BigDecimal("500000.00"));
+            created.setActive(true);
+            created.setStatus(com.okane.agencymanagement.domain.AgencyStatus.ACTIVE);
+            created.setCreatedAt(now);
+            created.setUpdatedAt(now);
+            return centralAgencyRepository.save(created);
         });
+
+        if (agency.getCurrentBalance() == null) {
+            agency.setCurrentBalance(new BigDecimal("500000.00"));
+            agency.setUpdatedAt(LocalDateTime.now());
+            agency = centralAgencyRepository.save(agency);
+        }
+        return agency;
     }
 
     private Agency ensureAgency(CentralAgency centralAgency) {
-        return agencyRepository.findByCode("OKANE-CASA-01").orElseGet(() -> {
+        Agency agency = agencyRepository.findByCode("OKANE-CASA-01").orElseGet(() -> {
             LocalDateTime now = LocalDateTime.now();
-            Agency agency = new Agency();
-            agency.setName("Agence Casablanca Centre");
-            agency.setCode("OKANE-CASA-01");
-            agency.setAddress("12 Rue Principale, Casablanca");
-            agency.setCity("Casablanca");
-            agency.setCountry("Maroc");
-            agency.setPhone("+212600000011");
-            agency.setEmail("casa@okane.local");
-            agency.setDailyLimit(new BigDecimal("50000.00"));
-            agency.setActive(true);
-            agency.setStatus(com.okane.agencymanagement.domain.AgencyStatus.ACTIVE);
-            agency.setCentralAgency(centralAgency);
-            agency.setCreatedAt(now);
-            agency.setUpdatedAt(now);
-            return agencyRepository.save(agency);
+            Agency created = new Agency();
+            created.setName("Agence Casablanca Centre");
+            created.setCode("OKANE-CASA-01");
+            created.setAddress("12 Rue Principale, Casablanca");
+            created.setCity("Casablanca");
+            created.setCountry("Maroc");
+            created.setPhone("+212600000011");
+            created.setEmail("casa@okane.local");
+            created.setDailyLimit(new BigDecimal("50000.00"));
+            created.setCurrentBalance(new BigDecimal("50000.00"));
+            created.setActive(true);
+            created.setStatus(com.okane.agencymanagement.domain.AgencyStatus.ACTIVE);
+            created.setCentralAgency(centralAgency);
+            created.setCreatedAt(now);
+            created.setUpdatedAt(now);
+            Agency saved = agencyRepository.save(created);
+            if (centralAgency.getCurrentBalance() != null
+                    && centralAgency.getCurrentBalance().compareTo(created.getCurrentBalance()) >= 0) {
+                centralAgency.setCurrentBalance(centralAgency.getCurrentBalance().subtract(created.getCurrentBalance()));
+                centralAgency.setUpdatedAt(now);
+                centralAgencyRepository.save(centralAgency);
+            }
+            return saved;
         });
+
+        if (agency.getCurrentBalance() == null) {
+            agency.setCurrentBalance(new BigDecimal("50000.00"));
+            agency.setUpdatedAt(LocalDateTime.now());
+            agency = agencyRepository.save(agency);
+            if (centralAgency.getCurrentBalance() != null
+                    && centralAgency.getCurrentBalance().compareTo(agency.getCurrentBalance()) >= 0) {
+                centralAgency.setCurrentBalance(centralAgency.getCurrentBalance().subtract(agency.getCurrentBalance()));
+                centralAgency.setUpdatedAt(LocalDateTime.now());
+                centralAgencyRepository.save(centralAgency);
+            }
+        }
+        return agency;
     }
 
     private User ensureUser(

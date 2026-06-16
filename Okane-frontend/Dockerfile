@@ -1,44 +1,32 @@
-# Frontend Dockerfile - Angular 21 + Nginx
+# Frontend Dockerfile - Angular served directly by Node
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
 RUN npm install -g pnpm && \
     pnpm install --frozen-lockfile
 
-# Copy source and build
 COPY . .
 RUN pnpm run build
 
-# Production stage - Nginx
-FROM nginx:1.27-alpine
+FROM node:22-alpine
 
-# Copy built app
-COPY --from=builder /app/dist/Okane-frontend/browser /usr/share/nginx/html
+WORKDIR /app
 
-# Angular 21 SSR build emits index.csr.html; nginx expects index.html
-RUN if [ -f /usr/share/nginx/html/index.csr.html ]; then \
-      cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html; \
-    fi
+RUN npm install -g serve && \
+    addgroup -S okane && adduser -S okane -G okane
 
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist/Okane-frontend/browser ./dist
 
-# Create non-root user
-RUN addgroup -S okane && adduser -S okane -G okane && \
-    chown -R okane:okane /usr/share/nginx/html && \
-    chown -R okane:okane /var/cache/nginx && \
-    chown -R okane:okane /var/log/nginx && \
-    chown -R okane:okane /etc/nginx/conf.d && \
-    touch /var/run/nginx.pid && \
-    chown -R okane:okane /var/run/nginx.pid
+RUN if [ -f /app/dist/index.csr.html ]; then \
+      cp /app/dist/index.csr.html /app/dist/index.html; \
+    fi && \
+    chown -R okane:okane /app
 
 USER okane
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "dist", "-l", "80"]

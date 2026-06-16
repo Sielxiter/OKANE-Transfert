@@ -94,6 +94,14 @@ import { AdminAgenciesApiService, type ApiAgency, type ApiAgencyType } from './a
 				}
 			</label>
 
+			<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+				Base Balance (MAD)
+				<input hlmInput type="number" formControlName="baseBalance" min="0" step="1000" />
+				@if (showError('baseBalance')) {
+					<span class="text-xs text-destructive">{{ fieldError('baseBalance') }}</span>
+				}
+			</label>
+
 			@if (mode() === 'CENTRAL') {
 				<label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
 					Manager responsable
@@ -177,6 +185,7 @@ export class AgencyCreateFormComponent {
 		phone: ['', [Validators.maxLength(30)]],
 		email: ['', [Validators.email, Validators.maxLength(150)]],
 		dailyLimit: [50000, [Validators.required, Validators.min(1)]],
+		baseBalance: [50000, [Validators.required, Validators.min(0)]],
 		managerId: [null as number | null],
 		centralAgencyId: [null as number | null],
 	});
@@ -256,6 +265,7 @@ export class AgencyCreateFormComponent {
 			phone: value.phone?.trim() || null,
 			email: value.email?.trim() || null,
 			dailyLimit: Number(value.dailyLimit ?? 50000),
+			baseBalance: Number(value.baseBalance ?? 0),
 			agencyType: this.mode(),
 			centralAgencyId: this.mode() === 'SUB' ? Number(value.centralAgencyId ?? 0) : null,
 			managerId: this.mode() === 'CENTRAL' ? Number(value.managerId ?? 0) : null,
@@ -278,6 +288,7 @@ export class AgencyCreateFormComponent {
 					phone: '',
 					email: '',
 					dailyLimit: 50000,
+					baseBalance: 50000,
 					managerId: null,
 					centralAgencyId: null,
 				});

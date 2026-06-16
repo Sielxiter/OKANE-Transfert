@@ -82,6 +82,7 @@ public class CentralAgencyService {
         agency.setPhone(request.phone());
         agency.setEmail(email);
         agency.setDailyLimit(request.dailyLimit());
+        agency.setCurrentBalance(request.baseBalance());
         agency.setStatus(AgencyStatus.PENDING);
         agency.setActive(false);
         agency.setCreatedAt(now);
@@ -115,6 +116,9 @@ public class CentralAgencyService {
         agency.setPhone(request.phone());
         agency.setEmail(email);
         agency.setDailyLimit(request.dailyLimit());
+        if (agency.getCurrentBalance() == null) {
+            agency.setCurrentBalance(java.math.BigDecimal.ZERO);
+        }
         agency.setUpdatedAt(LocalDateTime.now());
         CentralAgency saved = centralAgencyRepository.save(agency);
 

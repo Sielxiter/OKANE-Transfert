@@ -30,6 +30,10 @@ export class ManagerCashApiService {
 		return this._http.get<ApiCashClosure[]>(`${this._base}/closures`);
 	}
 
+	public getDiscrepancies(): Observable<ApiCashClosure[]> {
+		return this._http.get<ApiCashClosure[]>(`${this._base}/discrepancies`);
+	}
+
 	public getClosureDetails(id: number): Observable<ApiCashClosure> {
 		return this._http.get<ApiCashClosure>(`${this._base}/closures/${id}`);
 	}

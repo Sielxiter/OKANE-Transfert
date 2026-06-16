@@ -25,6 +25,8 @@ public interface TransferRepository extends JpaRepository<Transfer, Long>, JpaSp
 
     long countByCreatedAtBetweenAndSourceAgency_IdIn(LocalDateTime start, LocalDateTime end, List<Long> agencyIds);
 
+    long countBySourceAgency_IdInAndStatus(List<Long> agencyIds, String status);
+
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.createdAt BETWEEN :start AND :end AND t.sourceAgency.id IN :agencyIds")
     BigDecimal sumAmountByCreatedAtBetweenAndSourceAgency_IdIn(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("agencyIds") List<Long> agencyIds);
 

@@ -36,6 +36,7 @@ export interface CreateAgencyRequest {
 	phone?: string | null;
 	email?: string | null;
 	dailyLimit: number;
+	baseBalance: number;
 	agencyType: ApiAgencyType;
 	centralAgencyId?: number | null;
 	managerId?: number | null;
