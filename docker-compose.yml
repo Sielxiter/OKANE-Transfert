@@ -39,7 +39,7 @@ services:
       JWT_ISSUER: Okane Transfer
       JWT_ACCESS_TOKEN_MINUTES: 60
       JWT_REFRESH_TOKEN_DAYS: 7
-      FRONTEND_ALLOWED_ORIGINS: http://localhost,http://127.0.0.1,http://frontend
+      FRONTEND_ALLOWED_ORIGINS: http://localhost,http://127.0.0.1,http://frontend,http://13.48.181.188,http://13.48.181.188:*
       AUTH_LOGIN_MAX_ATTEMPTS: 5
       AUTH_LOGIN_WINDOW_MINUTES: 10
       UPLOAD_DIR: /app/uploads

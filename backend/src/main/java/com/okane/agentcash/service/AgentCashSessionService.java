@@ -4,9 +4,11 @@ import com.okane.agency.entity.Agency;
 import com.okane.agency.entity.AgencyUser;
 import com.okane.agency.repository.AgencyRepository;
 import com.okane.agency.repository.AgencyUserRepository;
+import com.okane.agentcash.dto.AgentDashboardStatsDTO;
+import com.okane.agentcash.dto.AgentSessionStatusDTO;
+import com.okane.agentcash.dto.SessionCloseResultDTO;
 import com.okane.auth.entity.User;
 import com.okane.auth.repository.UserRepository;
-import com.okane.auth.security.OkaneUserPrincipal;
 import com.okane.cash.entity.AgentCashSession;
 import com.okane.cash.entity.CashClosure;
 import com.okane.cash.entity.CashMovement;
@@ -16,10 +18,6 @@ import com.okane.cash.repository.CashClosureRepository;
 import com.okane.cash.repository.CashMovementRepository;
 import com.okane.cash.repository.FundDiscrepancyRepository;
 import com.okane.cash.repository.PayoutRepository;
-import com.okane.agentcash.dto.AgentDashboardStatsDTO;
-import com.okane.agentcash.dto.AgentSessionStatusDTO;
-import com.okane.agentcash.dto.SessionCloseResultDTO;
-import com.okane.agencybalance.service.AgencyBalanceService;
 import com.okane.transfer.repository.TransferRepository;
 import com.okane.transfermanagement.domain.TransferStatus;
 import jakarta.persistence.EntityNotFoundException;
@@ -29,8 +27,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Locale;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +46,6 @@ public class AgentCashSessionService {
     private final AgencyRepository agencyRepository;
     private final TransferRepository transferRepository;
     private final PayoutRepository payoutRepository;
-    private final AgencyBalanceService agencyBalanceService;
 
     public AgentCashSessionService(
             UserRepository userRepository,
@@ -61,8 +56,7 @@ public class AgentCashSessionService {
             FundDiscrepancyRepository discrepancyRepository,
             AgencyRepository agencyRepository,
             TransferRepository transferRepository,
-            PayoutRepository payoutRepository,
-            AgencyBalanceService agencyBalanceService
+            PayoutRepository payoutRepository
     ) {
         this.userRepository = userRepository;
         this.agencyUserRepository = agencyUserRepository;
@@ -73,7 +67,6 @@ public class AgentCashSessionService {
         this.agencyRepository = agencyRepository;
         this.transferRepository = transferRepository;
         this.payoutRepository = payoutRepository;
-        this.agencyBalanceService = agencyBalanceService;
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +76,7 @@ public class AgentCashSessionService {
         AgentCashSession session = resolveOpenSession(agent);
         if (session == null) {
             BigDecimal balance = agency.getCurrentBalance() == null ? BigDecimal.ZERO : agency.getCurrentBalance();
-            return new AgentSessionStatusDTO(false, null, null, balance, balance, STATUS_CLOSED, null);
+            return new AgentSessionStatusDTO(false, null, null, normalizeMoney(balance), normalizeMoney(balance), STATUS_CLOSED, null);
         }
 
         BigDecimal currentBalance = resolveCurrentBalance(session, agency);
@@ -117,7 +110,15 @@ public class AgentCashSessionService {
         session.setOpenedAt(LocalDateTime.now());
         session.setClosedAt(null);
         sessionRepository.save(session);
-        return new AgentSessionStatusDTO(true, session.getId(), session.getSessionDate(), openingBalance, openingBalance, STATUS_OPEN, session.getOpenedAt());
+        return new AgentSessionStatusDTO(
+                true,
+                session.getId(),
+                session.getSessionDate(),
+                openingBalance,
+                openingBalance,
+                STATUS_OPEN,
+                session.getOpenedAt()
+        );
     }
 
     @Transactional
@@ -202,7 +203,9 @@ public class AgentCashSessionService {
         long payoutsToday = payoutRepository.countByPaidAtBetween(start, end);
         long pendingTransfers = transferRepository.countBySourceAgency_IdInAndStatus(agencyIds, TransferStatus.EN_ATTENTE.name());
         long pendingPayments = payoutRepository.countByStatus("EN_ATTENTE");
-        BigDecimal revenues = normalizeMoney(transferRepository.sumAgencyCommissionByCreatedAtBetweenAndSourceAgency_IdIn(start, end, agencyIds));
+        BigDecimal revenues = normalizeMoney(
+                transferRepository.sumAgencyCommissionByCreatedAtBetweenAndSourceAgency_IdIn(start, end, agencyIds)
+        );
 
         return new AgentDashboardStatsDTO(balance, transfersToday, payoutsToday, pendingTransfers, pendingPayments, revenues, "MAD");
     }
@@ -214,7 +217,17 @@ public class AgentCashSessionService {
 
     private Agency resolveAgency(User agent) {
         AgencyUser membership = agencyUserRepository.findFirstByUser_IdAndActiveTrue(agent.getId())
-                .orElseThrow(() -> new IllegalStateException("Aucune agence assignée à l'agent."));
+                .orElseGet(() -> {
+                    Agency fallbackAgency = agencyRepository.findFirstByOrderByCreatedAtAsc()
+                            .orElseThrow(() -> new IllegalStateException("Aucune agence disponible pour l'agent."));
+                    AgencyUser fallbackMembership = new AgencyUser();
+                    fallbackMembership.setAgency(fallbackAgency);
+                    fallbackMembership.setUser(agent);
+                    fallbackMembership.setActive(true);
+                    fallbackMembership.setAssignedAt(LocalDateTime.now());
+                    return agencyUserRepository.save(fallbackMembership);
+                });
+
         Agency agency = membership.getAgency();
         if (agency == null || agency.getId() == null) {
             throw new IllegalStateException("Agence introuvable pour l'agent.");
@@ -238,6 +251,8 @@ public class AgentCashSessionService {
     }
 
     private BigDecimal normalizeMoney(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP) : value.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        return value == null
+                ? BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP)
+                : value.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 }

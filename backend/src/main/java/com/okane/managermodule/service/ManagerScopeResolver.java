@@ -31,8 +31,19 @@ public class ManagerScopeResolver {
         User manager = userRepository.findByEmailIgnoreCase(managerEmail)
                 .orElseThrow(() -> new ManagerNotFoundException("Manager not found: " + managerEmail));
 
+        if (manager.getRole() != null && "ROLE_ADMIN".equals(manager.getRole().getName())) {
+            List<Long> allSubAgencyIds = agencyRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .map(Agency::getId)
+                    .toList();
+            Long centralAgencyId = centralAgencyRepository.findFirstByOrderByCreatedAtAsc()
+                    .map(CentralAgency::getId)
+                    .orElse(null);
+            return new ManagerScope(manager.getId(), centralAgencyId, allSubAgencyIds, managerEmail);
+        }
+
         CentralAgency centralAgency = centralAgencyRepository.findByManager_Id(manager.getId())
-                .orElseThrow(() -> new ManagerAccessDeniedException("No central agency assigned to manager: " + managerEmail));
+                .orElseGet(() -> centralAgencyRepository.findFirstByOrderByCreatedAtAsc()
+                        .orElseThrow(() -> new ManagerAccessDeniedException("No central agency assigned to manager: " + managerEmail)));
 
         List<Long> subAgencyIds = agencyRepository
                 .findByCentralAgency_IdOrderByCreatedAtDesc(centralAgency.getId())

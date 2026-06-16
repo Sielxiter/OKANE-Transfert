@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from '../../../core/api/api.config';
 
-const BASE = 'http://localhost:8080/api/agent';
+const BASE = `${API_BASE_URL}/agent`;
 
 export interface ClientSearchResult {
 	id: number;

@@ -8,6 +8,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { finalize } from 'rxjs';
+import { API_BASE_URL } from '../../core/api/api.config';
 import { I18nPipe } from '../../shared/i18n/i18n.pipe';
 
 type LoginResponse = {
@@ -99,7 +100,7 @@ export class LoginFormComponent {
   private readonly _http = inject(HttpClient);
   private readonly _router = inject(Router);
   private readonly _cdr = inject(ChangeDetectorRef);
-  private readonly _apiBaseUrl = 'http://localhost:8080/api/auth';
+  private readonly _apiBaseUrl = `${API_BASE_URL}/auth`;
 
   public readonly form = this._fb.group({
     email: ['', [Validators.required, Validators.email]],

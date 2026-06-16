@@ -23,6 +23,8 @@ public interface AgencyRepository extends JpaRepository<Agency, Long> {
 
     List<Agency> findAllByOrderByCreatedAtDesc();
 
+    Optional<Agency> findFirstByOrderByCreatedAtAsc();
+
     long countByStatus(AgencyStatus status);
 
     long countByCentralAgency_Id(Long centralAgencyId);

@@ -19,6 +19,8 @@ public interface CentralAgencyRepository extends JpaRepository<CentralAgency, Lo
 
     List<CentralAgency> findAllByOrderByCreatedAtDesc();
 
+    Optional<CentralAgency> findFirstByOrderByCreatedAtAsc();
+
     List<CentralAgency> findByStatusOrderByCreatedAtDesc(AgencyStatus status);
 
     long countByStatus(AgencyStatus status);

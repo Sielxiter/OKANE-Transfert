@@ -2,12 +2,12 @@ import { NgClass, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-	lucideClipboardCheck,
 	lucideCheck,
 	lucideX,
 	lucideTriangleAlert,
 	lucideClock,
 	lucideAlertTriangle,
+	lucideClipboardList,
 } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
@@ -19,12 +19,12 @@ import { ManagerValidationsApiService, type ApiValidation } from './manager-vali
 	imports: [DatePipe, NgIcon, HlmButtonImports, HlmSkeletonImports],
 	providers: [
 		provideIcons({
-			lucideClipboardCheck,
 			lucideCheck,
 			lucideX,
 			lucideTriangleAlert,
 			lucideClock,
 			lucideAlertTriangle,
+			lucideClipboardList,
 		}),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
@@ -90,7 +90,7 @@ import { ManagerValidationsApiService, type ApiValidation } from './manager-vali
 					}
 					@if (validations().length === 0) {
 						<div class="rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center">
-							<ng-icon name="lucideClipboardCheck" class="mx-auto text-3xl text-muted-foreground" />
+							<ng-icon name="lucideClipboardList" class="mx-auto text-3xl text-muted-foreground" />
 							<p class="mt-3 text-sm font-medium text-foreground">Aucune validation en attente</p>
 							<p class="mt-1 text-xs text-muted-foreground">Toutes les demandes ont ete traitees.</p>
 						</div>

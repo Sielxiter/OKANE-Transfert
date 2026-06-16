@@ -121,7 +121,7 @@ const managerItems: SidebarItem[] = [
 	},
 	{
 		title: 'Validations en attente',
-		icon: 'lucideClipboardCheck',
+		icon: 'lucideClipboardList',
 		url: '/manager/validations',
 	},
 	{
