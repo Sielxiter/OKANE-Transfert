@@ -49,10 +49,49 @@ export interface ApiCashMovement {
 	payoutId: number | null;
 }
 
+export interface ApiTransferListItem {
+	id: number;
+	referenceCode: string;
+	withdrawalCode: string;
+	senderFullName: string;
+	senderPhone: string | null;
+	beneficiaryFullName: string;
+	beneficiaryPhone: string | null;
+	amount: number;
+	currencySymbol: string | null;
+	feeAmount: number;
+	netAmount: number;
+	status: string;
+	createdAt: string;
+	sentAt: string | null;
+	expiresAt: string | null;
+}
+
+export interface ApiTransferLookup {
+	id: number;
+	referenceCode: string;
+	withdrawalCode: string;
+	senderFullName: string;
+	senderPhone: string | null;
+	beneficiaryFullName: string;
+	beneficiaryPhone: string | null;
+	amount: number;
+	currencySymbol: string | null;
+	feeAmount: number;
+	netAmount: number;
+	status: string;
+	createdAt: string;
+	sentAt: string | null;
+	expiresAt: string | null;
+	sourceAgencyName: string | null;
+	sourceAgencyCode: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AgentCashSessionApiService {
 	private readonly _http = inject(HttpClient);
 	private readonly _base = `${API_BASE_URL}/agent/cash-session`;
+	private readonly _transferBase = `${API_BASE_URL}/agent`;
 
 	public getStatus(): Observable<ApiAgentSessionStatus> {
 		return this._http.get<ApiAgentSessionStatus>(`${this._base}/status`);
@@ -72,5 +111,14 @@ export class AgentCashSessionApiService {
 
 	public getDashboardStats(): Observable<ApiAgentDashboardStats> {
 		return this._http.get<ApiAgentDashboardStats>(`${this._base}/dashboard-stats`);
+	}
+
+	// Transfer APIs
+	public getMyTransfers(): Observable<ApiTransferListItem[]> {
+		return this._http.get<ApiTransferListItem[]>(`${this._transferBase}/transfers`);
+	}
+
+	public lookupTransfer(params: { reference?: string; withdrawalCode?: string; phone?: string }): Observable<ApiTransferLookup> {
+		return this._http.get<ApiTransferLookup>(`${this._transferBase}/transfers/lookup`, { params });
 	}
 }

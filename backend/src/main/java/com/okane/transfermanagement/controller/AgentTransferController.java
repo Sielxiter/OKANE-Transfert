@@ -2,6 +2,8 @@ package com.okane.transfermanagement.controller;
 
 import com.okane.transfermanagement.dto.AgentCountryResponseDTO;
 import com.okane.transfermanagement.dto.AgentCurrencyResponseDTO;
+import com.okane.transfermanagement.dto.AgentTransferListItemDTO;
+import com.okane.transfermanagement.dto.AgentTransferLookupDTO;
 import com.okane.transfermanagement.dto.AgentTransferQuoteRequestDTO;
 import com.okane.transfermanagement.dto.AgentTransferQuoteResponseDTO;
 import com.okane.transfermanagement.dto.AgentTransferResponseDTO;
@@ -14,9 +16,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -52,5 +56,28 @@ public class AgentTransferController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(agentTransferService.createTransfer(request, authentication));
+    }
+
+    @GetMapping("/transfers")
+    public ResponseEntity<List<AgentTransferListItemDTO>> listMyTransfers(Authentication authentication) {
+        return ResponseEntity.ok(agentTransferService.listMyTransfers(authentication));
+    }
+
+    @GetMapping("/transfers/lookup")
+    public ResponseEntity<AgentTransferLookupDTO> lookupTransfer(
+            @RequestParam(required = false) String reference,
+            @RequestParam(required = false) String withdrawalCode,
+            @RequestParam(required = false) String phone
+    ) {
+        if (reference != null && !reference.isBlank()) {
+            return ResponseEntity.ok(agentTransferService.lookupByReference(reference));
+        }
+        if (withdrawalCode != null && !withdrawalCode.isBlank()) {
+            return ResponseEntity.ok(agentTransferService.lookupByWithdrawalCode(withdrawalCode));
+        }
+        if (phone != null && !phone.isBlank()) {
+            return ResponseEntity.ok(agentTransferService.lookupByBeneficiaryPhone(phone));
+        }
+        return ResponseEntity.badRequest().build();
     }
 }

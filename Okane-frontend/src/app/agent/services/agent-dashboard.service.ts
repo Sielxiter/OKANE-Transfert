@@ -20,6 +20,8 @@ import {
 export class AgentDashboardService {
 	private readonly _sessionApi = inject(AgentCashSessionApiService);
 	private readonly _currency = 'MAD';
+
+	// Fallback mock data used when APIs fail
 	private readonly _transfers: Transfert[] = [
 		{
 			id: 'trf-1001',
@@ -206,11 +208,37 @@ export class AgentDashboardService {
 	}
 
 	getRecentTransfers(): Observable<Transfert[]> {
-		return of(this._transfers.slice(0, 4));
+		return this._sessionApi.getMyTransfers().pipe(
+			map((items) => items.slice(0, 4).map((t) => this.mapToTransfert(t))),
+			catchError(() => of(this._transfers.slice(0, 4)))
+		);
 	}
 
 	getTransferHistory(): Observable<Transfert[]> {
-		return of(this._transfers);
+		return this._sessionApi.getMyTransfers().pipe(
+			map((items) => items.map((t) => this.mapToTransfert(t))),
+			catchError(() => of(this._transfers))
+		);
+	}
+
+	findTransferByReference(referenceCode: string): Observable<Transfert | undefined> {
+		return this._sessionApi.lookupTransfer({ reference: referenceCode.trim() }).pipe(
+			map((t) => this.mapLookupToTransfert(t)),
+			catchError(() => {
+				const normalized = referenceCode.trim().toUpperCase();
+				return of(this._transfers.find((transfer) => transfer.codeReference.toUpperCase() === normalized));
+			})
+		);
+	}
+
+	findTransferByReceiverPhone(phone: string): Observable<Transfert | undefined> {
+		return this._sessionApi.lookupTransfer({ phone: phone.trim() }).pipe(
+			map((t) => this.mapLookupToTransfert(t)),
+			catchError(() => {
+				const normalized = phone.trim();
+				return of(this._transfers.find((transfer) => transfer.telephoneBeneficiaire === normalized));
+			})
+		);
 	}
 
 	getCashSession(): Observable<SessionCaisse> {
@@ -245,22 +273,33 @@ export class AgentDashboardService {
 		return of(this._notifications);
 	}
 
-	findTransferByReference(referenceCode: string): Observable<Transfert | undefined> {
-		const normalized = referenceCode.trim().toUpperCase();
-		return of(this._transfers.find((transfer) => transfer.codeReference.toUpperCase() === normalized));
-	}
-
-	findTransferByReceiverPhone(phone: string): Observable<Transfert | undefined> {
-		const normalized = phone.trim();
-		return of(this._transfers.find((transfer) => transfer.telephoneBeneficiaire === normalized));
-	}
-
 	updateTransferStatus(transferId: string, status: StatutTransfert): Observable<Transfert | undefined> {
 		const transfer = this._transfers.find((item) => item.id === transferId);
 		if (transfer) {
 			transfer.statut = status;
 		}
 		return of(transfer);
+	}
+
+	private mapToTransfert(t: { referenceCode: string; senderFullName: string; senderPhone: string | null; beneficiaryFullName: string; beneficiaryPhone: string | null; amount: number; currencySymbol: string | null; feeAmount: number; status: string; createdAt: string }): Transfert {
+		return {
+			id: String(t.referenceCode),
+			codeReference: t.referenceCode,
+			nomExpediteur: t.senderFullName,
+			telephoneExpediteur: t.senderPhone ?? '',
+			nomBeneficiaire: t.beneficiaryFullName,
+			telephoneBeneficiaire: t.beneficiaryPhone ?? '',
+			montant: t.amount,
+			montantFrais: t.feeAmount,
+			commissionAgence: 0,
+			statut: t.status as StatutTransfert,
+			creeLe: t.createdAt,
+			devise: t.currencySymbol ?? 'MAD',
+		};
+	}
+
+	private mapLookupToTransfert(t: { referenceCode: string; senderFullName: string; senderPhone: string | null; beneficiaryFullName: string; beneficiaryPhone: string | null; amount: number; currencySymbol: string | null; feeAmount: number; status: string; createdAt: string }): Transfert {
+		return this.mapToTransfert(t);
 	}
 
 	private mapDashboardStats(stats: ApiAgentDashboardStats): StatistiquesTableauDeBord {

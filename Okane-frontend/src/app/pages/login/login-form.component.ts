@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { remixGithubFill, remixLoader4Line } from '@ng-icons/remixicon';
+import { remixLoader4Line } from '@ng-icons/remixicon';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
@@ -36,7 +36,7 @@ type LoginResponse = {
   selector: 'spartan-two-column-login-form',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, HlmFieldImports, HlmInputImports, HlmButtonImports, NgIcon, I18nPipe],
-  providers: [provideIcons({ remixGithubFill, remixLoader4Line })],
+  providers: [provideIcons({ remixLoader4Line })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form [formGroup]="form" (ngSubmit)="login()">
@@ -82,10 +82,6 @@ type LoginResponse = {
         <hlm-field-separator>{{ 'Ou continuer avec' | okaneI18n }}</hlm-field-separator>
 
         <hlm-field>
-          <button hlmBtn variant="outline" type="button">
-            <ng-icon name="remixGithubFill" class="text-xl" />
-            {{ 'Connexion avec GitHub' | okaneI18n }}
-          </button>
           <p hlmFieldDescription class="text-center">
             {{ 'Pas encore de compte ?' | okaneI18n }}
             <a routerLink=".">{{ 'Créer un compte' | okaneI18n }}</a>

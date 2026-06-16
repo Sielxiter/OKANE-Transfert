@@ -17,6 +17,10 @@ public interface TransferRepository extends JpaRepository<Transfer, Long>, JpaSp
 
     Optional<Transfer> findByWithdrawalCode(String withdrawalCode);
 
+    List<Transfer> findByCreatedBy_IdAndCreatedAtBetweenOrderByCreatedAtDesc(Long createdById, LocalDateTime start, LocalDateTime end);
+
+    List<Transfer> findBySourceAgency_IdAndCreatedAtBetweenOrderByCreatedAtDesc(Long agencyId, LocalDateTime start, LocalDateTime end);
+
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     long countByStatus(String status);
@@ -54,4 +58,7 @@ public interface TransferRepository extends JpaRepository<Transfer, Long>, JpaSp
     BigDecimal sumFeeAmountBySender_User_Id(@Param("userId") Long userId);
 
     Optional<Transfer> findByReferenceCodeAndSender_User_Id(String referenceCode, Long userId);
+
+    @Query("SELECT t FROM Transfer t WHERE t.beneficiarySnapshot.phone LIKE %:phone% OR (t.beneficiary.user.phone LIKE %:phone%) ORDER BY t.createdAt DESC")
+    List<Transfer> findByBeneficiaryPhone(@Param("phone") String phone);
 }

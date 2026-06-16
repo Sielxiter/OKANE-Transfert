@@ -31,6 +31,8 @@ import com.okane.transfer.repository.TransferRepository;
 import com.okane.transfermanagement.domain.TransferStatus;
 import com.okane.transfermanagement.dto.AgentCountryResponseDTO;
 import com.okane.transfermanagement.dto.AgentCurrencyResponseDTO;
+import com.okane.transfermanagement.dto.AgentTransferListItemDTO;
+import com.okane.transfermanagement.dto.AgentTransferLookupDTO;
 import com.okane.transfermanagement.dto.AgentTransferQuoteRequestDTO;
 import com.okane.transfermanagement.dto.AgentTransferQuoteResponseDTO;
 import com.okane.transfermanagement.dto.AgentTransferResponseDTO;
@@ -534,6 +536,80 @@ public class AgentTransferService {
         String last = user.getLastName() == null ? "" : user.getLastName();
         String result = (first + " " + last).trim();
         return result.isEmpty() ? user.getEmail() : result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AgentTransferListItemDTO> listMyTransfers(Authentication authentication) {
+        User agent = currentUser(authentication);
+        LocalDateTime start = LocalDate.now().atStartOfDay().minusDays(30);
+        LocalDateTime end = LocalDateTime.now();
+        List<Transfer> transfers = transferRepository.findByCreatedBy_IdAndCreatedAtBetweenOrderByCreatedAtDesc(agent.getId(), start, end);
+        return transfers.stream().map(this::toListItemDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AgentTransferLookupDTO lookupByReference(String referenceCode) {
+        Transfer transfer = transferRepository.findByReferenceCode(referenceCode.trim().toUpperCase())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Transfert introuvable."));
+        return toLookupDTO(transfer);
+    }
+
+    @Transactional(readOnly = true)
+    public AgentTransferLookupDTO lookupByWithdrawalCode(String withdrawalCode) {
+        Transfer transfer = transferRepository.findByWithdrawalCode(withdrawalCode.trim().toUpperCase())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Transfert introuvable."));
+        return toLookupDTO(transfer);
+    }
+
+    @Transactional(readOnly = true)
+    public AgentTransferLookupDTO lookupByBeneficiaryPhone(String phone) {
+        List<Transfer> transfers = transferRepository.findByBeneficiaryPhone(phone.trim());
+        if (transfers.isEmpty()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Transfert introuvable.");
+        }
+        return toLookupDTO(transfers.get(0));
+    }
+
+    private AgentTransferListItemDTO toListItemDTO(Transfer t) {
+        return new AgentTransferListItemDTO(
+                t.getId(),
+                t.getReferenceCode(),
+                t.getWithdrawalCode(),
+                fullName(t.getSender() != null ? t.getSender().getUser() : null),
+                t.getSender() != null && t.getSender().getUser() != null ? t.getSender().getUser().getPhone() : null,
+                t.getBeneficiary() != null ? fullName(t.getBeneficiary().getUser()) : null,
+                t.getBeneficiarySnapshot() != null ? t.getBeneficiarySnapshot().getPhone() : null,
+                t.getAmount(),
+                t.getCurrency() != null ? t.getCurrency().getSymbol() : null,
+                t.getFeeAmount(),
+                t.getNetAmount(),
+                t.getStatus(),
+                t.getCreatedAt(),
+                t.getSentAt(),
+                t.getExpiresAt()
+        );
+    }
+
+    private AgentTransferLookupDTO toLookupDTO(Transfer t) {
+        return new AgentTransferLookupDTO(
+                t.getId(),
+                t.getReferenceCode(),
+                t.getWithdrawalCode(),
+                fullName(t.getSender() != null ? t.getSender().getUser() : null),
+                t.getSender() != null && t.getSender().getUser() != null ? t.getSender().getUser().getPhone() : null,
+                t.getBeneficiary() != null ? fullName(t.getBeneficiary().getUser()) : null,
+                t.getBeneficiarySnapshot() != null ? t.getBeneficiarySnapshot().getPhone() : null,
+                t.getAmount(),
+                t.getCurrency() != null ? t.getCurrency().getSymbol() : null,
+                t.getFeeAmount(),
+                t.getNetAmount(),
+                t.getStatus(),
+                t.getCreatedAt(),
+                t.getSentAt(),
+                t.getExpiresAt(),
+                t.getSourceAgency() != null ? t.getSourceAgency().getName() : null,
+                t.getSourceAgency() != null ? t.getSourceAgency().getCode() : null
+        );
     }
 
     private void recordCashMovements(Transfer transfer, User agent, AgentCashSession session) {
