@@ -15,6 +15,7 @@ import {
 	lucidePower,
 	lucidePowerOff,
 	lucideTriangleAlert,
+	lucideUserCheck,
 	lucideUsers,
 } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -29,6 +30,7 @@ import { UsersFormDialogComponent } from '../users/shared/users-form-dialog.comp
 import { UsersPageHeaderComponent } from '../users/shared/users-page-header.component';
 import type { UserActionItem } from '../users/shared/user-status.types';
 import { AgencyCreateFormComponent } from './agency-create-form.component';
+import { AssignManagerDialogComponent } from './assign-manager-dialog.component';
 import { AdminAgenciesApiService, type ApiAgency, type ApiAgencyStatus, type ApiAgencyType } from './admin-agencies.api';
 import type { StatusVariant } from '../users/shared/user-status.types';
 
@@ -65,6 +67,7 @@ const MODE_ROUTES: Record<ApiAgencyType, string> = {
 		AgencyCreateFormComponent,
 		ActionDetailModalComponent,
 		ConfirmDialogComponent,
+		AssignManagerDialogComponent,
 	],
 	providers: [
 		provideIcons({
@@ -79,6 +82,7 @@ const MODE_ROUTES: Record<ApiAgencyType, string> = {
 			lucidePower,
 			lucidePowerOff,
 			lucideTriangleAlert,
+			lucideUserCheck,
 			lucideUsers,
 		}),
 	],
@@ -287,6 +291,15 @@ const MODE_ROUTES: Record<ApiAgencyType, string> = {
 			(confirm)="onConfirm()"
 			(cancel)="confirmOpen.set(false)"
 		/>
+
+		<okane-assign-manager-dialog
+			[open]="assignManagerOpen()"
+			[agencyId]="assignManagerAgencyId()"
+			[agencyName]="assignManagerAgencyName()"
+			[currentManagerName]="assignManagerCurrentName()"
+			(assigned)="onManagerAssigned($event)"
+			(close)="assignManagerOpen.set(false)"
+		/>
 	`,
 })
 export class AdminAgenciesPageComponent implements OnInit {
@@ -316,6 +329,10 @@ export class AdminAgenciesPageComponent implements OnInit {
 	protected readonly confirmTitle = signal<string>('Confirmer');
 	protected readonly confirmMessage = signal<string>('');
 	protected readonly confirmLabel = signal<string>('Confirmer');
+	protected readonly assignManagerOpen = signal<boolean>(false);
+	protected readonly assignManagerAgencyId = signal<number>(0);
+	protected readonly assignManagerAgencyName = signal<string>('');
+	protected readonly assignManagerCurrentName = signal<string | null>(null);
 	private _pendingConfirm: (() => void) | null = null;
 
 	protected readonly currentItems = computed(() => (this.currentMode() === 'CENTRAL' ? this.filteredCentral() : this.filteredSub()));
@@ -458,13 +475,24 @@ export class AdminAgenciesPageComponent implements OnInit {
 
 	protected actionsFor(agency: ApiAgency): UserActionItem[] {
 		const isActive = agency.status === 'ACTIVE';
-		return [
+		const isCentral = agency.agencyType === 'CENTRAL';
+		const actions: UserActionItem[] = [
 			{ label: 'Voir details', icon: 'lucideEye', action: () => this.openDetail(agency) },
 			{ label: 'Modifier', icon: 'lucidePencil', action: () => this.openDetail(agency) },
+		];
+		if (isCentral) {
+			actions.push({
+				label: agency.managerName ? 'Changer manager' : 'Affecter manager',
+				icon: 'lucideUserCheck',
+				action: () => this.openAssignManager(agency),
+			});
+		}
+		actions.push(
 			isActive
 				? { label: 'Suspendre', icon: 'lucidePowerOff', action: () => this.requestStatusChange(agency, 'SUSPENDED'), variant: 'destructive' as const }
 				: { label: 'Activer', icon: 'lucidePower', action: () => this.requestStatusChange(agency, 'ACTIVE') },
-		];
+		);
+		return actions;
 	}
 
 	private refresh(): void {
@@ -557,6 +585,23 @@ export class AdminAgenciesPageComponent implements OnInit {
 		this.confirmOpen.set(false);
 		this._pendingConfirm?.();
 		this._pendingConfirm = null;
+	}
+
+	protected openAssignManager(agency: ApiAgency): void {
+		this.assignManagerAgencyId.set(agency.id);
+		this.assignManagerAgencyName.set(agency.name);
+		this.assignManagerCurrentName.set(agency.managerName);
+		this.assignManagerOpen.set(true);
+	}
+
+	protected onManagerAssigned(managerId: number): void {
+		this._api.assignManager(this.assignManagerAgencyId(), managerId).subscribe({
+			next: (updated) => {
+				this.centralAgencies.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+				this.assignManagerOpen.set(false);
+			},
+			error: (err) => this.error.set(this.extractMessage(err)),
+		});
 	}
 
 	private changeStatus(agency: ApiAgency, status: ApiAgencyStatus): void {

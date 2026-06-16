@@ -57,7 +57,7 @@ const ROLE_CONFIGS: Record<UserCreateRoleVariant, RoleConfig> = {
 		label: 'Nouveau manager',
 		icon: 'lucideBuilding2',
 		showCountry: false,
-		showAgency: true,
+		showAgency: false,
 	},
 	AGENT: {
 		role: 'ROLE_AGENT',
