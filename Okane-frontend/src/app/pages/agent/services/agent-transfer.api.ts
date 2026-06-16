@@ -32,6 +32,7 @@ export interface CreateAgentTransferRequest {
 	senderCountryCode: string;
 	beneficiaryFirstName: string;
 	beneficiaryLastName: string;
+	beneficiaryEmail: string;
 	beneficiaryPhone: string;
 	beneficiaryIdentityType: string;
 	beneficiaryIdentityNumber: string;

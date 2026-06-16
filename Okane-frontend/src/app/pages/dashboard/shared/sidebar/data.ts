@@ -1,4 +1,4 @@
-﻿export type DashboardRole = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_AGENT' | 'ROLE_CLIENT';
+export type DashboardRole = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_AGENT' | 'ROLE_CLIENT';
 
 export interface SidebarSubItem {
 	title: string;
@@ -49,7 +49,6 @@ const adminItems: SidebarItem[] = [
 		items: [
 			{ title: 'Agences centrales', url: '/admin/agencies/central' },
 			{ title: 'Sous-agences', url: '/admin/agencies/sub' },
-			{ title: 'Soldes agences', url: '/admin/agency-balance' },
 		],
 	},
 	{
@@ -78,7 +77,7 @@ const adminItems: SidebarItem[] = [
 		url: '/admin/fees',
 	},
 	{
-		title: 'ConformitÃ© / KYC',
+		title: 'Conformité / KYC',
 		icon: 'lucideShieldCheck',
 		url: '/admin/compliance',
 	},
@@ -93,7 +92,7 @@ const adminItems: SidebarItem[] = [
 		url: '/admin/audit',
 	},
 	{
-		title: 'ParamÃ¨tres',
+		title: 'Paramètres',
 		icon: 'lucideSettings2',
 		url: '/admin/settings',
 	},
@@ -164,9 +163,9 @@ const agentItems: SidebarItem[] = [
 	{ title: 'Clients', icon: 'lucideBot', url: '/agent/customers' },
 	{ title: 'Gestion de caisse', icon: 'lucideSettings2', url: '/agent/cash-register' },
 	{ title: 'Historique des transferts', icon: 'lucideBookOpen', url: '/agent/transfer-history' },
-	{ title: 'VÃ©rification KYC', icon: 'lucideSettings2', url: '/agent/kyc-verification' },
+	{ title: 'Vérification KYC', icon: 'lucideSettings2', url: '/agent/kyc-verification' },
 	{ title: 'Notifications', icon: 'lucideSettings2', url: '/agent/notifications' },
-	{ title: 'ParamÃ¨tres', icon: 'lucideSettings2', url: '/agent/settings' },
+	{ title: 'Paramètres', icon: 'lucideSettings2', url: '/agent/settings' },
 ];
 
 const clientItems: SidebarItem[] = [
@@ -191,12 +190,7 @@ const clientItems: SidebarItem[] = [
 		url: '/client/notifications',
 	},
 	{
-		title: 'Chatbot / Aide',
-		icon: 'lucideBot',
-		url: '/client/chatbot',
-	},
-	{
-		title: 'VÃ©rification KYC / AML',
+		title: 'Vérification KYC / AML',
 		icon: 'lucideShieldCheck',
 		url: '/client/kyc-verification',
 	},
@@ -233,4 +227,3 @@ export function getSidebarData(role: DashboardRole, user?: Partial<SidebarUser>)
 		navMain: roleNavMap[role] ?? clientItems,
 	};
 }
-

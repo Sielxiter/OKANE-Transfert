@@ -24,6 +24,9 @@ public class TransferBeneficiary {
     @Column(name = "telephone", nullable = false, length = 30)
     private String phone;
 
+    @Column(name = "courriel", nullable = false, length = 150)
+    private String email;
+
     @Column(name = "type_piece_identite", nullable = false, length = 50)
     private String identityType;
 
@@ -75,6 +78,14 @@ public class TransferBeneficiary {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getIdentityType() {

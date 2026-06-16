@@ -35,7 +35,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/okane_transfer?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: root
       DB_PASSWORD: okane_password
-      JWT_SECRET: ${JWT_SECRET:f9f4c5b7d1e2a8c93b6e7f104d5a8c2b91f3e6d7a4b8c5f2e9d1a7b3c6f8e4d2}
+      JWT_SECRET: ${JWT_SECRET:-f9f4c5b7d1e2a8c93b6e7f104d5a8c2b91f3e6d7a4b8c5f2e9d1a7b3c6f8e4d2}
       JWT_ISSUER: Okane Transfer
       JWT_ACCESS_TOKEN_MINUTES: 60
       JWT_REFRESH_TOKEN_DAYS: 7
@@ -44,6 +44,14 @@ services:
       AUTH_LOGIN_WINDOW_MINUTES: 10
       UPLOAD_DIR: /app/uploads
       UPLOAD_MAX_SIZE_MB: 5
+      SMTP_ENABLED: ${SMTP_ENABLED:-true}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_AUTH_ENABLED: ${SMTP_AUTH_ENABLED:-true}
+      SMTP_STARTTLS_ENABLED: ${SMTP_STARTTLS_ENABLED:-true}
     ports:
       - "8081:8080"
     volumes:

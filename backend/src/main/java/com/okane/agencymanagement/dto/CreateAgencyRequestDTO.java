@@ -16,6 +16,7 @@ public record CreateAgencyRequestDTO(
         @Size(max = 30) String phone,
         @Email @Size(max = 150) String email,
         @NotNull @Positive BigDecimal dailyLimit,
+        @NotNull @Positive BigDecimal baseBalance,
         String agencyType,
         Long centralAgencyId,
         Long managerId

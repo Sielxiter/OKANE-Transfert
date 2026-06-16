@@ -20,6 +20,11 @@ FROM nginx:1.27-alpine
 # Copy built app
 COPY --from=builder /app/dist/Okane-frontend/browser /usr/share/nginx/html
 
+# Angular 21 SSR build emits index.csr.html; nginx expects index.html
+RUN if [ -f /usr/share/nginx/html/index.csr.html ]; then \
+      cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html; \
+    fi
+
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

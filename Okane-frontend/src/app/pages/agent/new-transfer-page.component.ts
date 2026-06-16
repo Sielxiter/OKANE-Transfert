@@ -117,6 +117,10 @@ import type { ClientSearchResult } from './services/kyc-client.api';
 										<span class="text-muted-foreground">Nom</span>
 										<input hlmInput class="mt-1 w-full" formControlName="lastName" />
 									</label>
+									<label class="text-sm md:col-span-2">
+										<span class="text-muted-foreground">Courriel</span>
+										<input hlmInput class="mt-1 w-full" type="email" formControlName="email" placeholder="prenom.nom@exemple.com" />
+									</label>
 									<label class="text-sm">
 										<span class="text-muted-foreground">Numéro CIN / Passeport</span>
 										<input hlmInput class="mt-1 w-full" formControlName="identityNumber" />
@@ -308,6 +312,7 @@ export class AgentNewTransferPageComponent {
 	public readonly beneficiaryForm = this._fb.nonNullable.group({
 		firstName: ['', [Validators.required]],
 		lastName: ['', [Validators.required]],
+		email: ['', [Validators.required, Validators.email]],
 		phoneNumber: ['', [Validators.required, Validators.pattern(/^\d+$/), Validators.maxLength(12)]],
 		identityNumber: ['', [Validators.required]],
 		countryCode: ['', [Validators.required]],
@@ -428,6 +433,7 @@ export class AgentNewTransferPageComponent {
 				this.beneficiaryForm.reset({
 					firstName: '',
 					lastName: '',
+					email: '',
 					phoneNumber: '',
 					identityNumber: '',
 					countryCode: '',
@@ -518,6 +524,7 @@ export class AgentNewTransferPageComponent {
 			senderCountryCode: this.senderForm.controls.countryCode.value.trim(),
 			beneficiaryFirstName: this.beneficiaryForm.controls.firstName.value.trim(),
 			beneficiaryLastName: this.beneficiaryForm.controls.lastName.value.trim(),
+			beneficiaryEmail: this.beneficiaryForm.controls.email.value.trim(),
 			beneficiaryPhone,
 			beneficiaryIdentityType: 'CIN',
 			beneficiaryIdentityNumber: this.beneficiaryForm.controls.identityNumber.value.trim(),

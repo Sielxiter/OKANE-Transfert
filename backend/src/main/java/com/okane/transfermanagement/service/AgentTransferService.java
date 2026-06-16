@@ -71,6 +71,7 @@ public class AgentTransferService {
     private final TransferBeneficiaryRepository transferBeneficiaryRepository;
     private final AgentCashSessionRepository agentCashSessionRepository;
     private final TransferAuditService auditService;
+    private final TransferNotificationService notificationService;
     private final AgencyRepository agencyRepository;
     private final com.okane.agencybalance.service.AgencyBalanceService agencyBalanceService;
     private final PasswordEncoder passwordEncoder;
@@ -88,6 +89,7 @@ public class AgentTransferService {
             TransferBeneficiaryRepository transferBeneficiaryRepository,
             AgentCashSessionRepository agentCashSessionRepository,
             TransferAuditService auditService,
+            TransferNotificationService notificationService,
             AgencyRepository agencyRepository,
             com.okane.agencybalance.service.AgencyBalanceService agencyBalanceService,
             PasswordEncoder passwordEncoder
@@ -104,6 +106,7 @@ public class AgentTransferService {
         this.transferBeneficiaryRepository = transferBeneficiaryRepository;
         this.agentCashSessionRepository = agentCashSessionRepository;
         this.auditService = auditService;
+        this.notificationService = notificationService;
         this.agencyRepository = agencyRepository;
         this.agencyBalanceService = agencyBalanceService;
         this.passwordEncoder = passwordEncoder;
@@ -206,6 +209,7 @@ public class AgentTransferService {
 
         Transfer saved = transferRepository.save(transfer);
         auditService.logTransferCreated(agent, saved);
+        notificationService.notifyTransferCreated(saved, beneficiarySnapshot, sender.getUser() != null ? sender.getUser().getEmail() : null);
 
         // Record cash movements for balance tracking
         recordCashMovements(saved, agent, cashSession);
@@ -364,6 +368,7 @@ public class AgentTransferService {
         TransferBeneficiary beneficiary = new TransferBeneficiary();
         beneficiary.setFirstName(normalizeText(request.beneficiaryFirstName()));
         beneficiary.setLastName(normalizeText(request.beneficiaryLastName()));
+        beneficiary.setEmail(normalizeText(request.beneficiaryEmail()));
         beneficiary.setPhone(normalizeText(request.beneficiaryPhone()));
         beneficiary.setIdentityType(normalizeText(request.beneficiaryIdentityType()).toUpperCase(Locale.ROOT));
         beneficiary.setIdentityNumber(normalizeText(request.beneficiaryIdentityNumber()).toUpperCase(Locale.ROOT));
@@ -384,6 +389,7 @@ public class AgentTransferService {
         String identityNumber = normalizeText(request.beneficiaryIdentityNumber()).toUpperCase(Locale.ROOT);
         String firstName = normalizeText(request.beneficiaryFirstName());
         String lastName = normalizeText(request.beneficiaryLastName());
+        String beneficiaryEmail = normalizeText(request.beneficiaryEmail()).toLowerCase(Locale.ROOT);
         String phone = normalizeText(request.beneficiaryPhone());
         String countryName = beneficiarySnapshot.getCountryName();
         LocalDateTime now = LocalDateTime.now();
@@ -397,7 +403,7 @@ public class AgentTransferService {
             user.setFirstName(firstName);
             user.setLastName(lastName);
             user.setPhone(phone);
-            user.setEmail(buildUniqueBeneficiaryEmail(firstName, lastName, identityNumber, phone));
+            user.setEmail(beneficiaryEmail);
             user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
             user.setEnabled(true);
             user.setAccountLocked(false);
