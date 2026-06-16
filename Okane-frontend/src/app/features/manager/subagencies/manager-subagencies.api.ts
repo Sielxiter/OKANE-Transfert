@@ -32,6 +32,14 @@ export interface ApiSubAgencyDetails extends ApiSubAgency {
 	}>;
 }
 
+export interface ApiAgentAssignable {
+	id: number;
+	fullName: string;
+	email: string;
+	phone: string;
+	currentlyAssigned: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ManagerSubAgenciesApiService {
 	private readonly _http = inject(HttpClient);
@@ -43,5 +51,17 @@ export class ManagerSubAgenciesApiService {
 
 	public getSubAgencyDetails(id: number): Observable<ApiSubAgencyDetails> {
 		return this._http.get<ApiSubAgencyDetails>(`${this._base}/${id}`);
+	}
+
+	public updateDailyLimit(id: number, dailyLimit: string): Observable<void> {
+		return this._http.put<void>(`${this._base}/${id}/limit`, { dailyLimit });
+	}
+
+	public getAssignableAgents(id: number): Observable<ApiAgentAssignable[]> {
+		return this._http.get<ApiAgentAssignable[]>(`${this._base}/${id}/agents/assignable`);
+	}
+
+	public assignAgents(id: number, agentIds: number[]): Observable<void> {
+		return this._http.post<void>(`${this._base}/${id}/agents`, { agentIds });
 	}
 }

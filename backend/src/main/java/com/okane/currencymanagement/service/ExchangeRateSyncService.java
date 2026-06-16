@@ -27,7 +27,7 @@ public class ExchangeRateSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(ExchangeRateSyncService.class);
     private static final String MAD = "MAD";
-    private static final String SOURCE = "FRANKFURTER";
+    private static final String SOURCE = "OPEN_ER_API";
     private static final int RATE_SCALE = 6;
 
     private final CurrencyRepository currencyRepository;

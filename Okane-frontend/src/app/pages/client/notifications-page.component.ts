@@ -1,4 +1,4 @@
-import { CommonModule, DatePipe } from '@angular/common';
+﻿import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -7,7 +7,6 @@ import { lucideCheckCheck, lucideTrash2 } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AgentPageIntroComponent } from '../../agent/ui/agent-page-intro.component';
 import { AgentSectionCardComponent } from '../../agent/ui/agent-section-card.component';
-import { ClientLayoutComponent } from './client-layout.component';
 import { ClientNotificationBadgeService } from './services/client-notification-badge.service';
 import { ClientNotificationsApiService } from './services/client-notifications.api';
 import type { ClientNotification, PageResponse } from './client.models';
@@ -15,12 +14,11 @@ import type { ClientNotification, PageResponse } from './client.models';
 @Component({
 	selector: 'okane-client-notifications-page',
 	standalone: true,
-	imports: [CommonModule, NgClass, RouterLink, NgIcon, HlmButtonImports, DatePipe, ClientLayoutComponent, AgentPageIntroComponent, AgentSectionCardComponent],
+	imports: [CommonModule, NgClass, RouterLink, NgIcon, HlmButtonImports, DatePipe, AgentPageIntroComponent, AgentSectionCardComponent],
 	providers: [provideIcons({ lucideCheckCheck, lucideTrash2 })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<okane-client-layout>
-			<div class="flex flex-col gap-6 md:gap-8">
+		<div class="flex flex-col gap-6 md:gap-8">
 				<okane-agent-page-intro eyebrow="Espace Client" title="Notifications" subtitle="Retrouvez les alertes liées à vos transferts.">
 					<div agentIntroActions class="flex flex-wrap gap-2">
 						<button hlmBtn variant="outline" type="button" (click)="markAllRead()">Marquer tout comme lu</button>
@@ -55,7 +53,6 @@ import type { ClientNotification, PageResponse } from './client.models';
 					</div>
 				</okane-agent-section-card>
 			</div>
-		</okane-client-layout>
 	`,
 })
 export class ClientNotificationsPageComponent {
@@ -93,3 +90,4 @@ export class ClientNotificationsPageComponent {
 		});
 	}
 }
+

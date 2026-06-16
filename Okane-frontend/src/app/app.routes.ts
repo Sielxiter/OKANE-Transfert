@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 import { ManagerLayoutComponent } from './pages/manager/manager-layout.component';
 import { MANAGER_ROUTES } from './pages/manager/manager-routes';
 import { DashboardPageComponent } from './pages/dashboard/dashboard-page.component';
@@ -38,6 +38,8 @@ import { ClientTransferDetailsPageComponent } from './pages/client/transfer-deta
 import { ClientTrackTransferPageComponent } from './pages/client/track-transfer-page.component';
 import { ClientNotificationsPageComponent } from './pages/client/notifications-page.component';
 import { ClientProfilePageComponent } from './pages/client/profile-page.component';
+import { ClientKycVerificationPageComponent } from './pages/client/kyc-verification-page.component';
+import { ClientChatbotPageComponent } from './pages/client/chatbot-page.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -57,15 +59,16 @@ export const routes: Routes = [
       { path: 'agencies', component: AdminAgenciesPageComponent, data: { title: 'Agences' } },
       { path: 'agencies/central', component: AdminAgenciesPageComponent, data: { title: 'Agences centrales' } },
       { path: 'agencies/sub', component: AdminAgenciesPageComponent, data: { title: 'Sous-agences' } },
+      { path: 'agency-balance', loadComponent: () => import('./features/admin/agency-balance/agency-balance-page.component').then(m => m.AdminAgencyBalancePageComponent), data: { title: 'Soldes agences' } },
       { path: 'transfers', component: AdminTransfersPageComponent, data: { title: 'Transferts' } },
       { path: 'payments', component: AdminPaymentsPageComponent, data: { title: 'Paiements' } },
       { path: 'currency', component: AdminCurrencyPageComponent, data: { title: 'Devises et change' } },
       { path: 'corridors', component: AdminCorridorsPageComponent, data: { title: 'Corridors de transfert' } },
       { path: 'fees', component: AdminFeesPageComponent, data: { title: 'Frais et commissions' } },
-      { path: 'compliance', component: AdminCompliancePageComponent, data: { title: 'Conformité / KYC' } },
+      { path: 'compliance', component: AdminCompliancePageComponent, data: { title: 'ConformitÃ© / KYC' } },
       { path: 'reports', component: AdminReportsPageComponent, data: { title: 'Rapports' } },
       { path: 'audit', component: AdminAuditPageComponent, data: { title: "Journal d'audit" } },
-      { path: 'settings', component: AdminSettingsPageComponent, data: { title: 'Paramètres' } },
+      { path: 'settings', component: AdminSettingsPageComponent, data: { title: 'ParamÃ¨tres' } },
     ],
   },
   { path: 'manager', component: ManagerLayoutComponent, canActivate: [authGuard], children: MANAGER_ROUTES[0].children },
@@ -87,11 +90,15 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: ClientDashboardPageComponent, data: { title: 'Tableau de bord' } },
       { path: 'transfers', component: ClientTransfersPageComponent, data: { title: 'Mes transferts' } },
-      { path: 'transfers/:reference', component: ClientTransferDetailsPageComponent, data: { title: 'Détails transfert' } },
+      { path: 'transfers/:reference', component: ClientTransferDetailsPageComponent, data: { title: 'DÃ©tails transfert' } },
       { path: 'track', component: ClientTrackTransferPageComponent, data: { title: 'Suivi transfert' } },
       { path: 'notifications', component: ClientNotificationsPageComponent, data: { title: 'Notifications' } },
+      { path: 'chatbot', component: ClientChatbotPageComponent, data: { title: 'Chatbot / Aide' } },
+      { path: 'kyc-verification', component: ClientKycVerificationPageComponent, data: { title: 'VÃ©rification KYC / AML' } },
       { path: 'profile', component: ClientProfilePageComponent, data: { title: 'Profil' } },
     ],
   },
   { path: '**', redirectTo: 'login' },
 ];
+
+

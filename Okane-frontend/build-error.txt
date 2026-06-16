@@ -1,0 +1,54 @@
+[33m❯[39m Building...
+[32m✔[39m Building...
+[35mPrerendered 0 static routes.[39m
+Application bundle generation failed. [149.341 seconds] - 2026-06-16T00:24:23.202Z
+
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: NgClass is not used within the template of ManagerSubAgenciesPageComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:32:11:
+[37m      32 │   imports: [[32mNgClass[37m, CurrencyPipe, RouterLink, NgIcon, HlmButtonIm...
+         ╵             [32m~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: CurrencyPipe is not used within the template of ManagerSubAgenciesPageComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:32:20:
+[37m      32 │   imports: [NgClass, [32mCurrencyPipe[37m, RouterLink, NgIcon, HlmButtonIm...
+         ╵                      [32m~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: RouterLink is not used within the template of ManagerSubAgenciesPageComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:32:34:
+[37m      32 │ ...s: [NgClass, CurrencyPipe, [32mRouterLink[37m, NgIcon, HlmButtonImports...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: NgIcon is not used within the template of ManagerSubAgenciesPageComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:32:46:
+[37m      32 │ ...s, CurrencyPipe, RouterLink, [32mNgIcon[37m, HlmButtonImports, HlmSkele...
+         ╵                                 [32m~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:233:4:
+[37m      233 │         [32m</div>[37m
+          ╵         [32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing block. The block may have been closed earlier. If you meant to write the `}` character, you should use the "&#125;" HTML entity instead.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:234:3:
+[37m      234 │       [32m}[37m
+          ╵       [32m^[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "div". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/manager/subagencies/subagencies-page.component.ts:235:2:
+[37m      235 │     [32m</div>[37m
+          ╵     [32m~~~~~~[0m
+
+[39m[22m

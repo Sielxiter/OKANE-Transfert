@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,19 +8,17 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { AgentPageIntroComponent } from '../../agent/ui/agent-page-intro.component';
 import { AgentSectionCardComponent } from '../../agent/ui/agent-section-card.component';
-import { ClientLayoutComponent } from './client-layout.component';
 import { ClientTransfersApiService } from './services/client-transfers.api';
 import type { ClientTrackTransfer } from './client.models';
 
 @Component({
 	selector: 'okane-client-track-transfer-page',
 	standalone: true,
-	imports: [CommonModule, FormsModule, RouterLink, NgIcon, HlmButtonImports, HlmInputImports, ClientLayoutComponent, AgentPageIntroComponent, AgentSectionCardComponent],
+	imports: [CommonModule, FormsModule, RouterLink, NgIcon, HlmButtonImports, HlmInputImports, AgentPageIntroComponent, AgentSectionCardComponent],
 	providers: [provideIcons({ lucideSearch, lucideArrowRight })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<okane-client-layout>
-			<div class="flex flex-col gap-6 md:gap-8">
+		<div class="flex flex-col gap-6 md:gap-8">
 				<okane-agent-page-intro eyebrow="Espace Client" title="Suivi transfert" subtitle="Recherchez un transfert par référence."></okane-agent-page-intro>
 
 				<okane-agent-section-card title="Recherche" subtitle="Entrez la référence du transfert.">
@@ -59,7 +57,6 @@ import type { ClientTrackTransfer } from './client.models';
 					</okane-agent-section-card>
 				}
 			</div>
-		</okane-client-layout>
 	`,
 })
 export class ClientTrackTransferPageComponent {
@@ -86,3 +83,4 @@ export class ClientTrackTransferPageComponent {
 		});
 	}
 }
+

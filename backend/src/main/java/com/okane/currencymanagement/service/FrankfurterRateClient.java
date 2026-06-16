@@ -1,7 +1,6 @@
 package com.okane.currencymanagement.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -15,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -24,8 +22,7 @@ import org.springframework.stereotype.Component;
 public class FrankfurterRateClient {
 
     private static final Logger log = LoggerFactory.getLogger(FrankfurterRateClient.class);
-    private static final URI BASE_URI = URI.create("https://api.frankfurter.dev/v2/rates");
-    private static final int BATCH_SIZE = 20;
+    private static final URI BASE_URI = URI.create("https://open.er-api.com/v6/latest/MAD");
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -51,22 +48,18 @@ public class FrankfurterRateClient {
             return results;
         }
 
-        for (int start = 0; start < sanitized.size(); start += BATCH_SIZE) {
-            int end = Math.min(start + BATCH_SIZE, sanitized.size());
-            List<String> batch = sanitized.subList(start, end);
-            try {
-                results.putAll(fetchBatch(batch));
-            } catch (Exception ex) {
-                log.warn("Bulk FX fetch failed for batch {}: {}", batch, ex.getMessage());
-                for (String quote : batch) {
-                    try {
-                        BigDecimal rate = fetchSingle(quote);
-                        if (rate != null) {
-                            results.put(quote, rate);
-                        }
-                    } catch (Exception singleEx) {
-                        log.warn("FX fetch failed for {}: {}", quote, singleEx.getMessage());
+        try {
+            results.putAll(fetchAllRates());
+        } catch (Exception ex) {
+            log.warn("FX fetch failed from open.er-api: {}", ex.getMessage());
+            for (String quote : sanitized) {
+                try {
+                    BigDecimal rate = fetchSingle(quote);
+                    if (rate != null) {
+                        results.put(quote, rate);
                     }
+                } catch (Exception singleEx) {
+                    log.warn("FX fetch failed for {}: {}", quote, singleEx.getMessage());
                 }
             }
         }
@@ -74,38 +67,9 @@ public class FrankfurterRateClient {
         return results;
     }
 
-    private Map<String, BigDecimal> fetchBatch(List<String> batchQuotes) throws IOException, InterruptedException {
-        if (batchQuotes.isEmpty()) {
-            return Map.of();
-        }
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(buildUri(batchQuotes))
-                .timeout(Duration.ofSeconds(20))
-                .header("Accept", "application/json")
-                .header("User-Agent", "Okane-Transfer/1.0")
-                .GET()
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() >= 400) {
-            throw new IOException("Frankfurter returned HTTP " + response.statusCode());
-        }
-
-        List<FrankfurterRateRow> rows = objectMapper.readValue(response.body(), new TypeReference<List<FrankfurterRateRow>>() { });
-        return rows.stream()
-                .filter(row -> row.quote() != null && row.rate() != null)
-                .collect(Collectors.toMap(
-                        row -> row.quote().trim().toUpperCase(),
-                        FrankfurterRateRow::rate,
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ));
-    }
-
     private BigDecimal fetchSingle(String quoteCode) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URI + "/MAD/" + quoteCode))
+                .uri(URI.create("https://open.er-api.com/v6/latest/" + quoteCode))
                 .timeout(Duration.ofSeconds(20))
                 .header("Accept", "application/json")
                 .header("User-Agent", "Okane-Transfer/1.0")
@@ -114,19 +78,74 @@ public class FrankfurterRateClient {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() >= 400) {
-            throw new IOException("Frankfurter returned HTTP " + response.statusCode());
+            throw new IOException("open.er-api returned HTTP " + response.statusCode());
         }
 
-        FrankfurterRateRow row = objectMapper.readValue(response.body(), FrankfurterRateRow.class);
-        return row.rate();
+        OpenErApiResponse apiResponse = objectMapper.readValue(response.body(), OpenErApiResponse.class);
+        if (apiResponse == null || apiResponse.rates() == null) {
+            return null;
+        }
+        if (apiResponse.result() != null && !"success".equalsIgnoreCase(apiResponse.result())) {
+            throw new IOException("open.er-api returned result=" + apiResponse.result());
+        }
+
+        BigDecimal madRate = apiResponse.rates().get("MAD");
+        if (madRate == null || madRate.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return BigDecimal.ONE.divide(madRate, 10, java.math.RoundingMode.HALF_UP);
     }
 
-    private URI buildUri(List<String> quotes) {
-        String query = String.join(",", quotes);
-        return URI.create(BASE_URI + "?base=MAD&quotes=" + query);
+    private Map<String, BigDecimal> fetchAllRates() throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(BASE_URI)
+                .timeout(Duration.ofSeconds(20))
+                .header("Accept", "application/json")
+                .header("User-Agent", "Okane-Transfer/1.0")
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            throw new IOException("open.er-api returned HTTP " + response.statusCode());
+        }
+
+        OpenErApiResponse apiResponse = objectMapper.readValue(response.body(), OpenErApiResponse.class);
+        if (apiResponse == null || apiResponse.rates() == null || apiResponse.rates().isEmpty()) {
+            return Map.of();
+        }
+        if (apiResponse.result() != null && !"success".equalsIgnoreCase(apiResponse.result())) {
+            throw new IOException("open.er-api returned result=" + apiResponse.result());
+        }
+
+        Map<String, BigDecimal> results = new LinkedHashMap<>();
+        for (Map.Entry<String, BigDecimal> entry : apiResponse.rates().entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+                continue;
+            }
+            String code = entry.getKey().trim().toUpperCase();
+            if (!code.matches("[A-Z]{3}")) {
+                continue;
+            }
+            if ("MAD".equals(code)) {
+                results.put(code, BigDecimal.ONE);
+                continue;
+            }
+            BigDecimal rate = entry.getValue();
+            if (rate.compareTo(BigDecimal.ZERO) > 0) {
+                results.put(code, BigDecimal.ONE.divide(rate, 10, java.math.RoundingMode.HALF_UP));
+            }
+        }
+        return results;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record FrankfurterRateRow(String date, String base, String quote, BigDecimal rate) {
+    record OpenErApiResponse(
+            String result,
+            String time_last_update_utc,
+            String time_next_update_utc,
+            String base_code,
+            Map<String, BigDecimal> rates
+    ) {
     }
 }

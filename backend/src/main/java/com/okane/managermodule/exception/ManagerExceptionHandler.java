@@ -27,4 +27,10 @@ public class ManagerExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", "NOT_FOUND", "message", ex.getMessage()));
     }
+
+    @ExceptionHandler(com.okane.agencybalance.exception.InsufficientBalanceException.class)
+    public ResponseEntity<Map<String, String>> handleInsufficientBalance(com.okane.agencybalance.exception.InsufficientBalanceException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", ex.getMessage()));
+    }
 }

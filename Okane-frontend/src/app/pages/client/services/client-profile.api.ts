@@ -14,6 +14,8 @@ const FALLBACK_PROFILE: ClientProfile = {
 	preferredLanguage: 'fr',
 	emailNotificationsEnabled: true,
 	smsNotificationsEnabled: true,
+	kycStatus: 'EN_ATTENTE',
+	amlRiskLevel: 'LOW',
 };
 
 @Injectable({ providedIn: 'root' })

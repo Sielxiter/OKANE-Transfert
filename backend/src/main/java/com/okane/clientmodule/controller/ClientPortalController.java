@@ -1,6 +1,8 @@
 package com.okane.clientmodule.controller;
 
 import com.okane.clientmodule.dto.ChangePasswordRequest;
+import com.okane.clientmodule.dto.ClientKycVerificationRequestDTO;
+import com.okane.clientmodule.dto.ClientKycVerificationResponseDTO;
 import com.okane.clientmodule.dto.ClientDashboardSummaryDTO;
 import com.okane.clientmodule.dto.ClientNotificationDTO;
 import com.okane.clientmodule.dto.ClientProfileDTO;
@@ -21,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -107,6 +110,14 @@ public class ClientPortalController {
     @GetMapping("/profile")
     public ResponseEntity<ClientProfileDTO> profile(Authentication authentication) {
         return ResponseEntity.ok(clientPortalService.getProfile(authentication));
+    }
+
+    @PostMapping("/kyc/submit")
+    public ResponseEntity<ClientKycVerificationResponseDTO> submitKycDocument(
+            Authentication authentication,
+            @Valid @RequestBody ClientKycVerificationRequestDTO request
+    ) {
+        return ResponseEntity.ok(clientPortalService.submitKycDocument(authentication, request));
     }
 
     @PutMapping("/profile")

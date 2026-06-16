@@ -1,4 +1,4 @@
-import { CommonModule, DatePipe } from '@angular/common';
+﻿import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,7 +8,6 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { AgentPageIntroComponent } from '../../agent/ui/agent-page-intro.component';
 import { AgentSectionCardComponent } from '../../agent/ui/agent-section-card.component';
-import { ClientLayoutComponent } from './client-layout.component';
 import { ClientTransfersApiService } from './services/client-transfers.api';
 import type { ClientTransferListItem, ClientTransferStatus, PageResponse } from './client.models';
 
@@ -24,7 +23,6 @@ const PAGE_SIZE = 10;
 		NgIcon,
 		HlmButtonImports,
 		HlmInputImports,
-		ClientLayoutComponent,
 		AgentPageIntroComponent,
 		AgentSectionCardComponent,
 		DatePipe,
@@ -32,8 +30,7 @@ const PAGE_SIZE = 10;
 	providers: [provideIcons({ lucideArrowRightLeft, lucideFilter, lucideSearch, lucideDownload })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<okane-client-layout>
-			<div class="flex flex-col gap-6 md:gap-8">
+		<div class="flex flex-col gap-6 md:gap-8">
 				<okane-agent-page-intro eyebrow="Espace Client" title="Mes transferts" subtitle="Consultez l'historique, filtrez et ouvrez les détails d'un transfert."></okane-agent-page-intro>
 
 				<okane-agent-section-card title="Filtres" subtitle="Recherche par référence et période.">
@@ -111,7 +108,6 @@ const PAGE_SIZE = 10;
 					</div>
 				</okane-agent-section-card>
 			</div>
-		</okane-client-layout>
 	`,
 })
 export class ClientTransfersPageComponent {
@@ -174,3 +170,4 @@ export class ClientTransfersPageComponent {
 		});
 	}
 }
+

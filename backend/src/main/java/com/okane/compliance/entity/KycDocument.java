@@ -41,6 +41,16 @@ public class KycDocument {
     @Column(name = "texte_ocr_brut")
     private String rawOcrText;
 
+    @Lob
+    @Column(name = "contenu_document")
+    private byte[] documentContent;
+
+    @Column(name = "nom_fichier_original", length = 255)
+    private String originalFileName;
+
+    @Column(name = "mime_type", length = 100)
+    private String mimeType;
+
     @Column(name = "nom_extrait", length = 150)
     private String extractedNom;
 
@@ -82,6 +92,15 @@ public class KycDocument {
 
     public String getRawOcrText() { return rawOcrText; }
     public void setRawOcrText(String rawOcrText) { this.rawOcrText = rawOcrText; }
+
+    public byte[] getDocumentContent() { return documentContent; }
+    public void setDocumentContent(byte[] documentContent) { this.documentContent = documentContent; }
+
+    public String getOriginalFileName() { return originalFileName; }
+    public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+
+    public String getMimeType() { return mimeType; }
+    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
 
     public String getExtractedNom() { return extractedNom; }
     public void setExtractedNom(String extractedNom) { this.extractedNom = extractedNom; }

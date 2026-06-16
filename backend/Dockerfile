@@ -17,8 +17,10 @@ WORKDIR /app
 # Create non-root user
 RUN addgroup -S okane && adduser -S okane -G okane
 
-# Copy the built WAR
-COPY --from=builder /app/target/backend.war ./app.war
+# Copy the built executable jar
+COPY --from=builder /app/target/backend.jar ./app.jar
+# Copy the webapp resources used by the embedded Tomcat bootstrap
+COPY --from=builder /app/src/main/webapp ./src/main/webapp
 
 # Create uploads directory
 RUN mkdir -p /app/uploads && chown -R okane:okane /app
@@ -42,4 +44,4 @@ ENV UPLOAD_DIR=/app/uploads
 ENV UPLOAD_MAX_SIZE_MB=5
 
 # Run with embedded Tomcat via Main class
-ENTRYPOINT ["java", "-jar", "app.war"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -75,6 +75,33 @@ export interface ClientProfile {
 	preferredLanguage: 'fr' | 'en' | 'ar';
 	emailNotificationsEnabled: boolean;
 	smsNotificationsEnabled: boolean;
+	kycStatus?: string | null;
+	amlRiskLevel?: string | null;
+}
+
+export interface ClientKycVerificationRequest {
+	documentType: 'CIN' | 'PASSEPORT';
+	imageBase64: string;
+	fileName?: string | null;
+	mimeType?: string | null;
+}
+
+export interface ClientKycVerificationResponse {
+	documentId: number;
+	kycStatus: string;
+	amlRiskLevel: string;
+	amlMatched: boolean;
+	matchScore: number | null;
+	matchedEntityName: string | null;
+	source: string | null;
+	documentType: string;
+	extractedNom: string | null;
+	extractedPrenom: string | null;
+	extractedNumeroPiece: string | null;
+	extractedNationalite: string | null;
+	confidence: number | null;
+	submittedAt: string;
+	message: string;
 }
 
 export interface ChangePasswordRequest {

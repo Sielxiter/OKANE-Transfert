@@ -1,4 +1,4 @@
-import { CommonModule, DatePipe } from '@angular/common';
+﻿import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -6,19 +6,17 @@ import { lucideArrowLeft, lucideDownload } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AgentPageIntroComponent } from '../../agent/ui/agent-page-intro.component';
 import { AgentSectionCardComponent } from '../../agent/ui/agent-section-card.component';
-import { ClientLayoutComponent } from './client-layout.component';
 import { ClientTransfersApiService } from './services/client-transfers.api';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
 	selector: 'okane-client-transfer-details-page',
 	standalone: true,
-	imports: [CommonModule, RouterLink, NgIcon, HlmButtonImports, DatePipe, ClientLayoutComponent, AgentPageIntroComponent, AgentSectionCardComponent],
+	imports: [CommonModule, RouterLink, NgIcon, HlmButtonImports, DatePipe, AgentPageIntroComponent, AgentSectionCardComponent],
 	providers: [provideIcons({ lucideArrowLeft, lucideDownload })],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<okane-client-layout>
-			<div class="flex flex-col gap-6 md:gap-8">
+		<div class="flex flex-col gap-6 md:gap-8">
 				<okane-agent-page-intro eyebrow="Espace Client" [title]="referenceTitle()" subtitle="Consultez les détails complets du transfert."></okane-agent-page-intro>
 
 				@if (transfer(); as current) {
@@ -49,17 +47,17 @@ import { toSignal } from '@angular/core/rxjs-interop';
 								<div class="rounded-2xl border border-border bg-background/80 p-4">
 									<p class="text-muted-foreground">Expéditeur</p>
 									<p class="mt-1 font-medium text-foreground">{{ current.senderFullName }}</p>
-									<p class="text-muted-foreground">{{ current.senderPhone || '—' }}</p>
+									<p class="text-muted-foreground">{{ current.senderPhone || '-' }}</p>
 								</div>
 								<div class="rounded-2xl border border-border bg-background/80 p-4">
 									<p class="text-muted-foreground">Bénéficiaire</p>
 									<p class="mt-1 font-medium text-foreground">{{ current.beneficiaryFullName }}</p>
-									<p class="text-muted-foreground">{{ current.beneficiaryPhone || '—' }}</p>
+									<p class="text-muted-foreground">{{ current.beneficiaryPhone || '-' }}</p>
 								</div>
 								<div class="rounded-2xl border border-border bg-background/80 p-4">
 									<p class="text-muted-foreground">Agence</p>
-									<p class="mt-1 font-medium text-foreground">{{ current.agencyName || '—' }}</p>
-									<p class="text-muted-foreground">{{ current.payoutAgencyName || '—' }}</p>
+									<p class="mt-1 font-medium text-foreground">{{ current.agencyName || '-' }}</p>
+									<p class="text-muted-foreground">{{ current.payoutAgencyName || '-' }}</p>
 								</div>
 							</div>
 						</okane-agent-section-card>
@@ -93,7 +91,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 					</okane-agent-section-card>
 				}
 			</div>
-		</okane-client-layout>
 	`,
 })
 export class ClientTransferDetailsPageComponent {
@@ -107,3 +104,4 @@ export class ClientTransferDetailsPageComponent {
 		this._api.receipt(reference).subscribe(() => void 0);
 	}
 }
+

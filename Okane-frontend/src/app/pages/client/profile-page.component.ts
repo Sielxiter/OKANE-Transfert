@@ -1,22 +1,20 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { AgentPageIntroComponent } from '../../agent/ui/agent-page-intro.component';
 import { AgentSectionCardComponent } from '../../agent/ui/agent-section-card.component';
-import { ClientLayoutComponent } from './client-layout.component';
 import { ClientProfileApiService } from './services/client-profile.api';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
 	selector: 'okane-client-profile-page',
 	standalone: true,
-	imports: [CommonModule, ReactiveFormsModule, HlmButtonImports, HlmInputImports, ClientLayoutComponent, AgentPageIntroComponent, AgentSectionCardComponent],
+	imports: [CommonModule, ReactiveFormsModule, HlmButtonImports, HlmInputImports, AgentPageIntroComponent, AgentSectionCardComponent],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	template: `
-		<okane-client-layout>
-			<div class="flex flex-col gap-6 md:gap-8">
+		<div class="flex flex-col gap-6 md:gap-8">
 				<okane-agent-page-intro eyebrow="Espace Client" title="Profil" subtitle="Modifiez vos informations personnelles et vos préférences."></okane-agent-page-intro>
 
 				<okane-agent-section-card title="Informations personnelles" subtitle="Nom, téléphone, pays et langue préférée.">
@@ -91,7 +89,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 					<div class="rounded-2xl border border-border bg-background/80 p-4 text-sm text-muted-foreground">{{ message() }}</div>
 				}
 			</div>
-		</okane-client-layout>
 	`,
 })
 export class ClientProfilePageComponent {
@@ -208,3 +205,4 @@ export class ClientProfilePageComponent {
 		});
 	}
 }
+

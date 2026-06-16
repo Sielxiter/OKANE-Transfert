@@ -1,20 +1,19 @@
 package com.okane.managermodule.service;
 
-import com.okane.agency.entity.Agency;
 import com.okane.agency.repository.AgencyRepository;
-import com.okane.agency.repository.AgencyUserRepository;
+import com.okane.auth.entity.User;
+import com.okane.customer.entity.Customer;
 import com.okane.managermodule.dto.TransferListDto;
 import com.okane.managermodule.dto.TransferDetailsDto;
 import com.okane.managermodule.exception.ManagerAccessDeniedException;
 import com.okane.transfer.entity.Transfer;
+import com.okane.transfer.entity.TransferBeneficiary;
 import com.okane.transfer.repository.TransferRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class ManagerTransferService {
@@ -55,10 +54,10 @@ public class ManagerTransferService {
     }
 
     private TransferListDto toTransferListDto(Transfer transfer) {
-        String senderName = safeName(transfer.getSender());
-        String senderPhone = safePhone(transfer.getSender());
-        String beneficiaryName = safeName(transfer.getBeneficiary());
-        String beneficiaryPhone = safePhone(transfer.getBeneficiary());
+        String senderName = safeCustomerName(transfer.getSender());
+        String senderPhone = safeCustomerPhone(transfer.getSender());
+        String beneficiaryName = beneficiaryName(transfer);
+        String beneficiaryPhone = beneficiaryPhone(transfer);
         String currencySymbol = transfer.getCurrency() != null ? transfer.getCurrency().getSymbol() : "MAD";
         String agencyName = transfer.getSourceAgency() != null ? transfer.getSourceAgency().getName() : "";
         String agencyCode = transfer.getSourceAgency() != null ? transfer.getSourceAgency().getCode() : "";
@@ -86,16 +85,16 @@ public class ManagerTransferService {
     }
 
     private TransferDetailsDto toTransferDetailsDto(Transfer transfer) {
-        List<TransferDetailsDto.StatusHistoryDto> historyDtos = List.of();
+        java.util.List<TransferDetailsDto.StatusHistoryDto> historyDtos = java.util.List.of();
 
-        String senderName = safeName(transfer.getSender());
-        String senderPhone = safePhone(transfer.getSender());
+        String senderName = safeCustomerName(transfer.getSender());
+        String senderPhone = safeCustomerPhone(transfer.getSender());
         String senderIdentityType = transfer.getSender() != null ? transfer.getSender().getIdentityType() : "";
         String senderIdentityNumber = transfer.getSender() != null ? transfer.getSender().getIdentityNumber() : "";
-        String beneficiaryName = safeName(transfer.getBeneficiary());
-        String beneficiaryPhone = safePhone(transfer.getBeneficiary());
-        String beneficiaryIdentityType = transfer.getBeneficiary() != null ? transfer.getBeneficiary().getIdentityType() : "";
-        String beneficiaryIdentityNumber = transfer.getBeneficiary() != null ? transfer.getBeneficiary().getIdentityNumber() : "";
+        String beneficiaryName = beneficiaryName(transfer);
+        String beneficiaryPhone = beneficiaryPhone(transfer);
+        String beneficiaryIdentityType = beneficiaryIdentityType(transfer);
+        String beneficiaryIdentityNumber = beneficiaryIdentityNumber(transfer);
         String currencySymbol = transfer.getCurrency() != null ? transfer.getCurrency().getSymbol() : "MAD";
         String agencyName = transfer.getSourceAgency() != null ? transfer.getSourceAgency().getName() : "";
         String agencyCode = transfer.getSourceAgency() != null ? transfer.getSourceAgency().getCode() : "";
@@ -133,34 +132,62 @@ public class ManagerTransferService {
         );
     }
 
-    private String safeName(Object entity) {
-        if (entity == null) return "";
-        try {
-            var user = (com.okane.customer.entity.Customer) entity;
-            if (user.getUser() != null) {
-                return (user.getUser().getFirstName() + " " + user.getUser().getLastName()).trim();
-            }
-        } catch (Exception e) {
+    private String safeCustomerName(Customer customer) {
+        if (customer == null || customer.getUser() == null) {
             return "";
         }
-        return "";
+        return ((customer.getUser().getFirstName() != null ? customer.getUser().getFirstName() : "")
+                + " "
+                + (customer.getUser().getLastName() != null ? customer.getUser().getLastName() : "")).trim();
     }
 
-    private String safePhone(Object entity) {
-        if (entity == null) return "";
-        try {
-            var user = (com.okane.customer.entity.Customer) entity;
-            if (user.getUser() != null) {
-                return user.getUser().getPhone();
-            }
-        } catch (Exception e) {
+    private String safeCustomerPhone(Customer customer) {
+        if (customer == null || customer.getUser() == null || customer.getUser().getPhone() == null) {
             return "";
         }
-        return "";
+        return customer.getUser().getPhone();
     }
 
-    private String safeAgentName(com.okane.auth.entity.User user) {
-        if (user == null) return "";
-        return (user.getFirstName() + " " + user.getLastName()).trim();
+    private String beneficiaryName(Transfer transfer) {
+        TransferBeneficiary snapshot = transfer.getBeneficiarySnapshot();
+        if (snapshot != null) {
+            return ((snapshot.getFirstName() != null ? snapshot.getFirstName() : "")
+                    + " "
+                    + (snapshot.getLastName() != null ? snapshot.getLastName() : "")).trim();
+        }
+        return safeCustomerName(transfer.getBeneficiary());
+    }
+
+    private String beneficiaryPhone(Transfer transfer) {
+        TransferBeneficiary snapshot = transfer.getBeneficiarySnapshot();
+        if (snapshot != null && snapshot.getPhone() != null) {
+            return snapshot.getPhone();
+        }
+        return safeCustomerPhone(transfer.getBeneficiary());
+    }
+
+    private String beneficiaryIdentityType(Transfer transfer) {
+        TransferBeneficiary snapshot = transfer.getBeneficiarySnapshot();
+        if (snapshot != null && snapshot.getIdentityType() != null) {
+            return snapshot.getIdentityType();
+        }
+        return transfer.getBeneficiary() != null ? transfer.getBeneficiary().getIdentityType() : "";
+    }
+
+    private String beneficiaryIdentityNumber(Transfer transfer) {
+        TransferBeneficiary snapshot = transfer.getBeneficiarySnapshot();
+        if (snapshot != null && snapshot.getIdentityNumber() != null) {
+            return snapshot.getIdentityNumber();
+        }
+        return transfer.getBeneficiary() != null ? transfer.getBeneficiary().getIdentityNumber() : "";
+    }
+
+    private String safeAgentName(User user) {
+        if (user == null) {
+            return "";
+        }
+        return ((user.getFirstName() != null ? user.getFirstName() : "")
+                + " "
+                + (user.getLastName() != null ? user.getLastName() : "")).trim();
     }
 }

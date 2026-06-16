@@ -46,6 +46,9 @@ public class Agency {
     @Column(name = "plafond_journalier", nullable = false, precision = 15, scale = 2)
     private BigDecimal dailyLimit;
 
+    @Column(name = "solde_actuel", nullable = false, precision = 15, scale = 2)
+    private BigDecimal currentBalance = BigDecimal.ZERO;
+
     @Column(name = "actif", nullable = false)
     private Boolean active;
 
@@ -136,6 +139,14 @@ public class Agency {
 
     public void setDailyLimit(BigDecimal dailyLimit) {
         this.dailyLimit = dailyLimit;
+    }
+
+    public BigDecimal getCurrentBalance() {
+        return currentBalance;
+    }
+
+    public void setCurrentBalance(BigDecimal currentBalance) {
+        this.currentBalance = currentBalance;
     }
 
     public Boolean getActive() {

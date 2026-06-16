@@ -9,6 +9,8 @@ public record ClientProfileDTO(
         String country,
         String preferredLanguage,
         boolean emailNotificationsEnabled,
-        boolean smsNotificationsEnabled
+        boolean smsNotificationsEnabled,
+        String kycStatus,
+        String amlRiskLevel
 ) {
 }

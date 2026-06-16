@@ -17,6 +17,7 @@ import {
 	lucideUserPlus,
 	lucideUsers,
 	lucideWallet,
+	lucideBan,
 } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
@@ -49,6 +50,7 @@ interface QuickAction {
 			lucideUserPlus,
 			lucideUsers,
 			lucideWallet,
+			lucideBan,
 		}),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,

@@ -13,11 +13,14 @@ import {
 	lucideClock,
 	lucideXCircle,
 	lucideAlertTriangle,
+	lucideList,
 } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { ManagerTransfersApiService, type ApiTransfer } from './manager-transfers.api';
+
+type TransferStatus = 'ALL' | 'PENDING' | 'PAID' | 'CANCELLED' | 'EXPIRED' | 'BLOCKED';
 
 @Component({
 	selector: 'okane-manager-transfers-page',
@@ -35,6 +38,7 @@ import { ManagerTransfersApiService, type ApiTransfer } from './manager-transfer
 			lucideClock,
 			lucideXCircle,
 			lucideAlertTriangle,
+			lucideList,
 		}),
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,15 +52,25 @@ import { ManagerTransfersApiService, type ApiTransfer } from './manager-transfer
 				</div>
 			</header>
 
+			<!-- Status filter tabs -->
+			<div class="flex flex-wrap gap-2">
+				@for (filter of statusFilters; track filter.value) {
+					<button
+						hlmBtn
+						[size]="'sm'"
+						[variant]="activeFilter() === filter.value ? 'default' : 'outline'"
+						(click)="setFilter(filter.value)"
+					>
+						{{ filter.label }}
+					</button>
+				}
+			</div>
+
 			<div class="flex items-center gap-3">
 				<div class="relative flex-1">
 					<ng-icon name="lucideSearch" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
 					<input hlmInput type="text" placeholder="Rechercher par reference, nom..." class="pl-10" [value]="search()" (input)="search.set($any($event.target).value)" />
 				</div>
-				<button hlmBtn variant="outline" size="sm">
-					<ng-icon name="lucideFilter" />
-					Filtrer
-				</button>
 			</div>
 
 			@if (loading()) {
@@ -139,15 +153,36 @@ export class ManagerTransfersPageComponent implements OnInit {
 	protected readonly loading = signal(true);
 	protected readonly error = signal('');
 	protected readonly search = signal('');
+	protected readonly activeFilter = signal<TransferStatus>('ALL');
+
+	protected readonly statusFilters = [
+		{ value: 'ALL' as TransferStatus, label: 'Tous' },
+		{ value: 'PENDING' as TransferStatus, label: 'En attente' },
+		{ value: 'PAID' as TransferStatus, label: 'Payés' },
+		{ value: 'CANCELLED' as TransferStatus, label: 'Annulés' },
+		{ value: 'EXPIRED' as TransferStatus, label: 'Expirés' },
+		{ value: 'BLOCKED' as TransferStatus, label: 'Bloqués' },
+	];
 
 	protected readonly filteredTransfers = () => {
+		let result = this.transfers();
+
+		// Apply status filter
+		const filter = this.activeFilter();
+		if (filter !== 'ALL') {
+			result = result.filter(t => t.status === filter);
+		}
+
+		// Apply search
 		const term = this.search().trim().toLowerCase();
-		if (!term) return this.transfers();
-		return this.transfers().filter(t =>
-			t.referenceCode.toLowerCase().includes(term) ||
-			t.senderFullName.toLowerCase().includes(term) ||
-			t.beneficiaryFullName.toLowerCase().includes(term)
-		);
+		if (term) {
+			result = result.filter(t =>
+				t.referenceCode.toLowerCase().includes(term) ||
+				t.senderFullName.toLowerCase().includes(term) ||
+				t.beneficiaryFullName.toLowerCase().includes(term)
+			);
+		}
+		return result;
 	};
 
 	public ngOnInit(): void {
@@ -161,6 +196,10 @@ export class ManagerTransfersPageComponent implements OnInit {
 				this.loading.set(false);
 			},
 		});
+	}
+
+	protected setFilter(filter: TransferStatus): void {
+		this.activeFilter.set(filter);
 	}
 
 	protected statusClass(status: string): string {

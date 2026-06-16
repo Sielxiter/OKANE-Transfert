@@ -13,6 +13,7 @@ CREATE TABLE agences (
     email VARCHAR(150),
 
     plafond_journalier DECIMAL(15,2) NOT NULL DEFAULT 0,
+    solde_actuel DECIMAL(15,2) NOT NULL DEFAULT 0,
     actif BOOLEAN NOT NULL DEFAULT TRUE,
 
     cree_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -40,3 +41,9 @@ CREATE TABLE affectations_agence_utilisateurs (
 
     CONSTRAINT uk_affectation_agence_utilisateur UNIQUE (agence_id, utilisateur_id)
 );
+
+-- =====================================================
+-- MIGRATION: Ajout du solde_actuel pour les agences existantes
+-- Exécuter si la table existe déjà sans cette colonne
+-- =====================================================
+-- ALTER TABLE agences ADD COLUMN solde_actuel DECIMAL(15,2) NOT NULL DEFAULT 0;

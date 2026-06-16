@@ -70,6 +70,7 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/api/auth/login", "POST"),
                                 new AntPathRequestMatcher("/api/auth/refresh", "POST"),
                                 new AntPathRequestMatcher("/api/auth/logout", "POST"),
+                                new AntPathRequestMatcher("/api/health"),
                                 new AntPathRequestMatcher("/error")
                         ).permitAll()
                         .requestMatchers(

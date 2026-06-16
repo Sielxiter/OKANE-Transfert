@@ -5,6 +5,8 @@ import com.okane.auth.exception.ApiException;
 import com.okane.auth.repository.UserRepository;
 import com.okane.auth.security.OkaneUserPrincipal;
 import com.okane.clientmodule.dto.ChangePasswordRequest;
+import com.okane.clientmodule.dto.ClientKycVerificationRequestDTO;
+import com.okane.clientmodule.dto.ClientKycVerificationResponseDTO;
 import com.okane.clientmodule.dto.ClientDashboardSummaryDTO;
 import com.okane.clientmodule.dto.ClientNotificationDTO;
 import com.okane.clientmodule.dto.ClientProfileDTO;
@@ -15,6 +17,12 @@ import com.okane.clientmodule.dto.ClientTransferReceiptDTO;
 import com.okane.clientmodule.dto.NotificationPreferencesRequest;
 import com.okane.clientmodule.dto.TransferStatusHistoryDTO;
 import com.okane.clientmodule.dto.UpdateClientProfileRequest;
+import com.okane.compliance.entity.ComplianceAlert;
+import com.okane.compliance.entity.KycDocument;
+import com.okane.compliancemanagement.repository.ComplianceAlertRepository;
+import com.okane.compliancemanagement.repository.KycDocumentRepository;
+import com.okane.compliancemanagement.service.AmlScreeningService;
+import com.okane.compliancemanagement.service.OcrService;
 import com.okane.currencyfx.entity.Country;
 import com.okane.currencyfx.entity.Currency;
 import com.okane.currencyfx.repository.CountryRepository;
@@ -28,6 +36,7 @@ import com.okane.transfer.entity.Transfer;
 import com.okane.transfer.entity.TransferBeneficiary;
 import com.okane.transfer.repository.TransferRepository;
 import jakarta.persistence.criteria.Predicate;
+import java.util.Base64;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +66,10 @@ public class ClientPortalService {
     private final CountryRepository countryRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationPreferenceRepository notificationPreferenceRepository;
+    private final KycDocumentRepository kycDocumentRepository;
+    private final ComplianceAlertRepository complianceAlertRepository;
+    private final OcrService ocrService;
+    private final AmlScreeningService amlScreeningService;
     private final PasswordEncoder passwordEncoder;
 
     public ClientPortalService(
@@ -66,6 +79,10 @@ public class ClientPortalService {
             CountryRepository countryRepository,
             NotificationRepository notificationRepository,
             NotificationPreferenceRepository notificationPreferenceRepository,
+            KycDocumentRepository kycDocumentRepository,
+            ComplianceAlertRepository complianceAlertRepository,
+            OcrService ocrService,
+            AmlScreeningService amlScreeningService,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -74,6 +91,10 @@ public class ClientPortalService {
         this.countryRepository = countryRepository;
         this.notificationRepository = notificationRepository;
         this.notificationPreferenceRepository = notificationPreferenceRepository;
+        this.kycDocumentRepository = kycDocumentRepository;
+        this.complianceAlertRepository = complianceAlertRepository;
+        this.ocrService = ocrService;
+        this.amlScreeningService = amlScreeningService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -216,8 +237,125 @@ public class ClientPortalService {
     public ClientProfileDTO getProfile(Authentication authentication) {
         User user = currentUser(authentication);
         Customer customer = currentCustomer(user.getId());
-        NotificationPreference preference = currentPreference(user.getId());
+        NotificationPreference preference = currentPreferenceOrDefault(user.getId());
         return toProfile(user, customer, preference);
+    }
+
+    @Transactional
+    public ClientKycVerificationResponseDTO submitKycDocument(Authentication authentication, ClientKycVerificationRequestDTO request) {
+        if (request == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Données KYC invalides.");
+        }
+
+        User user = currentUser(authentication);
+        Customer customer = currentCustomer(user.getId());
+
+        String documentType = normalizeDocumentType(request.documentType());
+        String imageBase64 = normalizeBase64(request.imageBase64());
+        if (imageBase64.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Le document est obligatoire.");
+        }
+
+        byte[] documentBytes;
+        try {
+            documentBytes = Base64.getDecoder().decode(imageBase64);
+        } catch (IllegalArgumentException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Le document fourni n'est pas une image base64 valide.");
+        }
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> ocrResult = ocrService.extractFromImage(imageBase64, documentType);
+        String extractedNom = stringValue(ocrResult.get("nom"));
+        String extractedPrenom = stringValue(ocrResult.get("prenom"));
+        String extractedNumeroPiece = stringValue(ocrResult.get("numeroPiece"));
+        String extractedNationalite = stringValue(ocrResult.get("nationalite"));
+        double confidence = numberValue(ocrResult.get("confidence"));
+        String ocrText = stringValue(ocrResult.get("rawText"));
+
+        String amlNationality = !extractedNationalite.isBlank()
+                ? extractedNationalite
+                : normalizeNullable(customer.getNationality());
+        java.util.Map<String, Object> amlResult = amlScreeningService.screenPerson(
+                normalizeNameForAml(user.getFirstName(), extractedPrenom),
+                normalizeNameForAml(user.getLastName(), extractedNom),
+                amlNationality
+        );
+
+        String amlRiskLevel = stringValue(amlResult.get("riskLevel"));
+        if (amlRiskLevel.isBlank()) {
+            amlRiskLevel = "LOW";
+        }
+        boolean amlMatched = Boolean.TRUE.equals(amlResult.get("matched"));
+        Double matchScore = amlResult.get("matchScore") instanceof Number number ? number.doubleValue() : null;
+        String matchedEntityName = stringValue(amlResult.get("matchedEntityName"));
+        String source = stringValue(amlResult.get("source"));
+
+        String kycStatus = switch (amlRiskLevel.toUpperCase(Locale.ROOT)) {
+            case "HIGH" -> "REJETE";
+            case "MEDIUM" -> "A_REVOIR";
+            default -> "VERIFIE";
+        };
+
+        LocalDateTime now = LocalDateTime.now();
+        customer.setIdentityType(documentType);
+        if (!extractedNumeroPiece.isBlank()) {
+            customer.setIdentityNumber(extractedNumeroPiece.toUpperCase(Locale.ROOT));
+        }
+        if (!extractedNationalite.isBlank()) {
+            customer.setNationality(extractedNationalite);
+        }
+        customer.setKycStatus(kycStatus);
+        customer.setAmlRiskLevel(amlRiskLevel);
+        customer.setRestricted("HIGH".equalsIgnoreCase(amlRiskLevel));
+        customer.setUpdatedAt(now);
+        customerRepository.save(customer);
+
+        KycDocument document = new KycDocument();
+        document.setCustomer(customer);
+        document.setDocumentType(documentType);
+        document.setDocumentContent(documentBytes);
+        document.setOriginalFileName(normalizeNullable(request.fileName()));
+        document.setMimeType(normalizeNullable(request.mimeType()));
+        document.setRawOcrText(ocrText);
+        document.setExtractedNom(extractedNom.isBlank() ? user.getLastName() : extractedNom);
+        document.setExtractedPrenom(extractedPrenom.isBlank() ? user.getFirstName() : extractedPrenom);
+        document.setExtractedNumeroPiece(!extractedNumeroPiece.isBlank() ? extractedNumeroPiece : customer.getIdentityNumber());
+        document.setExtractedNationalite(!extractedNationalite.isBlank() ? extractedNationalite : amlNationality);
+        document.setExtractionConfidence(confidence);
+        document.setCreatedAt(now);
+        KycDocument savedDocument = kycDocumentRepository.save(document);
+
+        if ("MEDIUM".equalsIgnoreCase(amlRiskLevel) || "HIGH".equalsIgnoreCase(amlRiskLevel)) {
+            ComplianceAlert alert = new ComplianceAlert();
+            alert.setCustomer(customer);
+            alert.setAlertType("AML");
+            alert.setRiskLevel(amlRiskLevel.toUpperCase(Locale.ROOT));
+            alert.setMessage("Verification KYC/AML du client " + buildFullName(customer));
+            alert.setSource(!source.isBlank() ? source : "ClientPortal");
+            alert.setMatchScore(matchScore);
+            alert.setMatchedEntityName(!matchedEntityName.isBlank() ? matchedEntityName : null);
+            alert.setStatus("EN_ATTENTE");
+            alert.setCreatedAt(now);
+            complianceAlertRepository.save(alert);
+        }
+
+        return new ClientKycVerificationResponseDTO(
+                savedDocument.getId(),
+                customer.getKycStatus(),
+                customer.getAmlRiskLevel(),
+                amlMatched,
+                matchScore,
+                !matchedEntityName.isBlank() ? matchedEntityName : null,
+                !source.isBlank() ? source : null,
+                documentType,
+                document.getExtractedNom(),
+                document.getExtractedPrenom(),
+                document.getExtractedNumeroPiece(),
+                document.getExtractedNationalite(),
+                confidence,
+                now,
+                "Document KYC enregistre et verification AML lancee."
+        );
     }
 
     @Transactional
@@ -237,7 +375,7 @@ public class ClientPortalService {
         customer.setUpdatedAt(LocalDateTime.now());
         customerRepository.save(customer);
 
-        NotificationPreference preference = currentPreference(user.getId());
+        NotificationPreference preference = ensurePreference(user.getId());
         if (request.preferredLanguage() != null && !request.preferredLanguage().isBlank()) {
             preference.setPreferredLanguage(request.preferredLanguage().trim().toLowerCase(Locale.ROOT));
             preference.setUpdatedAt(LocalDateTime.now());
@@ -268,7 +406,7 @@ public class ClientPortalService {
     public ClientProfileDTO updateNotificationPreferences(Authentication authentication, NotificationPreferencesRequest request) {
         User user = currentUser(authentication);
         Customer customer = currentCustomer(user.getId());
-        NotificationPreference preference = currentPreference(user.getId());
+        NotificationPreference preference = ensurePreference(user.getId());
         preference.setEmailEnabled(request.emailNotificationsEnabled());
         preference.setSmsEnabled(request.smsNotificationsEnabled());
         preference.setUpdatedAt(LocalDateTime.now());
@@ -345,7 +483,9 @@ public class ClientPortalService {
                 customer.getCountry(),
                 preference.getPreferredLanguage() != null ? preference.getPreferredLanguage() : DEFAULT_LANGUAGE,
                 Boolean.TRUE.equals(preference.getEmailEnabled()),
-                Boolean.TRUE.equals(preference.getSmsEnabled())
+                Boolean.TRUE.equals(preference.getSmsEnabled()),
+                customer.getKycStatus(),
+                customer.getAmlRiskLevel()
         );
     }
 
@@ -466,8 +606,59 @@ public class ClientPortalService {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private String normalizeDocumentType(String value) {
+        String normalized = normalizeNullable(value);
+        if (normalized == null) {
+            return "CIN";
+        }
+        String upper = normalized.toUpperCase(Locale.ROOT);
+        return "PASSEPORT".equals(upper) ? "PASSEPORT" : "CIN";
+    }
+
+    private String normalizeBase64(String value) {
+        String normalized = normalizeNullable(value);
+        if (normalized == null) {
+            return "";
+        }
+        int commaIndex = normalized.indexOf(',');
+        return commaIndex >= 0 ? normalized.substring(commaIndex + 1) : normalized;
+    }
+
+    private String normalizeNameForAml(String fallback, String extracted) {
+        String normalizedExtracted = normalizeNullable(extracted);
+        if (normalizedExtracted != null) {
+            return normalizedExtracted;
+        }
+        String normalizedFallback = normalizeNullable(fallback);
+        return normalizedFallback != null ? normalizedFallback : "";
+    }
+
+    private String stringValue(Object value) {
+        return value != null ? value.toString().trim() : "";
+    }
+
+    private double numberValue(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        try {
+            return value != null ? Double.parseDouble(value.toString()) : 0.0;
+        } catch (NumberFormatException ex) {
+            return 0.0;
+        }
+    }
+
     private String safeText(String value) {
         return value != null ? value : "";
+    }
+
+    private String buildFullName(Customer customer) {
+        if (customer == null || customer.getUser() == null) {
+            return "-";
+        }
+        String firstName = safeText(customer.getUser().getFirstName()).trim();
+        String lastName = safeText(customer.getUser().getLastName()).trim();
+        return (firstName + " " + lastName).trim();
     }
 
     private String resolveDefaultCurrency(Customer customer) {
@@ -497,7 +688,18 @@ public class ClientPortalService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profil client introuvable."));
     }
 
-    private NotificationPreference currentPreference(long userId) {
+    private NotificationPreference currentPreferenceOrDefault(long userId) {
+        return notificationPreferenceRepository.findByUser_Id(userId).orElseGet(() -> {
+            NotificationPreference preference = new NotificationPreference();
+            preference.setEmailEnabled(true);
+            preference.setSmsEnabled(true);
+            preference.setPushEnabled(true);
+            preference.setPreferredLanguage(DEFAULT_LANGUAGE);
+            return preference;
+        });
+    }
+
+    private NotificationPreference ensurePreference(long userId) {
         return notificationPreferenceRepository.findByUser_Id(userId).orElseGet(() -> {
             NotificationPreference preference = new NotificationPreference();
             preference.setUser(userRepository.findById(userId)

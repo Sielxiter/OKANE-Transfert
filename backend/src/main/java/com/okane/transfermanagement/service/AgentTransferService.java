@@ -1,6 +1,8 @@
 package com.okane.transfermanagement.service;
 
 import com.okane.agency.entity.Agency;
+import com.okane.centralagency.entity.CentralAgency;
+import com.okane.agency.repository.AgencyRepository;
 import com.okane.auth.entity.Role;
 import com.okane.auth.entity.User;
 import com.okane.auth.exception.ApiException;
@@ -69,6 +71,8 @@ public class AgentTransferService {
     private final TransferBeneficiaryRepository transferBeneficiaryRepository;
     private final AgentCashSessionRepository agentCashSessionRepository;
     private final TransferAuditService auditService;
+    private final AgencyRepository agencyRepository;
+    private final com.okane.agencybalance.service.AgencyBalanceService agencyBalanceService;
     private final PasswordEncoder passwordEncoder;
 
     public AgentTransferService(
@@ -84,6 +88,8 @@ public class AgentTransferService {
             TransferBeneficiaryRepository transferBeneficiaryRepository,
             AgentCashSessionRepository agentCashSessionRepository,
             TransferAuditService auditService,
+            AgencyRepository agencyRepository,
+            com.okane.agencybalance.service.AgencyBalanceService agencyBalanceService,
             PasswordEncoder passwordEncoder
     ) {
         this.countryRepository = countryRepository;
@@ -98,6 +104,8 @@ public class AgentTransferService {
         this.transferBeneficiaryRepository = transferBeneficiaryRepository;
         this.agentCashSessionRepository = agentCashSessionRepository;
         this.auditService = auditService;
+        this.agencyRepository = agencyRepository;
+        this.agencyBalanceService = agencyBalanceService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -198,6 +206,9 @@ public class AgentTransferService {
 
         Transfer saved = transferRepository.save(transfer);
         auditService.logTransferCreated(agent, saved);
+
+        // Record cash movements for balance tracking
+        recordCashMovements(saved, agent, cashSession);
 
         return new AgentTransferResponseDTO(
                 saved.getId(),
@@ -517,6 +528,24 @@ public class AgentTransferService {
         String last = user.getLastName() == null ? "" : user.getLastName();
         String result = (first + " " + last).trim();
         return result.isEmpty() ? user.getEmail() : result;
+    }
+
+    private void recordCashMovements(Transfer transfer, User agent, AgentCashSession session) {
+        Agency sourceAgency = transfer.getSourceAgency();
+        if (sourceAgency == null) {
+            return;
+        }
+        BigDecimal totalIn = transfer.getAmount().add(transfer.getFeeAmount());
+        agencyBalanceService.recordTransferIn(sourceAgency, agent, transfer.getAmount(), transfer.getFeeAmount(), transfer, session);
+        agencyBalanceService.recordCommissionAgency(sourceAgency, agent, transfer.getAgencyCommissionAmount(), transfer, session);
+
+        CentralAgency central = sourceAgency.getCentralAgency();
+        if (central != null) {
+            Agency centralAgency = agencyRepository.findById(central.getId()).orElse(null);
+            if (centralAgency != null) {
+                agencyBalanceService.recordCommissionCentral(centralAgency, agent, transfer.getCentralCommissionAmount(), transfer, session);
+            }
+        }
     }
 
     private record QuoteComputation(
